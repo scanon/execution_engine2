@@ -58,6 +58,7 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN ver
+
         #END ver
 
         # At some point might do deeper type checking...
@@ -81,6 +82,7 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN status
+        returnVal = MethodRunner(ctx).status()
         #END status
 
         # At some point might do deeper type checking...

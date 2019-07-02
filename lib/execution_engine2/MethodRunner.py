@@ -1,9 +1,8 @@
+import json
 import os
+import time
 from configparser import ConfigParser
 from typing import Dict
-
-from lib.execution_engine2.exceptions import *
-from lib.installed_clients.UserAndJobStateClient import UserAndJobState
 
 
 class MethodRunner:
@@ -30,15 +29,15 @@ class MethodRunner:
         self.ctx = ctx
 
     def check_job_cancelled(self, params: Dict[str, str]):
-        if 'job_id' not in params:
-            raise MissingParamsException()
-        job_id = params['job_id'].strip()
-        if len(job_id) < self.JOB_ID_LENGTH:
-            raise MalformedJobIdException()
-        ujs = UserAndJobState(token=self.ctx['token'],
-                              url=self.parser.get(self.NJS, "jobstatus.srv.url"))
+        return {
+            'test': 'test'
+        }
 
-        return ujs.get_job_status(job_id)
+    def status(self):
+        return json(
+            {
+                "servertime": f"{time.time()}",
+            })
 
     def check_job_permissions(self):
         pass
