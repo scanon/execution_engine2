@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-# BEGIN_HEADER
-from lib.execution_engine2 import MethodRunner
-
-
-# END_HEADER
+#BEGIN_HEADER
+from lib.execution_engine2.MethodRunner import MethodRunner
+#END_HEADER
 
 
 class execution_engine2:
@@ -25,15 +23,16 @@ class execution_engine2:
     GIT_URL = ""
     GIT_COMMIT_HASH = ""
 
-    # BEGIN_CLASS_HEADER
-    # END_CLASS_HEADER
+    #BEGIN_CLASS_HEADER
+    #END_CLASS_HEADER
 
     # config contains contents of config file in a hash or None if it couldn't
     # be found
     def __init__(self, config):
-        # BEGIN_CONSTRUCTOR
-        # END_CONSTRUCTOR
+        #BEGIN_CONSTRUCTOR
+        #END_CONSTRUCTOR
         pass
+
 
     def list_config(self, ctx):
         """
@@ -41,10 +40,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN list_config
-        returnVal = {}
-        pass
-        # END list_config
+        #BEGIN list_config
+        #END list_config
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
@@ -60,10 +57,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN ver
-        returnVal = {}
-        pass
-        # END ver
+        #BEGIN ver
+        #END ver
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, str):
@@ -85,10 +80,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN status
-        returnVal = {}
-        pass
-        # END status
+        #BEGIN status
+        #END status
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
@@ -151,10 +144,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: job_id
-        # BEGIN run_job
-        job_id = {}
-        pass
-        # END run_job
+        #BEGIN run_job
+        #END run_job
 
         # At some point might do deeper type checking...
         if not isinstance(job_id, str):
@@ -217,11 +208,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: params, config
-        # BEGIN get_job_params
-        params = {}
-        config = {}
-        pass
-        # END get_job_params
+        #BEGIN get_job_params
+        #END get_job_params
 
         # At some point might do deeper type checking...
         if not isinstance(params, dict):
@@ -245,10 +233,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN update_job
-        returnVal = {}
-        pass
-        # END update_job
+        #BEGIN update_job
+        #END update_job
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
@@ -267,10 +253,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: line_number
-        # BEGIN add_job_logs
-        line_number = 0
-        pass
-        # END add_job_logs
+        #BEGIN add_job_logs
+        #END add_job_logs
 
         # At some point might do deeper type checking...
         if not isinstance(line_number, int):
@@ -295,10 +279,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN get_job_logs
-        returnVal = {}
-        pass
-        # END get_job_logs
+        #BEGIN get_job_logs
+        #END get_job_logs
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
@@ -326,9 +308,8 @@ class execution_engine2:
            parameter "is_canceled" of type "boolean" (@range [0,1])
         """
         # ctx is the context object
-        # BEGIN finish_job
-
-        # END finish_job
+        #BEGIN finish_job
+        #END finish_job
         pass
 
     def check_job(self, ctx, job_id):
@@ -364,11 +345,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: job_state
-        # BEGIN check_job
-        job_state = {}
-        pass
-
-        # END check_job
+        #BEGIN check_job
+        #END check_job
 
         # At some point might do deeper type checking...
         if not isinstance(job_state, dict):
@@ -410,10 +388,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: job_states
-        # BEGIN list_job_statuses
-        job_states = list()
-        pass
-        # END list_job_statuses
+        #BEGIN list_job_statuses
+        #END list_job_statuses
 
         # At some point might do deeper type checking...
         if not isinstance(job_states, list):
@@ -510,10 +486,8 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: returnVal
-        # BEGIN check_jobs
-        returnVal = {}
-        pass
-        # END check_jobs
+        #BEGIN check_jobs
+        #END check_jobs
 
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
@@ -528,9 +502,8 @@ class execution_engine2:
            parameter "job_id" of type "job_id" (A job id.)
         """
         # ctx is the context object
-        # BEGIN cancel_job
-
-        # END cancel_job
+        #BEGIN cancel_job
+        #END cancel_job
         pass
 
     def check_job_canceled(self, ctx, params):
@@ -549,9 +522,9 @@ class execution_engine2:
         """
         # ctx is the context object
         # return variables are: result
-        # BEGIN check_job_canceled
+        #BEGIN check_job_canceled
         result = MethodRunner(ctx).check_job_cancelled(params)
-        # END check_job_canceled
+        #END check_job_canceled
 
         # At some point might do deeper type checking...
         if not isinstance(result, dict):
