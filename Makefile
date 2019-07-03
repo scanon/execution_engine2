@@ -63,3 +63,6 @@ test:
 
 clean:
 	rm -rfv $(LBIN_DIR)
+	
+build-docker-image:	
+	./build/build_docker_image.sh
