@@ -40,6 +40,19 @@ class SDKMethodRunner:
             if None in paths:
                 raise ValueError('Some workspace object is inaccessible')
 
+    def _get_module_git_commit(self, method, service_ver=None):
+        module_name, function_name = method.split('.')
+
+        if not service_ver:
+            service_ver = 'release'
+
+        module_version = self.catalog.get_module_version({'module_name': module_name,
+                                                          'version': service_ver})
+
+        git_commit_hash = module_version.get('git_commit_hash')
+
+        return git_commit_hash
+
     def __init__(self, config):
 
         catalog_url = config['catalog-url']
@@ -57,6 +70,10 @@ class SDKMethodRunner:
 
         client_groups = self._get_client_groups(method)
         self._check_ws_ojects(params.get('source_ws_objects'))
+
+        # update service_ver
+        git_commit_hash = self._get_module_git_commit(method, params.get('service_ver'))
+        params['service_ver'] = git_commit_hash
 
         job_id = 'test_job_id'
 

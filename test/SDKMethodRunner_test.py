@@ -79,3 +79,15 @@ class SDKMethodRunner_test(unittest.TestCase):
             runner._check_ws_ojects([read1ref, read2ref, fake_read1ref])
 
         self.assertIn('Some workspace object is inaccessible', str(context.exception.args))
+
+    def test_get_module_git_commit(self):
+
+        runner = self.getRunner()
+
+        git_commit_1 = runner._get_module_git_commit('MEGAHIT.run_megahit', '2.2.1')
+        self.assertEqual('048baf3c2b76cb923b3b4c52008ed77dbe20292d', git_commit_1)  # TODO: works only in CI
+
+        git_commit_2 = runner._get_module_git_commit('MEGAHIT.run_megahit')
+        self.assertTrue(isinstance(git_commit_2, str))
+        self.assertEqual(len(git_commit_1), len(git_commit_2))
+        self.assertNotEqual(git_commit_1, git_commit_2)
