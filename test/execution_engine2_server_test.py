@@ -3,7 +3,6 @@ import os
 import time
 import unittest
 from configparser import ConfigParser
-import inspect
 import re
 
 from execution_engine2.execution_engine2Impl import execution_engine2
@@ -54,18 +53,12 @@ class execution_engine2Test(unittest.TestCase):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
 
-    def start_test(self):
-        testname = inspect.stack()[1][3]
-        print('\n*** starting test: ' + testname + ' **')
-
     def test_status(self):
-        self.start_test()
         status = self.serviceImpl.status(self.ctx)[0]
 
         self.assertTrue('servertime' in status)
 
     def test_ver(self):
-        self.start_test()
         ver = self.serviceImpl.ver(self.ctx)[0]
 
         self.assertTrue(isinstance(ver, str))

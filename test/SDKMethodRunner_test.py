@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
 import unittest
+import time
 from configparser import ConfigParser
-import inspect
 
 from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+
+from installed_clients.WorkspaceClient import Workspace
+from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
 
 
 class SDKMethodRunner_test(unittest.TestCase):
@@ -27,22 +30,24 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         cls.method_runner = SDKMethodRunner(cls.cfg)
 
+        cls.callback_url = os.environ['SDK_CALLBACK_URL']
+        cls.foft = FakeObjectsForTests(cls.callback_url, service_ver='dev')
+
+        cls.wsURL = cls.cfg['workspace-url']
+        cls.wsClient = Workspace(cls.wsURL)
+        suffix = int(time.time() * 1000)
+        cls.wsName = "test_ContigFilter_" + str(suffix)
+        ret = cls.wsClient.create_workspace({'workspace': cls.wsName})  # noqa
+
     def getRunner(self):
         return self.__class__.method_runner
 
-    def start_test(self):
-        testname = inspect.stack()[1][3]
-        print('\n*** starting test: ' + testname + ' **')
-
     def test_init_ok(self):
-        self.start_test()
-        class_attri = ['catalog']
+        class_attri = ['catalog', 'workspace']
         runner = self.getRunner()
         self.assertTrue(set(class_attri) <= set(runner.__dict__.keys()))
 
     def test_get_client_groups(self):
-        self.start_test()
-
         runner = self.getRunner()
 
         client_groups = runner._get_client_groups('kb_uploadmethods.import_sra_from_staging')
@@ -57,3 +62,20 @@ class SDKMethodRunner_test(unittest.TestCase):
             runner._get_client_groups('kb_uploadmethods')
 
         self.assertIn('unrecognized method:', str(context.exception.args))
+
+    def test_check_ws_ojects(self):
+        runner = self.getRunner()
+
+        [info1, info2] = self.foft.create_fake_reads({'ws_name': self.wsName,
+                                                      'obj_names': ['reads1', 'reads2']})
+        read1ref = str(info1[6]) + '/' + str(info1[0]) + '/' + str(info1[4])
+        read2ref = str(info2[6]) + '/' + str(info2[0]) + '/' + str(info2[4])
+
+        runner._check_ws_ojects([read1ref, read2ref])
+
+        fake_read1ref = str(info1[6]) + '/' + str(info1[0]) + '/' + str(info1[4] + 100)
+
+        with self.assertRaises(ValueError) as context:
+            runner._check_ws_ojects([read1ref, read2ref, fake_read1ref])
+
+        self.assertIn('Some workspace object is inaccessible', str(context.exception.args))

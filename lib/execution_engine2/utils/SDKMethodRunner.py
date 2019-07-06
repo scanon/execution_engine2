@@ -2,6 +2,7 @@ import logging
 import re
 
 from installed_clients.CatalogClient import Catalog
+from installed_clients.WorkspaceClient import Workspace
 
 
 class SDKMethodRunner:
@@ -27,10 +28,25 @@ class SDKMethodRunner:
 
         return client_groups
 
+    def _check_ws_ojects(self, source_objects):
+        """
+        perform sanity checks on input WS objects
+        """
+        if source_objects:
+            objects = [{'ref': ref} for ref in source_objects]
+            info = self.workspace.get_object_info3({"objects": objects, 'ignoreErrors': 1})
+            paths = info.get('paths')
+
+            if None in paths:
+                raise ValueError('Some workspace object is inaccessible')
+
     def __init__(self, config):
 
         catalog_url = config['catalog-url']
         self.catalog = Catalog(catalog_url)
+
+        workspace_url = config['workspace-url']
+        self.workspace = Workspace(workspace_url)
 
         logging.basicConfig(format='%(created)s %(levelname)s: %(message)s',
                             level=logging.INFO)
@@ -40,6 +56,7 @@ class SDKMethodRunner:
         method = params.get('method')
 
         client_groups = self._get_client_groups(method)
+        self._check_ws_ojects(params.get('source_ws_objects'))
 
         job_id = 'test_job_id'
 
