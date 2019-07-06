@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #BEGIN_HEADER
-from lib.execution_engine2.MethodRunner import MethodRunner
+from execution_engine2.MethodRunner import MethodRunner
+from execution_engine2.utils.SDKMethoRunner import SDKMethoRunner
 #END_HEADER
 
 
@@ -20,8 +21,8 @@ class execution_engine2:
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.0.1"
-    GIT_URL = ""
-    GIT_COMMIT_HASH = ""
+    GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
+    GIT_COMMIT_HASH = "89faeb4c73aab8545f6bc74ad8c910559fa1856d"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -30,6 +31,9 @@ class execution_engine2:
     # be found
     def __init__(self, config):
         #BEGIN_CONSTRUCTOR
+        self.config = config
+
+        self.method_runner = SDKMethoRunner(self.config)
         #END_CONSTRUCTOR
         pass
 
@@ -58,7 +62,7 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN ver
-
+        returnVal = self.VERSION
         #END ver
 
         # At some point might do deeper type checking...
@@ -147,6 +151,7 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_id
         #BEGIN run_job
+        job_id = self.method_runner.run_job(params)
         #END run_job
 
         # At some point might do deeper type checking...
