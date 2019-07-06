@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #BEGIN_HEADER
 from execution_engine2.MethodRunner import MethodRunner
-from execution_engine2.utils.SDKMethoRunner import SDKMethoRunner
+from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 #END_HEADER
 
 
@@ -33,7 +33,7 @@ class execution_engine2:
         #BEGIN_CONSTRUCTOR
         self.config = config
 
-        self.method_runner = SDKMethoRunner(self.config)
+        self.method_runner = SDKMethodRunner(self.config)
         #END_CONSTRUCTOR
         pass
 

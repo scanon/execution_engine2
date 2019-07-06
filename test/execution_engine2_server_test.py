@@ -72,10 +72,9 @@ class execution_engine2Test(unittest.TestCase):
         pattern = re.compile("\d\.\d\.\d")
         self.assertTrue(pattern.match(ver))
 
-    def test_run_job(self):
-        self.start_test()
-        params = {}
-        job_id = self.serviceImpl.run_job(self.ctx, params)[0]
-
-        print('fdsafsdafd')
-        print(job_id)
+    # def test_run_job(self):
+    #     self.start_test()
+    #     params = {}
+    #     job_id = self.serviceImpl.run_job(self.ctx, params)[0]
+    #     self.assertTrue(isinstance(job_id, str))
+    #     print(job_id)
