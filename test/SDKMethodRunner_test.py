@@ -37,7 +37,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         cls.wsClient = Workspace(cls.wsURL)
         suffix = int(time.time() * 1000)
         cls.wsName = "test_ContigFilter_" + str(suffix)
-        ret = cls.wsClient.create_workspace({'workspace': cls.wsName})  # noqa
+        cls.wsClient.create_workspace({'workspace': cls.wsName})
 
     def getRunner(self):
         return self.__class__.method_runner

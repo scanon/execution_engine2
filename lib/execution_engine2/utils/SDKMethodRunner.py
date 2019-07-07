@@ -32,6 +32,7 @@ class SDKMethodRunner:
         """
         perform sanity checks on input WS objects
         """
+
         if source_objects:
             objects = [{'ref': ref} for ref in source_objects]
             info = self.workspace.get_object_info3({"objects": objects, 'ignoreErrors': 1})
@@ -41,7 +42,7 @@ class SDKMethodRunner:
                 raise ValueError('Some workspace object is inaccessible')
 
     def _get_module_git_commit(self, method, service_ver=None):
-        module_name, function_name = method.split('.')
+        module_name = method.split('.')[0]
 
         if not service_ver:
             service_ver = 'release'

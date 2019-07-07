@@ -45,7 +45,7 @@ class execution_engine2Test(unittest.TestCase):
         cls.callback_url = os.environ['SDK_CALLBACK_URL']
         suffix = int(time.time() * 1000)
         cls.wsName = "test_ContigFilter_" + str(suffix)
-        ret = cls.wsClient.create_workspace({'workspace': cls.wsName})  # noqa
+        cls.wsClient.create_workspace({'workspace': cls.wsName})
 
     @classmethod
     def tearDownClass(cls):
