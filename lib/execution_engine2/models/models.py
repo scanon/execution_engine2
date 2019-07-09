@@ -1,20 +1,23 @@
 import datetime
 from enum import Enum
 
-from mongoengine import StringField, IntField, EmbeddedDocument, Document, DateTimeField, \
-    BooleanField, ListField, LongField, EmbeddedDocumentField, GenericEmbeddedDocumentField, \
-    DynamicField
+from mongoengine import (
+    StringField,
+    IntField,
+    EmbeddedDocument,
+    Document,
+    DateTimeField,
+    BooleanField,
+    ListField,
+    LongField,
+    EmbeddedDocumentField,
+    GenericEmbeddedDocumentField,
+    DynamicField,
+)
 
 
-class Status(Enum):
-    created = 1
-    queued = 2
-    running = 3
-    finshed = 4
-
-
-status = ['created', 'queued', 'running', 'finished']
-authstrat = ['kbaseworkspace', 'something_else']
+status = ["created", "queued", "running", "finished"]
+authstrat = ["kbaseworkspace", "something_else"]
 
 # TODO Make sure Datetime is correct format
 # TODO Use ReferenceField to create a mapping between WSID and JOB IDS?
@@ -76,7 +79,10 @@ class Job(Document):
     job_output = EmbeddedDocumentField(JobOutput)
 
 
-# Unused fields
+"""
+Unused fields that we might want
+
+"""
 
 result_example = {
     "shocknodes": [],
@@ -88,12 +94,15 @@ result_example = {
             "servtype": "Workspace",
             "url": "https://ci.kbase.us/services/ws/",
             "id": "psnovichkov:1450397093052/QQ",
-            "desc": "description"
+            "desc": "description",
         }
     ],
     "prog": 0,
     "maxprog": None,
 }
+"""
+Unused Stuff to look at
+"""
 
 
 class Results(EmbeddedDocument):
@@ -117,3 +126,10 @@ class ResultsResults(EmbeddedDocument):
     "desc": "Execution engine job for simpleapp.simple_add",
     "progtype": None,
 }
+
+
+class Status(Enum):
+    created = 1
+    queued = 2
+    running = 3
+    finshed = 4
