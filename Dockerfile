@@ -8,6 +8,22 @@ RUN apt-get update
 # installation scripts.
 RUN apt-get install -y gcc
 
+# install mongodb
+RUN sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5 \
+    && echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/3.6 main" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list  \
+    && sudo apt-get update \
+    && sudo apt-get install -y mongodb-org=3.6.11 mongodb-org-server=3.6.11 mongodb-org-shell=3.6.11 mongodb-org-mongos=3.6.11 mongodb-org-tools=3.6.11 \
+    && sudo apt-get install -y mongodb
+
+RUN echo "mongodb-org hold" | sudo dpkg --set-selections \
+    && echo "mongodb-org-server hold" | sudo dpkg --set-selections \
+    && echo "mongodb-org-shell hold" | sudo dpkg --set-selections \
+    && echo "mongodb-org-mongos hold" | sudo dpkg --set-selections \
+    && echo "mongodb-org-tools hold" | sudo dpkg --set-selections
+
+RUN pip install pymongo
+RUN pip install mock
+
 COPY ./requirements.txt /kb/module/requirements.txt
 RUN pip install -r /kb/module/requirements.txt
 

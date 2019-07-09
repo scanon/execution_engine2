@@ -70,6 +70,8 @@ class SDKMethodRunner:
         method = params.get('method')
 
         client_groups = self._get_client_groups(method)
+
+        # perform sanity checks before creating job
         self._check_ws_ojects(params.get('source_ws_objects'))
 
         # update service_ver
