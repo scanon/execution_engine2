@@ -77,9 +77,9 @@ class Job(Document):
     job_output = EmbeddedDocumentField(JobOutput)
 
 
-"""
-Unused fields that we might want
-"""
+###
+### Unused fields that we might want
+###
 
 result_example = {
     "shocknodes": [],
@@ -105,9 +105,9 @@ result_example = {
         }
 
 }
-"""
-Unused Stuff to look at
-"""
+####
+#### Unused Stuff to look at
+####
 
 
 class Results(EmbeddedDocument):
