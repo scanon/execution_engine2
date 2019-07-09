@@ -11,10 +11,8 @@ from mongoengine import (
     ListField,
     LongField,
     EmbeddedDocumentField,
-    GenericEmbeddedDocumentField,
     DynamicField,
 )
-
 
 status = ["created", "queued", "running", "finished"]
 authstrat = ["kbaseworkspace", "something_else"]
@@ -81,7 +79,6 @@ class Job(Document):
 
 """
 Unused fields that we might want
-
 """
 
 result_example = {
@@ -99,6 +96,14 @@ result_example = {
     ],
     "prog": 0,
     "maxprog": None,
+    'other':
+        {
+            "estcompl": None,
+            "service": "bsadkhin",
+            "desc": "Execution engine job for simpleapp.simple_add",
+            "progtype": None,
+        }
+
 }
 """
 Unused Stuff to look at
@@ -118,14 +123,6 @@ class ResultsResults(EmbeddedDocument):
     shockurl = StringField()
     workspaceids = StringField()
     workspaceurl = StringField()
-
-
-{
-    "estcompl": None,
-    "service": "bsadkhin",
-    "desc": "Execution engine job for simpleapp.simple_add",
-    "progtype": None,
-}
 
 
 class Status(Enum):

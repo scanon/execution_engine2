@@ -5,7 +5,7 @@ connect("jobs")
 
 job = Job()
 output = JobOutput()
-input = JobInput()
+inputs = JobInput()
 
 job.user = "test"
 job.authstrat = "workspace"
@@ -15,13 +15,13 @@ output.version = "1"
 output.id = "1234"
 output.result = {}
 
-input.wsid = job.wsid
-input.name = "SpecialJob"
-input.service_ver = "Version123"
-input.method = "Method"
-input.app_id = "App_id"
+inputs.wsid = job.wsid
+inputs.name = "SpecialJob"
+inputs.service_ver = "Version123"
+inputs.method = "Method"
+inputs.app_id = "App_id"
 
-job.job_input = input
+job.job_input = inputs
 job.job_output = output
 
 
