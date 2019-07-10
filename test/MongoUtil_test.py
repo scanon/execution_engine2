@@ -35,12 +35,7 @@ class MongoUtilTest(unittest.TestCase):
     def getMongoUtil(self):
         return self.__class__.mongo_util
 
-    def start_test(self):
-        testname = inspect.stack()[1][3]
-        print('\n*** starting test: ' + testname + ' **')
-
     def test_get_collection(self):
-        self.start_test()
         mongo_util = self.getMongoUtil()
         with self.assertRaises(ValueError) as context:
             mongo_util._get_collection('fake_mongo_host', 1234, 'mongo_database', 'mongo_collection')
@@ -48,7 +43,6 @@ class MongoUtilTest(unittest.TestCase):
         self.assertIn('Connot connect to Mongo server', str(context.exception.args))
 
     def test_init_ok(self):
-        self.start_test()
         class_attri = ['mongo_host', 'mongo_port', 'mongo_database', 'mongo_collection',
                        'mongo_user', 'mongo_pass', 'mongo_authmechanism', 'job_col']
         mongo_util = self.getMongoUtil()

@@ -5,6 +5,7 @@ import subprocess
 
 class MongoTestHelper:
 
+    @classmethod
     def _start_service(self):
         logging.info('starting mongod service')
 
@@ -25,6 +26,7 @@ class MongoTestHelper:
 
         logging.info(stdout)
 
+    @classmethod
     def _get_default_jobs(self):
 
         row_jobs = [

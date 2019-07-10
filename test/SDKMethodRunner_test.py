@@ -6,6 +6,7 @@ from configparser import ConfigParser
 
 from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.utils.MongoUtil import MongoUtil
 
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
@@ -28,7 +29,11 @@ class SDKMethodRunner_test(unittest.TestCase):
         auth_client = _KBaseAuth(authServiceUrl)
         cls.user_id = auth_client.get_user(cls.token)
 
+        cls.cfg['mongo-collection'] = 'exec_engine'
+        cls.cfg['mongo-authmechanism'] = 'DEFAULT'
+
         cls.method_runner = SDKMethodRunner(cls.cfg)
+        cls.mongo_util = MongoUtil(cls.cfg)
 
         cls.callback_url = os.environ['SDK_CALLBACK_URL']
         cls.foft = FakeObjectsForTests(cls.callback_url, service_ver='dev')
@@ -43,7 +48,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         return self.__class__.method_runner
 
     def test_init_ok(self):
-        class_attri = ['catalog', 'workspace']
+        class_attri = ['catalog', 'workspace', 'mongo_util']
         runner = self.getRunner()
         self.assertTrue(set(class_attri) <= set(runner.__dict__.keys()))
 

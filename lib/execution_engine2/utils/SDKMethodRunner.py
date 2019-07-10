@@ -1,6 +1,8 @@
 import logging
 import re
 
+from execution_engine2.utils.MongoUtil import MongoUtil
+
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 
@@ -55,6 +57,8 @@ class SDKMethodRunner:
         return git_commit_hash
 
     def __init__(self, config):
+
+        self.mongo_util = MongoUtil(config)
 
         catalog_url = config['catalog-url']
         self.catalog = Catalog(catalog_url)
