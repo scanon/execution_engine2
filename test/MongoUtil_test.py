@@ -2,8 +2,6 @@
 import os
 import unittest
 from configparser import ConfigParser
-import inspect
-import copy
 
 from mongo_test_helper import MongoTestHelper
 from execution_engine2.utils.MongoUtil import MongoUtil
