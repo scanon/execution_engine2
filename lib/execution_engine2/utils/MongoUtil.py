@@ -8,22 +8,24 @@ import traceback
 
 class MongoUtil:
 
+    @classmethod
     def _start_local_service(self):
         logging.info('starting local mongod service')
 
         logging.info('running sudo service mongodb start')
         pipe = subprocess.Popen("sudo service mongodb start", shell=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        stdout, stderr = pipe.communicate()
+        stdout = pipe.communicate()
         logging.info(stdout)
 
         logging.info('running mongod --version')
         pipe = subprocess.Popen("mongod --version", shell=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        stdout, stderr = pipe.communicate()
 
+        stdout = pipe.communicate()
         logging.info(stdout)
 
+    @classmethod
     def _get_collection(self, mongo_host, mongo_port, mongo_database, mongo_collection,
                         mongo_user=None, mongo_password=None, mongo_authmechanism='DEFAULT'):
         """

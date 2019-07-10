@@ -25,6 +25,8 @@ class execution_engine2:
     GIT_COMMIT_HASH = "89faeb4c73aab8545f6bc74ad8c910559fa1856d"
 
     #BEGIN_CLASS_HEADER
+    MONGO_COLLECTION = "job"
+    MONGO_AUTHMECHANISM = "DEFAULT"
     #END_CLASS_HEADER
 
     # config contains contents of config file in a hash or None if it couldn't
@@ -32,6 +34,8 @@ class execution_engine2:
     def __init__(self, config):
         #BEGIN_CONSTRUCTOR
         self.config = config
+        self.config['mongo-collection'] = self.MONGO_COLLECTION
+        self.config.setdefault('mongo-authmechanism', self.MONGO_AUTHMECHANISM)
 
         self.method_runner = SDKMethodRunner(self.config)
         #END_CONSTRUCTOR

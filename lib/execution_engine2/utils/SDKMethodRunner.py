@@ -79,5 +79,6 @@ class SDKMethodRunner:
         params['service_ver'] = git_commit_hash
 
         job_id = 'test_job_id'
+        print(client_groups)
 
         return job_id
