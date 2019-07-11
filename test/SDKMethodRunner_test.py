@@ -7,6 +7,7 @@ from configparser import ConfigParser
 from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from execution_engine2.utils.MongoUtil import MongoUtil
+from mongo_test_helper import MongoTestHelper
 
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
@@ -42,7 +43,12 @@ class SDKMethodRunner_test(unittest.TestCase):
         cls.wsClient = Workspace(cls.wsURL)
         suffix = int(time.time() * 1000)
         cls.wsName = "test_ContigFilter_" + str(suffix)
-        cls.wsClient.create_workspace({'workspace': cls.wsName})
+        cls.ws = cls.wsClient.create_workspace({'workspace': cls.wsName})
+        cls.ws_id = cls.ws[0]
+
+        cls.mongo_helper = MongoTestHelper()
+        cls.test_collection = cls.mongo_helper.create_test_db(db=cls.cfg['mongo-database'],
+                                                              col=cls.cfg['mongo-collection'])
 
     def getRunner(self):
         return self.__class__.method_runner
@@ -96,3 +102,21 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertTrue(isinstance(git_commit_2, str))
         self.assertEqual(len(git_commit_1), len(git_commit_2))
         self.assertNotEqual(git_commit_1, git_commit_2)
+
+    def test_init_job_rec(self):
+
+        runner = self.getRunner()
+
+        self.assertEqual(self.test_collection.count(), 0)
+
+        job_params = {'wsid': self.ws_id,
+                      'method': 'kb_tophat2.run_tophat2_app'}
+
+        job_id = runner._init_job_rec(self.user_id, job_params)
+
+        self.assertEqual(self.test_collection.count(), 1)
+
+        result = list(self.test_collection.find({'_id': job_id}))[0]
+        self.assertEqual(result['user'], self.user_id)
+        self.assertEqual(result['ujs_job_id'], str(job_id))
+        self.assertEqual(result['njs_job_id'], str(job_id))

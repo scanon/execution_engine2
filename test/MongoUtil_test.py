@@ -22,8 +22,8 @@ class MongoUtilTest(unittest.TestCase):
         cls.cfg['mongo-authmechanism'] = 'DEFAULT'
 
         cls.mongo_helper = MongoTestHelper()
-        cls.my_client = cls.mongo_helper.create_test_db(db=cls.cfg['mongo-database'],
-                                                        col=cls.cfg['mongo-collection'])
+        cls.test_collection = cls.mongo_helper.create_test_db(db=cls.cfg['mongo-database'],
+                                                              col=cls.cfg['mongo-collection'])
         cls.mongo_util = MongoUtil(cls.cfg)
 
     @classmethod
@@ -48,7 +48,7 @@ class MongoUtilTest(unittest.TestCase):
 
         job_col = mongo_util.job_col
         self.assertEqual(job_col.name, 'exec_engine')
-        self.assertEqual(job_col.count_documents({}), 10)
+        self.assertEqual(job_col.count_documents({}), 0)
 
     # def test_find_in_ok(self):
     #     self.start_test()

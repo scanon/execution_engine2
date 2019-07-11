@@ -56,6 +56,19 @@ class SDKMethodRunner:
 
         return git_commit_hash
 
+    def _init_job_rec(self, user_id, params):
+
+        job_id = self.mongo_util.insert_one({})
+
+        # initial mongo record
+        update_doc = {'user': user_id,
+                      'ujs_job_id': str(job_id),
+                      'njs_job_id': str(job_id)}
+
+        self.mongo_util.update_one(update_doc, job_id)
+
+        return job_id
+
     def __init__(self, config):
 
         self.mongo_util = MongoUtil(config)
@@ -69,7 +82,7 @@ class SDKMethodRunner:
         logging.basicConfig(format='%(created)s %(levelname)s: %(message)s',
                             level=logging.INFO)
 
-    def run_job(self, params):
+    def run_job(self, params, user_id):
 
         method = params.get('method')
 
@@ -82,7 +95,8 @@ class SDKMethodRunner:
         git_commit_hash = self._get_module_git_commit(method, params.get('service_ver'))
         params['service_ver'] = git_commit_hash
 
-        job_id = 'test_job_id'
+        job_id = self._init_job_rec(user_id, params)
+
         print(client_groups)
 
         return job_id

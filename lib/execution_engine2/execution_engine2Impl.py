@@ -25,7 +25,7 @@ class execution_engine2:
     GIT_COMMIT_HASH = "89faeb4c73aab8545f6bc74ad8c910559fa1856d"
 
     #BEGIN_CLASS_HEADER
-    MONGO_COLLECTION = "job"
+    MONGO_COLLECTION = "jobs"
     MONGO_AUTHMECHANISM = "DEFAULT"
     #END_CLASS_HEADER
 
@@ -155,7 +155,7 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_id
         #BEGIN run_job
-        job_id = self.method_runner.run_job(params)
+        job_id = self.method_runner.run_job(params, ctx['user_id'])
         #END run_job
 
         # At some point might do deeper type checking...

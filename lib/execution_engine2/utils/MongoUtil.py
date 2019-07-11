@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 import subprocess
 import traceback
+from bson.objectid import ObjectId
 
 
 class MongoUtil:
@@ -88,7 +89,7 @@ class MongoUtil:
         logging.info('start inserting document')
 
         try:
-            self.job_col.insert_one(doc)
+            rec = self.job_col.insert_one(doc)
         except Exception as e:
             error_msg = 'Connot insert doc\n'
             error_msg += 'ERROR -- {}:\n{}'.format(
@@ -96,18 +97,19 @@ class MongoUtil:
                             ''.join(traceback.format_exception(None, e, e.__traceback__)))
             raise ValueError(error_msg)
 
-        return True
+        return rec.inserted_id
 
-    def update_one(self, doc):
+    def update_one(self, doc, job_id):
         """
-        update a doc
+        update existing records
+        https://docs.mongodb.com/manual/reference/operator/update/set/
         """
         logging.info('start updating document')
 
         try:
-            update_filter = {'_id': doc.get('_id')}
+            update_filter = {'_id': ObjectId(job_id)}
             update = {'$set': doc}
-            self.handle_collection.update_one(update_filter, update)
+            self.job_col.update_one(update_filter, update)
         except Exception as e:
             error_msg = 'Connot update doc\n'
             error_msg += 'ERROR -- {}:\n{}'.format(
@@ -117,15 +119,15 @@ class MongoUtil:
 
         return True
 
-    def delete_one(self, doc):
+    def delete_one(self, doc, job_id):
         """
         delete a doc
         """
         logging.info('start deleting document')
 
         try:
-            delete_filter = {'_id': doc.get('_id')}
-            self.handle_collection.delete_one(delete_filter)
+            delete_filter = {'_id': ObjectId(job_id)}
+            self.job_col.delete_one(delete_filter)
         except Exception as e:
             error_msg = 'Connot delete doc\n'
             error_msg += 'ERROR -- {}:\n{}'.format(

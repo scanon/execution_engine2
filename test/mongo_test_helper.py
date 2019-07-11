@@ -66,12 +66,12 @@ class MongoTestHelper:
         my_db = my_client[db]
         my_collection = my_db[col]
 
-        jobs = self._get_default_jobs()
+        # jobs = self._get_default_jobs()
 
         my_collection.delete_many({})
 
-        my_collection.insert_many(jobs)
+        # my_collection.insert_many(jobs)
 
         logging.info('created db: {}'.format(my_client.list_database_names()))
 
-        return my_client
+        return my_collection
