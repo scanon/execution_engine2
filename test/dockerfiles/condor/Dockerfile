@@ -24,5 +24,6 @@ COPY start_condor.sh start_condor.sh
 
 RUN pip install -r requirements.txt
 RUN echo "root:root" | chpasswd
+RUN useradd kbase && echo "kbase:kbase" | chpasswd
 
 CMD ["/usr/sbin/init"]
