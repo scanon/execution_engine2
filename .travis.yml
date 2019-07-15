@@ -13,6 +13,8 @@ env:
 # TODO: Save a dockerhub image and use that instead of building it each time?
 script:
   - make build-docker-image
+  - pwd
+  - ls
   - cd test/condor
   - ./chmod +ax ./start_condor_docker.sh
   - ./start_condor_docker.sh
