@@ -13,7 +13,7 @@ env:
 # TODO: Save a dockerhub image and use that instead of building it each time?
 script:
   - make build-docker-image
-  - cd test/dockerfiles/condor && chmod +ax ./start_condor_docker.sh && ./start_condor_docker.sh && cd ../../
+  - cd test/dockerfiles/condor && chmod +x ./start_condor_docker.sh && ./start_condor_docker.sh && cd ../../
   - pytest test/condor/execution_engine2_scheduler_test.py
 
 after_success:
