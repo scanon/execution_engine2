@@ -1,7 +1,9 @@
 import logging
 import re
+from datetime import datetime
 
 from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.models.models import Job, JobOutput, JobInput
 
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
@@ -58,16 +60,27 @@ class SDKMethodRunner:
 
     def _init_job_rec(self, user_id, params):
 
-        job_id = self.mongo_util.insert_one({})
+        job = Job()
+        output = JobOutput()
+        inputs = JobInput()
 
-        # initial mongo record
-        update_doc = {'user': user_id,
-                      'ujs_job_id': str(job_id),
-                      'njs_job_id': str(job_id)}
+        job.user = user_id
+        job.authstrat = "kbaseworkspace"
+        job.wsid = params.get('wsid')
+        job.creation_time = datetime.timestamp(job.created)
 
-        self.mongo_util.update_one(update_doc, job_id)
+        inputs.wsid = job.wsid
+        inputs.method = params.get('method')
+        inputs.params = params
+        inputs.service_ver = params.get('service_ver')
+        inputs.app_id = params.get('app_id')
 
-        return job_id
+        job.job_input = inputs
+        job.job_output = output
+
+        insert_rec = self.mongo_util.insert_one(job.to_mongo())
+
+        return str(insert_rec)
 
     def __init__(self, config):
 
@@ -95,6 +108,7 @@ class SDKMethodRunner:
         git_commit_hash = self._get_module_git_commit(method, params.get('service_ver'))
         params['service_ver'] = git_commit_hash
 
+        # insert initial job document
         job_id = self._init_job_rec(user_id, params)
 
         print(client_groups)

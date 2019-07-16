@@ -3,6 +3,7 @@ import os
 import unittest
 import time
 from configparser import ConfigParser
+from bson.objectid import ObjectId
 
 from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
@@ -110,13 +111,39 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(self.test_collection.count(), 0)
 
         job_params = {'wsid': self.ws_id,
-                      'method': 'kb_tophat2.run_tophat2_app'}
+                      'method': 'MEGAHIT.run_megahit',
+                      'app_id': 'MEGAHIT/run_megahit',
+                      'service_ver': '2.2.1',
+                      'params': [{'k_list': [],
+                                  'k_max': None,
+                                  'output_contigset_name': 'MEGAHIT.contigs'}]
+                      }
 
         job_id = runner._init_job_rec(self.user_id, job_params)
 
         self.assertEqual(self.test_collection.count(), 1)
 
-        result = list(self.test_collection.find({'_id': job_id}))[0]
+        result = list(self.test_collection.find({'_id': ObjectId(job_id)}))[0]
+
+        expected_keys = ['_id', 'user', 'authstrat', 'wsid', 'created', 'updated', 'creation_time',
+                         'complete', 'error', 'job_input', 'job_output']
+        self.assertCountEqual(result.keys(), expected_keys)
         self.assertEqual(result['user'], self.user_id)
-        self.assertEqual(result['ujs_job_id'], str(job_id))
-        self.assertEqual(result['njs_job_id'], str(job_id))
+        self.assertEqual(result['authstrat'], 'kbaseworkspace')
+        self.assertEqual(result['wsid'], self.ws_id)
+        self.assertFalse(result['complete'])
+        self.assertFalse(result['error'])
+
+        job_input = result['job_input']
+        expected_ji_keys = ['wsid', 'method', 'params', 'service_ver', 'app_id']
+        self.assertCountEqual(job_input.keys(), expected_ji_keys)
+        self.assertEqual(job_input['wsid'], self.ws_id)
+        self.assertEqual(job_input['method'], 'MEGAHIT.run_megahit')
+        self.assertEqual(job_input['app_id'], 'MEGAHIT/run_megahit')
+        self.assertEqual(job_input['service_ver'], '2.2.1')
+
+        job_output = result['job_output']
+        self.assertEqual(len(job_output), 0)
+
+        self.test_collection.delete_one({'_id': ObjectId(job_id)})
+        self.assertEqual(self.test_collection.count(), 0)

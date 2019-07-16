@@ -25,6 +25,7 @@ RUN echo "mongodb-org hold" | dpkg --set-selections \
 
 RUN pip install pymongo==3.8.0
 RUN pip install mock==3.0.5
+RUN pip install mongoengine==0.18.2
 
 COPY ./requirements.txt /kb/module/requirements.txt
 RUN pip install -r /kb/module/requirements.txt
