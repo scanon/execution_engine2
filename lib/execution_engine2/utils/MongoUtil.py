@@ -71,7 +71,7 @@ class MongoUtil:
         try:
             start_local = int(config.get('start-local-mongo', 1))
         except Exception:
-            start_local = 1
+            raise ValueError('unexpected start-local-mongo: {}'.format(config.get('start-local-mongo')))
         if start_local:
             self._start_local_service()
 

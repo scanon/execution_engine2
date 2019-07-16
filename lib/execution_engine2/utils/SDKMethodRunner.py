@@ -111,6 +111,4 @@ class SDKMethodRunner:
         # insert initial job document
         job_id = self._init_job_rec(user_id, params)
 
-        print(client_groups)
-
         return job_id
