@@ -11,8 +11,7 @@ env:
 
 # command to run tests
 script:
-  - chmod +x ./build/build_docker_image.sh
-  - chmox +x ./build/push2dockerhub.sh
+  - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
   - make build-docker-image
 
 after_success:
