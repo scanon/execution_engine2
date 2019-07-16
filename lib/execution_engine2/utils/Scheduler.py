@@ -2,7 +2,7 @@ from abc import  ABCMeta, abstractmethod
 
 class Scheduler():
 
-    def run_job(self, params, config):
+    def run_job(self, params):
         filepath = self.create_submit_file()
         self.cleanup_submit_file()
         job_id = self.run_submit_file(filepath)
@@ -13,7 +13,7 @@ class Scheduler():
         raise NotImplementedError
 
     @abstractmethod
-    def create_submit_file(self, params, config):
+    def create_submit_file(self, params):
         raise NotImplementedError
 
     @abstractmethod

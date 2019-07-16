@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+import os
+import pwd
 import unittest
 
-
 import htcondor
-import classad
-import logging
-import pwd
-import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,16 +18,6 @@ class execution_engine2Test(unittest.TestCase):
         cls.condor = Condor(cls.deploy)
         cls.job_id = "1234"
         cls.user = "kbase"
-
-        cls.check_kbase_user()
-        cls.schedd = htcondor.Schedd()
-        if cls.queue_is_empty():
-            cls.add_a_sleep_job()
-        jobs = cls.queue_status()
-        for job in jobs:
-            logging.info(
-                f"clusterid {job.get('ClusterId')} running cmd ( {job.get('Cmd')} ) is in state {job.get('JobStatus')}"
-            )
 
     @classmethod
     def add_a_sleep_job(cls):
@@ -53,13 +41,6 @@ class execution_engine2Test(unittest.TestCase):
         logging.info("Success. I'm the KBASE User")
 
     @classmethod
-    def queue_is_empty(cls):
-        if len(cls.schedd.query(limit=1)) == 0:
-            logging.info("Queue is empty")
-            return True
-        return False
-
-    @classmethod
     def queue_status(cls):
         return cls.schedd.query()
 
@@ -73,25 +54,29 @@ class execution_engine2Test(unittest.TestCase):
         params = dict()
         params["job_id"] = self.job_id
 
+    def test_empty_params(self):
+        c = Condor("deploy.cfg")
+        params = {"job_id": "test_job_id", "user": "test", "token": "test_token"}
+        with self.assertRaisesRegex(
+                Exception, "client_group_and_requirements not found in params"
+        ) as error:
+            c.create_submit_file(params)
+
     def test_create_submit_file(self):
+        # Test with empty clientgroup
         c = Condor("deploy.cfg")
         params = {
             "job_id": "test_job_id",
             "user": "test",
+            "token": "test_token",
             "client_group_and_requirements": "",
         }
-        config = {
-            "executable": '"/kb/deployment/misc/sdklocalmethodrunner.sh"',
-            "kbase-endpoint": "{{ kbase_endpoint }}",
-        }
 
-        default_sub = c.create_submit_file(params, config)
+        default_sub = c.create_submit_file(params)
 
         sub = default_sub
-        self.assertEqual(sub["executable"], config["executable"])
-        self.assertEqual(
-            sub["arguments"], f"{params['job_id']} {config['kbase-endpoint']}"
-        )
+        self.assertEqual(sub["executable"], c.executable)
+        self.assertEqual(sub["arguments"], f"{params['job_id']} {c.ee_endpoint}")
         self.assertEqual(sub["universe"], "vanilla")
         self.assertEqual(sub["+AccountingGroup"], params["user"])
         self.assertEqual(sub["Concurrency_Limits"], params["user"])
@@ -100,32 +85,31 @@ class execution_engine2Test(unittest.TestCase):
         self.assertEqual(sub["When_To_Transfer_Output"], "ON_EXIT")
         # TODO test config here or otherplace
         self.assertEqual(sub["+CLIENTGROUP"], "njs")
-        self.assertEqual(sub[Condor.REQUEST_CPUS], c.config['njs'][Condor.REQUEST_CPUS])
-        self.assertEqual(sub[Condor.REQUEST_MEMORY], c.config['njs'][Condor.REQUEST_MEMORY])
-        self.assertEqual(sub[Condor.REQUEST_DISK], c.config['njs'][Condor.REQUEST_DISK])
+        self.assertEqual(sub[Condor.REQUEST_CPUS], c.config["njs"][Condor.REQUEST_CPUS])
+        self.assertEqual(
+            sub[Condor.REQUEST_MEMORY], c.config["njs"][Condor.REQUEST_MEMORY]
+        )
+        self.assertEqual(sub[Condor.REQUEST_DISK], c.config["njs"][Condor.REQUEST_DISK])
 
+        # TODO Test this variable somehow
+        environment = sub["environment"].split(" ")
 
-        params = {
-            "job_id": "test_job_id",
-            "user": "test",
-            "client_group_and_requirements": "njs,request_cpus=8,request_memory=10GB,request_apples=5",
-        }
-        config = {
-            "executable": '"/kb/deployment/misc/sdklocalmethodrunner.sh"',
-            "kbase-endpoint": "{{ kbase_endpoint }}",
-        }
+        # Test with filled out clientgroup
 
+        params[
+            "client_group_and_requirements"
+        ] = "njs,request_cpus=8,request_memory=10GB,request_apples=5"
+        print(params)
 
-        njs_sub = c.create_submit_file(params, config)
+        njs_sub = c.create_submit_file(params)
         sub = njs_sub
 
         self.assertEqual(sub["+CLIENTGROUP"], "njs")
-        self.assertEqual(sub[Condor.REQUEST_CPUS], '8')
-        self.assertEqual(sub[Condor.REQUEST_MEMORY], '10GB')
-        self.assertEqual(sub[Condor.REQUEST_DISK], c.config['njs'][Condor.REQUEST_DISK])
+        self.assertEqual(sub[Condor.REQUEST_CPUS], "8")
+        self.assertEqual(sub[Condor.REQUEST_MEMORY], "10GB")
+        self.assertEqual(sub[Condor.REQUEST_DISK], c.config["njs"][Condor.REQUEST_DISK])
 
-        print(sub)
-        (
-            "environment",
-            "DOCKER_JOB_TIMEOUT=604800 KB_ADMIN_AUTH_TOKEN=None KB_AUTH_TOKEN=None CLIENTGROUP=None JOB_ID=None WORKDIR=None/None/None CONDOR_ID=$(Cluster).$(Process) ",
-        )
+        # Test with json version of clientgroup
+
+        # TODO: Do online and offline tests
+        # TODO Mock schedd, so it doesn't crash...
