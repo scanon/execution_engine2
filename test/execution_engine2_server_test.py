@@ -3,6 +3,7 @@ import os
 import time
 import unittest
 from configparser import ConfigParser
+import re
 
 from execution_engine2.execution_engine2Impl import execution_engine2
 from execution_engine2.execution_engine2Server import MethodContext
@@ -44,7 +45,7 @@ class execution_engine2Test(unittest.TestCase):
         cls.callback_url = os.environ['SDK_CALLBACK_URL']
         suffix = int(time.time() * 1000)
         cls.wsName = "test_ContigFilter_" + str(suffix)
-        ret = cls.wsClient.create_workspace({'workspace': cls.wsName})  # noqa
+        cls.wsClient.create_workspace({'workspace': cls.wsName})
 
     @classmethod
     def tearDownClass(cls):
@@ -52,16 +53,21 @@ class execution_engine2Test(unittest.TestCase):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
 
-    # NOTE: According to Python unittest naming rules test method names should start from 'test'. # noqa
-    def test_your_method(self):
-        # Prepare test objects in workspace if needed using
-        # self.getWsClient().save_objects({'workspace': self.getWsName(),
-        #                                  'objects': []})
-        #
-        # Run your method by
-        # ret = self.getImpl().your_method(self.getContext(), parameters...)
-        #
-        # Check returned data with
-        # self.assertEqual(ret[...], ...) or other unittest methods
-        ret = self.serviceImpl.run_execution_engine2(self.ctx, {'workspace_name': self.wsName,
-                                                             'parameter_1': 'Hello World!'})
+    def test_status(self):
+        status = self.serviceImpl.status(self.ctx)[0]
+
+        self.assertTrue('servertime' in status)
+
+    def test_ver(self):
+        ver = self.serviceImpl.ver(self.ctx)[0]
+
+        self.assertTrue(isinstance(ver, str))
+        pattern = re.compile("\d\.\d\.\d")
+        self.assertTrue(pattern.match(ver))
+
+    # def test_run_job(self):
+    #     self.start_test()
+    #     params = {}
+    #     job_id = self.serviceImpl.run_job(self.ctx, params)[0]
+    #     self.assertTrue(isinstance(job_id, str))
+    #     print(job_id)
