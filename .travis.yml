@@ -19,7 +19,8 @@ env:
 
 
 before_install:
-  - sudo useradd kbase && echo "kbase:kbase" | chpasswd
+  - sudo su
+  - useradd kbase && echo "kbase:kbase" | chpasswd
 
 
 script:
