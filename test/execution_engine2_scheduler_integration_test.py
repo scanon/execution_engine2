@@ -22,7 +22,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         cls.user = "kbase"
         cls.token = "bogus"
 
-        cls.check_kbase_user()
+        #cls.check_kbase_user()
         cls.schedd = htcondor.Schedd()
         if cls.queue_is_empty():
             cls.add_a_sleep_job()
