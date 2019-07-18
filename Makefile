@@ -64,16 +64,7 @@ test:
 	#docker pull ee2:condor_tests
 
 integration_test:
-	#./test/dockerfiles/condor/start_condor_docker_travis.sh
-
-	export docker_tag=kbase/ee2:condor_test_instance
-    	docker pull ${docker_tag}
-    	docker rm condor_test_container --force
-    	cnt_id=`docker run -i -d  --privileged=true -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v /Users/:/Users/ --name condor_test_container  -p 9618:9618 ${docker_tag} /usr/sbin/init`
-    	echo $cnt_id
-    	sleep 3
-    	docker exec -i -u 0 ${cnt_id} ./start_condor.sh
-
+	./test/dockerfiles/condor/start_condor_docker_travis.sh
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
 
 
@@ -85,5 +76,5 @@ build-docker-image:
 	./build/build_docker_image.sh
 
 build-condor-test-image:
-	docker build -f Dockerfile . -t $(CONDOR_DOCKER_IMAGE_TAG_NAME)
+	cd test/dockerfiles/condor && echo `pwd` && docker build -f Dockerfile . -t $(CONDOR_DOCKER_IMAGE_TAG_NAME)
 	docker push $(CONDOR_DOCKER_IMAGE_TAG_NAME)
