@@ -5,6 +5,10 @@ language: python
 install:
   - pip install -r requirements.txt
 
+
+services:
+  - docker
+
 env:
   global: # The following are for the dockerhub DOCKER_USER and DOCKER_PASS env vars used in the push script
     - secure: "GEbQy4zR5hhHDzjoThGyCHZVmpEWKduwR/sZ1sR8csOYrfYqQTHinhAMY+KAdUhjJfWGwR9l2v2xkhyokzdADhKOqZJo7jkkioPEtENdocTWMYq7Qedg6kUCzcAutURIBCcoJtW4vrpGZ+1YR4vB8BhA11KA62QUbsQY3ds/LTg="
@@ -13,11 +17,15 @@ env:
 # command to run tests
 # TODO: Save a dockerhub image and use that instead of building it each time?
 
+
+
+
+
 script:
   - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
   - make test
   - make integration_test
-  - make build-docker-image
+  #- make build-docker-image
 
-after_success:
-  - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
+# after_success:
+#   - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
