@@ -63,7 +63,7 @@ test:
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_test.py
 	#docker pull ee2:condor_tests
 
-integration_tests:
+integration_test:
 	./test/dockerfiles/condor/start_condor_docker_travis.sh
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
 
