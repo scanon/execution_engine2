@@ -18,10 +18,12 @@ env:
 # TODO: Save a dockerhub image and use that instead of building it each time?
 
 
-
+before_install:
+  - useradd kbase && echo "kbase:kbase" | chpasswd
 
 
 script:
+
   - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
   - make test
   - make integration_test
