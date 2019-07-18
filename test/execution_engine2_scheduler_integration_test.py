@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 from execution_engine2.utils.Condor import Condor
 
 
-class execution_engine2Test(unittest.TestCase):
+class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.deploy = "deploy.cfg"
@@ -50,7 +50,11 @@ class execution_engine2Test(unittest.TestCase):
             logging.error(
                 f"I'm not the KBASE User. My UID is {my_uid}. The KBASE uid is {kbase_uid}"
             )
-            raise Exception
+            logging.info("Attempting to switch to kbase user")
+            try:
+                os.setuid(kbase_uid)
+            except Exception as e:
+                logging.error(e)
         logging.info("Success. I'm the KBASE User")
 
     @classmethod
@@ -76,29 +80,27 @@ class execution_engine2Test(unittest.TestCase):
 
 
 
-    def test_create_submit_file(self):
+    def test_submit_job(self):
         # Test with empty clientgroup
-        c = Condor("deploy.cfg")
+        c = self.condor
         params = {
             "job_id": "test_job_id",
             "user": "test",
             "token": "test_token",
             "client_group_and_requirements": "",
         }
-        # run_job = c.run_job(params)
-        # print(run_job.clusterid)
-        # print(run_job.error)
 
-        #Remove OWNER
-        sub_dict = c.create_submit_file(params)
-        sub = htcondor.Submit({})
-        with open("sub", 'w') as f:
-            for key,value in sub_dict.items():
-                if(key is not '+OWNER'):
-                    sub[key] = value
+        submit_file = c.create_submit_file(params)
+        # Fix for container
+        # submit_file['+OWNER'] = ''
 
-        c.run_job(params, htcondor_submit=sub)
+        submission_info = c.run_job(params, submit_file=submit_file)
+        print(submission_info)
+        self.assertIsNotNone(submission_info.clusterid)
 
+
+    def test_sleep_job(self):
+        pass
 
 
 

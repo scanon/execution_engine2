@@ -138,25 +138,34 @@ class Condor(Scheduler):
 
         return sub
 
-    def run_job(self, params, htcondor_submit=None):
+    def run_job(self, params, submit_file=None):
         """
-        TODO: Add a retry
+       TODO: Add a retry
         TODO: Add list of required params
-        :param params: Params to run the job, such as the username, job_id, token, client_group_and_requirements
+        :param params:  Params to run the job, such as the username, job_id, token, client_group_and_requirements
+        :param submit_file:
         :return:
         """
+        if submit_file is None:
+            condor_submit = htcondor.Submit(self.create_submit_file(params))
+        else:
+            condor_submit = htcondor.Submit(submit_file)
+            condor_submit['+OWNER'] = ''
 
-        sub = htcondor.Submit(self.create_submit_file(params))
+        return self.run_condor_submit(condor_submit)
+
+
+
+
+    def run_condor_submit(self, condor_submit):
         try:
-            with htcondor.Schedd.transaction() as txn:
+            schedd = htcondor.Schedd()
+            with schedd.transaction() as txn:
                 return self.submission_info(
-                    clusterid=sub.queue(txn, 1), submit=sub, error=None
+                    clusterid=condor_submit.queue(txn, 1), submit=condor_submit, error=None
                 )
         except Exception as e:
-            return self.submission_info(None, submit=sub, error=e)
-
-    def run_submit_file(self, submit_filepath):
-        pass
+            return self.submission_info(None, submit=condor_submit, error=e)
 
     def get_job_info(self, batch_name=None, cluster_id=None):
         if batch_name is not None and cluster_id is not None:

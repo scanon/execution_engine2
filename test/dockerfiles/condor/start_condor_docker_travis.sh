@@ -1,9 +1,11 @@
 #!/bin/bash
 
-docker build -f Dockerfile . -t condor_test_instance
-docker rm  condor --force
-cnt_id=`docker run -i -d  --privileged=true -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v /Users/:/Users/ --name condor  -p 9618:9618 condor_test_instance /usr/sbin/init`
+# TODO Pull this variable from a config
+export docker_tag=kbase/ee2:condor_test_instance
+docker pull ${docker_tag}
+docker rm condor --force
+cnt_id=`docker run -i -d  --privileged=true -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v /Users/:/Users/ --name condor  -p 9618:9618 ${docker_tag} /usr/sbin/init`
 echo $cnt_id
-sleep 1
+sleep 3
 docker exec -i -u 0 ${cnt_id} ./start_condor.sh
 

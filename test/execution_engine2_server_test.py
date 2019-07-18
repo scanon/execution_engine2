@@ -12,7 +12,7 @@ from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from installed_clients.WorkspaceClient import Workspace
 
 
-class execution_engine2Test(unittest.TestCase):
+    class execution_engine2Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         token = os.environ.get("KB_AUTH_TOKEN", None)
