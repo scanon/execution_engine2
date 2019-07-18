@@ -64,8 +64,8 @@ test:
 	#docker pull ee2:condor_tests
 
 integration_tests:
-    ./test/dockerfiles/condor/start_condor_docker_travis.sh
-    nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
+	./test/dockerfiles/condor/start_condor_docker_travis.sh
+	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
 
 
 
