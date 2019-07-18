@@ -16,7 +16,7 @@ env:
 script:
   - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
   - make test
-#  - make integration_test
+  - make integration_test
   - make build-docker-image
 
 after_success:
