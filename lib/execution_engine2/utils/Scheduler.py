@@ -14,7 +14,6 @@ class Scheduler(ABC):
     def create_submit(self, params):
         raise NotImplementedError
 
-
     def validate_submit_file(self,):
         raise NotImplementedError
 

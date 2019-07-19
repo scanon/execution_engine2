@@ -169,25 +169,23 @@ class Condor(Scheduler):
         :return:
         """
         if submit_file is None:
-            condor_submit = htcondor.Submit(self.create_submit(params))
-        else:
-            condor_submit = htcondor.Submit(submit_file)
-            condor_submit["+OWNER"] = ""
-
-        return self.run_condor_submit(condor_submit)
+            condor_submit = self.create_submit(params)
+        return self.run_submit(condor_submit)
 
     # TODO add to pyi
     def run_submit(self, condor_submit):
+
+        sub = htcondor.Submit(condor_submit)
         try:
             schedd = htcondor.Schedd()
             with schedd.transaction() as txn:
                 return self.submission_info(
-                    clusterid=condor_submit.queue(txn, 1),
-                    submit=condor_submit,
+                    clusterid=sub.queue(txn, 1),
+                    submit=sub,
                     error=None,
                 )
         except Exception as e:
-            return self.submission_info(None, submit=condor_submit, error=e)
+            return self.submission_info(None, submit=sub, error=e)
 
     def get_job_info(self, batch_name=None, cluster_id=None):
         if batch_name is not None and cluster_id is not None:
