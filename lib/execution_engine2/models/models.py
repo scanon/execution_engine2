@@ -96,14 +96,12 @@ result_example = {
     ],
     "prog": 0,
     "maxprog": None,
-    'other':
-        {
-            "estcompl": None,
-            "service": "bsadkhin",
-            "desc": "Execution engine job for simpleapp.simple_add",
-            "progtype": None,
-        }
-
+    "other": {
+        "estcompl": None,
+        "service": "bsadkhin",
+        "desc": "Execution engine job for simpleapp.simple_add",
+        "progtype": None,
+    },
 }
 ####
 #### Unused Stuff to look at

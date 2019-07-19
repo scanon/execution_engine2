@@ -8,27 +8,27 @@ from execution_engine2.utils.MongoUtil import MongoUtil
 
 
 class MongoUtilTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get('KB_DEPLOYMENT_CONFIG', None)
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", None)
         cls.cfg = {}
         config = ConfigParser()
         config.read(config_file)
-        for nameval in config.items('execution_engine2'):
+        for nameval in config.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
 
-        cls.cfg['mongo-collection'] = 'exec_engine'
-        cls.cfg['mongo-authmechanism'] = 'DEFAULT'
+        cls.cfg["mongo-collection"] = "exec_engine"
+        cls.cfg["mongo-authmechanism"] = "DEFAULT"
 
         cls.mongo_helper = MongoTestHelper()
-        cls.test_collection = cls.mongo_helper.create_test_db(db=cls.cfg['mongo-database'],
-                                                              col=cls.cfg['mongo-collection'])
+        cls.test_collection = cls.mongo_helper.create_test_db(
+            db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
+        )
         cls.mongo_util = MongoUtil(cls.cfg)
 
     @classmethod
     def tearDownClass(cls):
-        print('Finished testing MongoUtil')
+        print("Finished testing MongoUtil")
 
     def getMongoUtil(self):
         return self.__class__.mongo_util
@@ -36,18 +36,28 @@ class MongoUtilTest(unittest.TestCase):
     def test_get_collection(self):
         mongo_util = self.getMongoUtil()
         with self.assertRaises(ValueError) as context:
-            mongo_util._get_collection('fake_mongo_host', 1234, 'mongo_database', 'mongo_collection')
+            mongo_util._get_collection(
+                "fake_mongo_host", 1234, "mongo_database", "mongo_collection"
+            )
 
-        self.assertIn('Connot connect to Mongo server', str(context.exception.args))
+        self.assertIn("Connot connect to Mongo server", str(context.exception.args))
 
     def test_init_ok(self):
-        class_attri = ['mongo_host', 'mongo_port', 'mongo_database', 'mongo_collection',
-                       'mongo_user', 'mongo_pass', 'mongo_authmechanism', 'job_col']
+        class_attri = [
+            "mongo_host",
+            "mongo_port",
+            "mongo_database",
+            "mongo_collection",
+            "mongo_user",
+            "mongo_pass",
+            "mongo_authmechanism",
+            "job_col",
+        ]
         mongo_util = self.getMongoUtil()
         self.assertTrue(set(class_attri) <= set(mongo_util.__dict__.keys()))
 
         job_col = mongo_util.job_col
-        self.assertEqual(job_col.name, 'exec_engine')
+        self.assertEqual(job_col.name, "exec_engine")
         self.assertEqual(job_col.count_documents({}), 0)
 
     # def test_find_in_ok(self):

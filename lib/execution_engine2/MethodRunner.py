@@ -5,7 +5,6 @@ from configparser import ConfigParser
 from typing import Dict
 
 
-
 class MethodRunner:
     """
     Maybe move this config loading to somewhere where the config is cached,
@@ -27,14 +26,10 @@ class MethodRunner:
         self.ctx = ctx
 
     def check_job_cancelled(self, params: Dict[str, str]):
-        return {
-            'test': 'test'
-        }
+        return {"test": "test"}
 
     def status(self):
-        return {
-                "servertime": f"{time()}",
-            }
+        return {"servertime": f"{time()}"}
 
     def check_job_permissions(self):
         pass
