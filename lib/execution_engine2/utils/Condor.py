@@ -109,7 +109,8 @@ class Condor(Scheduler):
 
         return environment
 
-    def validate_params(self, params):
+    @staticmethod
+    def validate_params(params):
         # TODO: Should we check them here or before?
         for item in ("token", "user", "job_id", "client_group_and_requirements"):
             if item not in params:

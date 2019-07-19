@@ -1,8 +1,8 @@
 from abc import  ABCMeta, abstractmethod
 
-class Scheduler():
+class Scheduler(ABCMeta):
 
-    def run_job(self, params):
+    def run_job(self, params, submit_file=None):
         filepath = self.create_submit_file()
         self.cleanup_submit_file()
         job_id = self.run_submit_file(filepath)
@@ -25,7 +25,7 @@ class Scheduler():
         raise NotImplementedError
 
     @abstractmethod
-    def get_job_info(self, job_id, projection=None):
+    def get_job_info(self, job_id, cluster_id):
         raise NotImplementedError
 
     @abstractmethod
