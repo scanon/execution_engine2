@@ -14,8 +14,6 @@ sleep 5
 docker exec -it -u 0 $cnt_id ps aux | grep condor
 sleep 5
 docker exec -it -u 0 $cnt_id ps aux | grep condor
-sleep 5
-docker exec -it -u 0 $cnt_id ps aux | grep condor
-sleep 5
-docker exec -it -u 0 $cnt_id ps aux | grep condor
 
+#This step is required in order for condor_q or the htcondor python bindings to connect
+sudo mkdir -p /etc/condor/ && sudo chmod 777 /etc/condor && echo "CONDOR_HOST = 127.0.0.1" >> /etc/condor/condor_config
