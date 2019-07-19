@@ -5,7 +5,7 @@
 if [ "$POOL_PASSWORD" ] ; then
     /usr/sbin/condor_store_cred -p "$POOL_PASSWORD" -f `condor_config_val SEC_PASSWORD_FILE`
 fi
-#$(condor_config_val MASTER) -f -t
+exec $(condor_config_val MASTER) -f -t
 
-systemctl start condor;
-systemctl enable condor;
+#systemctl start condor;
+#systemctl enable condor;
