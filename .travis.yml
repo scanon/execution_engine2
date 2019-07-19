@@ -1,8 +1,13 @@
+
 dist: xenial
 sudo: required
 language: python
 install:
   - pip install -r requirements.txt
+
+
+services:
+  - docker
 
 env:
   global: # The following are for the dockerhub DOCKER_USER and DOCKER_PASS env vars used in the push script
@@ -10,9 +15,19 @@ env:
     - secure: "NbHt1OUyrTXmN+tYAFcGH3mxlxraDKJ6WQNTJTG+u+wTOzh2MU1bf59l+oanvqlydpd7ZzG7c2cUpje5hvBMEV9s9jwdWqTlGXHWpcU3a1wZdNOkkAPK0Cb3opabRLwIqjovaoAAouSJCq/jUADzhusjrZcn5JVA7sSpYyJT3uE="
 
 # command to run tests
-script:
-  - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
-  - make build-docker-image
+# TODO: Save a dockerhub image and use that instead of building it each time?
 
-after_success:
-  - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
+
+before_install:
+  - sudo useradd kbase
+
+
+script:
+
+  - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
+  - make test
+  - make integration_test
+  #- make build-docker-image
+
+# after_success:
+#   - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh

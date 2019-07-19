@@ -7,6 +7,7 @@
 ############################################################
 
 from __future__ import print_function
+
 # the following is a hack to get the baseclient to import whether we're in a
 # package or not. This makes pep8 unhappy hence the annotations.
 try:
@@ -18,28 +19,39 @@ except ImportError:
 
 
 class UserAndJobState(object):
-
     def __init__(
-            self, url=None, timeout=30 * 60, user_id=None,
-            password=None, token=None, ignore_authrc=False,
-            trust_all_ssl_certificates=False,
-            auth_svc='https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login'):
+        self,
+        url=None,
+        timeout=30 * 60,
+        user_id=None,
+        password=None,
+        token=None,
+        ignore_authrc=False,
+        trust_all_ssl_certificates=False,
+        auth_svc="https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login",
+    ):
         if url is None:
-            raise ValueError('A url is required')
+            raise ValueError("A url is required")
         self._service_ver = None
         self._client = _BaseClient(
-            url, timeout=timeout, user_id=user_id, password=password,
-            token=token, ignore_authrc=ignore_authrc,
+            url,
+            timeout=timeout,
+            user_id=user_id,
+            password=password,
+            token=token,
+            ignore_authrc=ignore_authrc,
             trust_all_ssl_certificates=trust_all_ssl_certificates,
-            auth_svc=auth_svc)
+            auth_svc=auth_svc,
+        )
 
     def ver(self, context=None):
         """
         Returns the version of the userandjobstate service.
         :returns: instance of String
         """
-        return self._client.call_method('UserAndJobState.ver',
-                                        [], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.ver", [], self._service_ver, context
+        )
 
     def set_state(self, service, key, value, context=None):
         """
@@ -49,8 +61,12 @@ class UserAndJobState(object):
         :param key: instance of String
         :param value: instance of unspecified object
         """
-        return self._client.call_method('UserAndJobState.set_state',
-                                        [service, key, value], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.set_state",
+            [service, key, value],
+            self._service_ver,
+            context,
+        )
 
     def set_state_auth(self, token, key, value, context=None):
         """
@@ -60,8 +76,12 @@ class UserAndJobState(object):
         :param key: instance of String
         :param value: instance of unspecified object
         """
-        return self._client.call_method('UserAndJobState.set_state_auth',
-                                        [token, key, value], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.set_state_auth",
+            [token, key, value],
+            self._service_ver,
+            context,
+        )
 
     def get_state(self, service, key, auth, context=None):
         """
@@ -75,8 +95,12 @@ class UserAndJobState(object):
            boolean. 0 = false, other = true.)
         :returns: instance of unspecified object
         """
-        return self._client.call_method('UserAndJobState.get_state',
-                                        [service, key, auth], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_state",
+            [service, key, auth],
+            self._service_ver,
+            context,
+        )
 
     def has_state(self, service, key, auth, context=None):
         """
@@ -91,8 +115,12 @@ class UserAndJobState(object):
         :returns: instance of type "boolean" (A boolean. 0 = false, other =
            true.)
         """
-        return self._client.call_method('UserAndJobState.has_state',
-                                        [service, key, auth], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.has_state",
+            [service, key, auth],
+            self._service_ver,
+            context,
+        )
 
     def get_has_state(self, service, key, auth, context=None):
         """
@@ -110,8 +138,12 @@ class UserAndJobState(object):
            boolean. 0 = false, other = true.), (2) parameter "value" of
            unspecified object
         """
-        return self._client.call_method('UserAndJobState.get_has_state',
-                                        [service, key, auth], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_has_state",
+            [service, key, auth],
+            self._service_ver,
+            context,
+        )
 
     def remove_state(self, service, key, context=None):
         """
@@ -120,8 +152,9 @@ class UserAndJobState(object):
            Alphanumerics and the underscore are allowed.)
         :param key: instance of String
         """
-        return self._client.call_method('UserAndJobState.remove_state',
-                                        [service, key], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.remove_state", [service, key], self._service_ver, context
+        )
 
     def remove_state_auth(self, token, key, context=None):
         """
@@ -130,8 +163,12 @@ class UserAndJobState(object):
            that validates that the service really is said service.)
         :param key: instance of String
         """
-        return self._client.call_method('UserAndJobState.remove_state_auth',
-                                        [token, key], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.remove_state_auth",
+            [token, key],
+            self._service_ver,
+            context,
+        )
 
     def list_state(self, service, auth, context=None):
         """
@@ -144,8 +181,9 @@ class UserAndJobState(object):
            boolean. 0 = false, other = true.)
         :returns: instance of list of String
         """
-        return self._client.call_method('UserAndJobState.list_state',
-                                        [service, auth], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.list_state", [service, auth], self._service_ver, context
+        )
 
     def list_state_services(self, auth, context=None):
         """
@@ -157,8 +195,9 @@ class UserAndJobState(object):
         :returns: instance of list of type "service_name" (A service name.
            Alphanumerics and the underscore are allowed.)
         """
-        return self._client.call_method('UserAndJobState.list_state_services',
-                                        [auth], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.list_state_services", [auth], self._service_ver, context
+        )
 
     def create_job2(self, params, context=None):
         """
@@ -183,8 +222,9 @@ class UserAndJobState(object):
            user.) -> mapping from String to String
         :returns: instance of type "job_id" (A job id.)
         """
-        return self._client.call_method('UserAndJobState.create_job2',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.create_job2", [params], self._service_ver, context
+        )
 
     def create_job(self, context=None):
         """
@@ -192,8 +232,9 @@ class UserAndJobState(object):
         @deprecated create_job2
         :returns: instance of type "job_id" (A job id.)
         """
-        return self._client.call_method('UserAndJobState.create_job',
-                                        [], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.create_job", [], self._service_ver, context
+        )
 
     def start_job(self, job, token, status, desc, progress, est_complete, context=None):
         """
@@ -221,10 +262,16 @@ class UserAndJobState(object):
            UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
            2013-04-03T08:56:32+0000 (UTC time))
         """
-        return self._client.call_method('UserAndJobState.start_job',
-                                        [job, token, status, desc, progress, est_complete], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.start_job",
+            [job, token, status, desc, progress, est_complete],
+            self._service_ver,
+            context,
+        )
 
-    def create_and_start_job(self, token, status, desc, progress, est_complete, context=None):
+    def create_and_start_job(
+        self, token, status, desc, progress, est_complete, context=None
+    ):
         """
         Create and start a job.
         :param token: instance of type "service_token" (A globus ID token
@@ -250,8 +297,12 @@ class UserAndJobState(object):
            2013-04-03T08:56:32+0000 (UTC time))
         :returns: instance of type "job_id" (A job id.)
         """
-        return self._client.call_method('UserAndJobState.create_and_start_job',
-                                        [token, status, desc, progress, est_complete], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.create_and_start_job",
+            [token, status, desc, progress, est_complete],
+            self._service_ver,
+            context,
+        )
 
     def update_job_progress(self, job, token, status, prog, est_complete, context=None):
         """
@@ -269,8 +320,12 @@ class UserAndJobState(object):
            UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
            2013-04-03T08:56:32+0000 (UTC time))
         """
-        return self._client.call_method('UserAndJobState.update_job_progress',
-                                        [job, token, status, prog, est_complete], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.update_job_progress",
+            [job, token, status, prog, est_complete],
+            self._service_ver,
+            context,
+        )
 
     def update_job(self, job, token, status, est_complete, context=None):
         """
@@ -285,8 +340,12 @@ class UserAndJobState(object):
            UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
            2013-04-03T08:56:32+0000 (UTC time))
         """
-        return self._client.call_method('UserAndJobState.update_job',
-                                        [job, token, status, est_complete], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.update_job",
+            [job, token, status, est_complete],
+            self._service_ver,
+            context,
+        )
 
     def get_job_description(self, job, context=None):
         """
@@ -307,8 +366,9 @@ class UserAndJobState(object):
            the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
            2013-04-03T08:56:32+0000 (UTC time))
         """
-        return self._client.call_method('UserAndJobState.get_job_description',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_description", [job], self._service_ver, context
+        )
 
     def get_job_status(self, job, context=None):
         """
@@ -332,8 +392,9 @@ class UserAndJobState(object):
            true.), (7) parameter "error" of type "boolean" (A boolean. 0 =
            false, other = true.)
         """
-        return self._client.call_method('UserAndJobState.get_job_status',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_status", [job], self._service_ver, context
+        )
 
     def complete_job(self, job, token, status, error, res, context=None):
         """
@@ -375,8 +436,12 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.complete_job',
-                                        [job, token, status, error, res], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.complete_job",
+            [job, token, status, error, res],
+            self._service_ver,
+            context,
+        )
 
     def cancel_job(self, job, status, context=None):
         """
@@ -385,8 +450,9 @@ class UserAndJobState(object):
         :param status: instance of type "job_status" (A job status string
            supplied by the reporting service. No more than 200 characters.)
         """
-        return self._client.call_method('UserAndJobState.cancel_job',
-                                        [job, status], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.cancel_job", [job, status], self._service_ver, context
+        )
 
     def get_results(self, job, context=None):
         """
@@ -419,8 +485,9 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.get_results',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_results", [job], self._service_ver, context
+        )
 
     def get_detailed_error(self, job, context=None):
         """
@@ -430,8 +497,9 @@ class UserAndJobState(object):
            a job error, such as a stacktrace, that will not fit in the
            job_status. No more than 100K characters.)
         """
-        return self._client.call_method('UserAndJobState.get_detailed_error',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_detailed_error", [job], self._service_ver, context
+        )
 
     def get_job_info2(self, job, context=None):
         """
@@ -513,8 +581,9 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.get_job_info2',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_info2", [job], self._service_ver, context
+        )
 
     def get_job_info(self, job, context=None):
         """
@@ -578,8 +647,9 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.get_job_info',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_info", [job], self._service_ver, context
+        )
 
     def list_jobs2(self, params, context=None):
         """
@@ -693,8 +763,9 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.list_jobs2',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.list_jobs2", [params], self._service_ver, context
+        )
 
     def list_jobs(self, services, filter, context=None):
         """
@@ -769,8 +840,9 @@ class UserAndJobState(object):
            parameter "url" of String, parameter "id" of String, parameter
            "description" of String
         """
-        return self._client.call_method('UserAndJobState.list_jobs',
-                                        [services, filter], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.list_jobs", [services, filter], self._service_ver, context
+        )
 
     def list_job_services(self, context=None):
         """
@@ -780,8 +852,9 @@ class UserAndJobState(object):
         :returns: instance of list of type "service_name" (A service name.
            Alphanumerics and the underscore are allowed.)
         """
-        return self._client.call_method('UserAndJobState.list_job_services',
-                                        [], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.list_job_services", [], self._service_ver, context
+        )
 
     def share_job(self, job, users, context=None):
         """
@@ -792,8 +865,9 @@ class UserAndJobState(object):
         :param users: instance of list of type "username" (Login name of a
            KBase user account.)
         """
-        return self._client.call_method('UserAndJobState.share_job',
-                                        [job, users], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.share_job", [job, users], self._service_ver, context
+        )
 
     def unshare_job(self, job, users, context=None):
         """
@@ -804,8 +878,9 @@ class UserAndJobState(object):
         :param users: instance of list of type "username" (Login name of a
            KBase user account.)
         """
-        return self._client.call_method('UserAndJobState.unshare_job',
-                                        [job, users], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.unshare_job", [job, users], self._service_ver, context
+        )
 
     def get_job_owner(self, job, context=None):
         """
@@ -814,8 +889,9 @@ class UserAndJobState(object):
         :returns: instance of type "username" (Login name of a KBase user
            account.)
         """
-        return self._client.call_method('UserAndJobState.get_job_owner',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_owner", [job], self._service_ver, context
+        )
 
     def get_job_shared(self, job, context=None):
         """
@@ -826,8 +902,9 @@ class UserAndJobState(object):
         :returns: instance of list of type "username" (Login name of a KBase
            user account.)
         """
-        return self._client.call_method('UserAndJobState.get_job_shared',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.get_job_shared", [job], self._service_ver, context
+        )
 
     def delete_job(self, job, context=None):
         """
@@ -835,8 +912,9 @@ class UserAndJobState(object):
         can delete a job.
         :param job: instance of type "job_id" (A job id.)
         """
-        return self._client.call_method('UserAndJobState.delete_job',
-                                        [job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.delete_job", [job], self._service_ver, context
+        )
 
     def force_delete_job(self, token, job, context=None):
         """
@@ -848,9 +926,11 @@ class UserAndJobState(object):
            that validates that the service really is said service.)
         :param job: instance of type "job_id" (A job id.)
         """
-        return self._client.call_method('UserAndJobState.force_delete_job',
-                                        [token, job], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.force_delete_job", [token, job], self._service_ver, context
+        )
 
     def status(self, context=None):
-        return self._client.call_method('UserAndJobState.status',
-                                        [], self._service_ver, context)
+        return self._client.call_method(
+            "UserAndJobState.status", [], self._service_ver, context
+        )

@@ -7,6 +7,7 @@
 ############################################################
 
 from __future__ import print_function
+
 # the following is a hack to get the baseclient to import whether we're in a
 # package or not. This makes pep8 unhappy hence the annotations.
 try:
@@ -18,28 +19,37 @@ except ImportError:
 
 
 class Workspace(object):
-
     def __init__(
-            self, url=None, timeout=30 * 60, user_id=None,
-            password=None, token=None, ignore_authrc=False,
-            trust_all_ssl_certificates=False,
-            auth_svc='https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login'):
+        self,
+        url=None,
+        timeout=30 * 60,
+        user_id=None,
+        password=None,
+        token=None,
+        ignore_authrc=False,
+        trust_all_ssl_certificates=False,
+        auth_svc="https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login",
+    ):
         if url is None:
-            raise ValueError('A url is required')
+            raise ValueError("A url is required")
         self._service_ver = None
         self._client = _BaseClient(
-            url, timeout=timeout, user_id=user_id, password=password,
-            token=token, ignore_authrc=ignore_authrc,
+            url,
+            timeout=timeout,
+            user_id=user_id,
+            password=password,
+            token=token,
+            ignore_authrc=ignore_authrc,
             trust_all_ssl_certificates=trust_all_ssl_certificates,
-            auth_svc=auth_svc)
+            auth_svc=auth_svc,
+        )
 
     def ver(self, context=None):
         """
         Returns the version of the workspace service.
         :returns: instance of String
         """
-        return self._client.call_method('Workspace.ver',
-                                        [], self._service_ver, context)
+        return self._client.call_method("Workspace.ver", [], self._service_ver, context)
 
     def create_workspace(self, params, context=None):
         """
@@ -103,8 +113,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.create_workspace',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.create_workspace", [params], self._service_ver, context
+        )
 
     def alter_workspace_metadata(self, params, context=None):
         """
@@ -130,8 +141,9 @@ class Workspace(object):
            Arbitrary key-value pairs provided by the user.) -> mapping from
            String to String, parameter "remove" of list of String
         """
-        return self._client.call_method('Workspace.alter_workspace_metadata',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.alter_workspace_metadata", [params], self._service_ver, context
+        )
 
     def clone_workspace(self, params, context=None):
         """
@@ -242,8 +254,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.clone_workspace',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.clone_workspace", [params], self._service_ver, context
+        )
 
     def lock_workspace(self, wsi, context=None):
         """
@@ -305,8 +318,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.lock_workspace',
-                                        [wsi], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.lock_workspace", [wsi], self._service_ver, context
+        )
 
     def get_workspacemeta(self, params, context=None):
         """
@@ -360,8 +374,9 @@ class Workspace(object):
            read. 'n' - no permissions.), parameter "num_id" of type "ws_id"
            (The unique, permanent numerical ID of a workspace.)
         """
-        return self._client.call_method('Workspace.get_workspacemeta',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_workspacemeta", [params], self._service_ver, context
+        )
 
     def get_workspace_info(self, wsi, context=None):
         """
@@ -416,8 +431,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.get_workspace_info',
-                                        [wsi], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_workspace_info", [wsi], self._service_ver, context
+        )
 
     def get_workspace_description(self, wsi, context=None):
         """
@@ -435,8 +451,9 @@ class Workspace(object):
            of a workspace.)
         :returns: instance of String
         """
-        return self._client.call_method('Workspace.get_workspace_description',
-                                        [wsi], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_workspace_description", [wsi], self._service_ver, context
+        )
 
     def set_permissions(self, params, context=None):
         """
@@ -460,8 +477,9 @@ class Workspace(object):
            permissions.), parameter "users" of list of type "username" (Login
            name of a KBase user account.)
         """
-        return self._client.call_method('Workspace.set_permissions',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.set_permissions", [params], self._service_ver, context
+        )
 
     def set_global_permission(self, params, context=None):
         """
@@ -485,8 +503,9 @@ class Workspace(object):
            administrator. All operations allowed. 'w' - read/write. 'r' -
            read. 'n' - no permissions.)
         """
-        return self._client.call_method('Workspace.set_global_permission',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.set_global_permission", [params], self._service_ver, context
+        )
 
     def set_workspace_description(self, params, context=None):
         """
@@ -507,8 +526,9 @@ class Workspace(object):
            unique, permanent numerical ID of a workspace.), parameter
            "description" of String
         """
-        return self._client.call_method('Workspace.set_workspace_description',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.set_workspace_description", [params], self._service_ver, context
+        )
 
     def get_permissions_mass(self, mass, context=None):
         """
@@ -535,8 +555,9 @@ class Workspace(object):
            workspace: 'a' - administrator. All operations allowed. 'w' -
            read/write. 'r' - read. 'n' - no permissions.)
         """
-        return self._client.call_method('Workspace.get_permissions_mass',
-                                        [mass], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_permissions_mass", [mass], self._service_ver, context
+        )
 
     def get_permissions(self, wsi, context=None):
         """
@@ -559,8 +580,9 @@ class Workspace(object):
            administrator. All operations allowed. 'w' - read/write. 'r' -
            read. 'n' - no permissions.)
         """
-        return self._client.call_method('Workspace.get_permissions',
-                                        [wsi], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_permissions", [wsi], self._service_ver, context
+        )
 
     def save_object(self, params, context=None):
         """
@@ -654,8 +676,9 @@ class Workspace(object):
            String, parameter "objid" of type "obj_id" (The unique, permanent
            numerical ID of an object.)
         """
-        return self._client.call_method('Workspace.save_object',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.save_object", [params], self._service_ver, context
+        )
 
     def save_objects(self, params, context=None):
         """
@@ -880,8 +903,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.save_objects',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.save_objects", [params], self._service_ver, context
+        )
 
     def get_object(self, params, context=None):
         """
@@ -962,8 +986,9 @@ class Workspace(object):
            String, parameter "objid" of type "obj_id" (The unique, permanent
            numerical ID of an object.)
         """
-        return self._client.call_method('Workspace.get_object',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object", [params], self._service_ver, context
+        )
 
     def get_object_provenance(self, object_ids, context=None):
         """
@@ -1229,8 +1254,9 @@ class Workspace(object):
            from an object.), parameter "handle_error" of String, parameter
            "handle_stacktrace" of String
         """
-        return self._client.call_method('Workspace.get_object_provenance',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_provenance", [object_ids], self._service_ver, context
+        )
 
     def get_objects(self, object_ids, context=None):
         """
@@ -1509,8 +1535,9 @@ class Workspace(object):
            from an object.), parameter "handle_error" of String, parameter
            "handle_stacktrace" of String
         """
-        return self._client.call_method('Workspace.get_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_objects", [object_ids], self._service_ver, context
+        )
 
     def get_objects2(self, params, context=None):
         """
@@ -1956,8 +1983,9 @@ class Workspace(object):
            from an object.), parameter "handle_error" of String, parameter
            "handle_stacktrace" of String
         """
-        return self._client.call_method('Workspace.get_objects2',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_objects2", [params], self._service_ver, context
+        )
 
     def get_object_subset(self, sub_object_ids, context=None):
         """
@@ -2270,8 +2298,9 @@ class Workspace(object):
            from an object.), parameter "handle_error" of String, parameter
            "handle_stacktrace" of String
         """
-        return self._client.call_method('Workspace.get_object_subset',
-                                        [sub_object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_subset", [sub_object_ids], self._service_ver, context
+        )
 
     def get_object_history(self, object, context=None):
         """
@@ -2352,8 +2381,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.get_object_history',
-                                        [object], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_history", [object], self._service_ver, context
+        )
 
     def list_referencing_objects(self, object_ids, context=None):
         """
@@ -2434,8 +2464,12 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.list_referencing_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_referencing_objects",
+            [object_ids],
+            self._service_ver,
+            context,
+        )
 
     def list_referencing_object_counts(self, object_ids, context=None):
         """
@@ -2477,8 +2511,12 @@ class Workspace(object):
            latest version of the object is assumed.)
         :returns: instance of list of Long
         """
-        return self._client.call_method('Workspace.list_referencing_object_counts',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_referencing_object_counts",
+            [object_ids],
+            self._service_ver,
+            context,
+        )
 
     def get_referenced_objects(self, ref_chains, context=None):
         """
@@ -2774,8 +2812,9 @@ class Workspace(object):
            from an object.), parameter "handle_error" of String, parameter
            "handle_stacktrace" of String
         """
-        return self._client.call_method('Workspace.get_referenced_objects',
-                                        [ref_chains], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_referenced_objects", [ref_chains], self._service_ver, context
+        )
 
     def list_workspaces(self, params, context=None):
         """
@@ -2825,8 +2864,9 @@ class Workspace(object):
            read. 'n' - no permissions.), parameter "num_id" of type "ws_id"
            (The unique, permanent numerical ID of a workspace.)
         """
-        return self._client.call_method('Workspace.list_workspaces',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_workspaces", [params], self._service_ver, context
+        )
 
     def list_workspace_info(self, params, context=None):
         """
@@ -2913,8 +2953,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.list_workspace_info',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_workspace_info", [params], self._service_ver, context
+        )
 
     def list_workspace_ids(self, params, context=None):
         """
@@ -2942,8 +2983,9 @@ class Workspace(object):
            globally readable.) -> structure: parameter "workspaces" of list
            of Long, parameter "pub" of list of Long
         """
-        return self._client.call_method('Workspace.list_workspace_ids',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_workspace_ids", [params], self._service_ver, context
+        )
 
     def list_workspace_objects(self, params, context=None):
         """
@@ -3031,8 +3073,9 @@ class Workspace(object):
            String, parameter "objid" of type "obj_id" (The unique, permanent
            numerical ID of an object.)
         """
-        return self._client.call_method('Workspace.list_workspace_objects',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_workspace_objects", [params], self._service_ver, context
+        )
 
     def list_objects(self, params, context=None):
         """
@@ -3170,8 +3213,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.list_objects',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_objects", [params], self._service_ver, context
+        )
 
     def get_objectmeta(self, params, context=None):
         """
@@ -3248,8 +3292,9 @@ class Workspace(object):
            String, parameter "objid" of type "obj_id" (The unique, permanent
            numerical ID of an object.)
         """
-        return self._client.call_method('Workspace.get_objectmeta',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_objectmeta", [params], self._service_ver, context
+        )
 
     def get_object_info(self, object_ids, includeMetadata, context=None):
         """
@@ -3336,8 +3381,12 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.get_object_info',
-                                        [object_ids, includeMetadata], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_info",
+            [object_ids, includeMetadata],
+            self._service_ver,
+            context,
+        )
 
     def get_object_info_new(self, params, context=None):
         """
@@ -3584,8 +3633,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.get_object_info_new',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_info_new", [params], self._service_ver, context
+        )
 
     def get_object_info3(self, params, context=None):
         """
@@ -3845,8 +3895,9 @@ class Workspace(object):
            workspace.If the version number is omitted, the latest version of
            the object is assumed.)
         """
-        return self._client.call_method('Workspace.get_object_info3',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_object_info3", [params], self._service_ver, context
+        )
 
     def rename_workspace(self, params, context=None):
         """
@@ -3910,8 +3961,9 @@ class Workspace(object):
            object. Arbitrary key-value pairs provided by the user.) ->
            mapping from String to String
         """
-        return self._client.call_method('Workspace.rename_workspace',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.rename_workspace", [params], self._service_ver, context
+        )
 
     def rename_object(self, params, context=None):
         """
@@ -3998,8 +4050,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.rename_object',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.rename_object", [params], self._service_ver, context
+        )
 
     def copy_object(self, params, context=None):
         """
@@ -4117,8 +4170,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.copy_object',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.copy_object", [params], self._service_ver, context
+        )
 
     def revert_object(self, object, context=None):
         """
@@ -4200,8 +4254,9 @@ class Workspace(object):
            metadata about an object. Arbitrary key-value pairs provided by
            the user.) -> mapping from String to String
         """
-        return self._client.call_method('Workspace.revert_object',
-                                        [object], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.revert_object", [object], self._service_ver, context
+        )
 
     def get_names_by_prefix(self, params, context=None):
         """
@@ -4236,8 +4291,9 @@ class Workspace(object):
            string consisting of alphanumeric characters and the characters
            |._- that is not an integer is acceptable.)
         """
-        return self._client.call_method('Workspace.get_names_by_prefix',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_names_by_prefix", [params], self._service_ver, context
+        )
 
     def hide_objects(self, object_ids, context=None):
         """
@@ -4275,8 +4331,9 @@ class Workspace(object):
            in the Towel workspace.If the version number is omitted, the
            latest version of the object is assumed.)
         """
-        return self._client.call_method('Workspace.hide_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.hide_objects", [object_ids], self._service_ver, context
+        )
 
     def unhide_objects(self, object_ids, context=None):
         """
@@ -4313,8 +4370,9 @@ class Workspace(object):
            in the Towel workspace.If the version number is omitted, the
            latest version of the object is assumed.)
         """
-        return self._client.call_method('Workspace.unhide_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.unhide_objects", [object_ids], self._service_ver, context
+        )
 
     def delete_objects(self, object_ids, context=None):
         """
@@ -4351,8 +4409,9 @@ class Workspace(object):
            in the Towel workspace.If the version number is omitted, the
            latest version of the object is assumed.)
         """
-        return self._client.call_method('Workspace.delete_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.delete_objects", [object_ids], self._service_ver, context
+        )
 
     def undelete_objects(self, object_ids, context=None):
         """
@@ -4390,8 +4449,9 @@ class Workspace(object):
            in the Towel workspace.If the version number is omitted, the
            latest version of the object is assumed.)
         """
-        return self._client.call_method('Workspace.undelete_objects',
-                                        [object_ids], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.undelete_objects", [object_ids], self._service_ver, context
+        )
 
     def delete_workspace(self, wsi, context=None):
         """
@@ -4408,8 +4468,9 @@ class Workspace(object):
            parameter "id" of type "ws_id" (The unique, permanent numerical ID
            of a workspace.)
         """
-        return self._client.call_method('Workspace.delete_workspace',
-                                        [wsi], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.delete_workspace", [wsi], self._service_ver, context
+        )
 
     def request_module_ownership(self, mod, context=None):
         """
@@ -4418,8 +4479,9 @@ class Workspace(object):
         :param mod: instance of type "modulename" (A module name defined in a
            KIDL typespec.)
         """
-        return self._client.call_method('Workspace.request_module_ownership',
-                                        [mod], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.request_module_ownership", [mod], self._service_ver, context
+        )
 
     def register_typespec(self, params, context=None):
         """
@@ -4476,8 +4538,9 @@ class Workspace(object):
            MyModule.MyType-3.1) to type "jsonschema" (The JSON Schema (v4)
            representation of a type definition.)
         """
-        return self._client.call_method('Workspace.register_typespec',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.register_typespec", [params], self._service_ver, context
+        )
 
     def register_typespec_copy(self, params, context=None):
         """
@@ -4498,8 +4561,9 @@ class Workspace(object):
         :returns: instance of type "spec_version" (The version of a typespec
            file.)
         """
-        return self._client.call_method('Workspace.register_typespec_copy',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.register_typespec_copy", [params], self._service_ver, context
+        )
 
     def release_module(self, mod, context=None):
         """
@@ -4531,8 +4595,9 @@ class Workspace(object):
            not provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.release_module',
-                                        [mod], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.release_module", [mod], self._service_ver, context
+        )
 
     def list_modules(self, params, context=None):
         """
@@ -4544,8 +4609,9 @@ class Workspace(object):
         :returns: instance of list of type "modulename" (A module name
            defined in a KIDL typespec.)
         """
-        return self._client.call_method('Workspace.list_modules',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_modules", [params], self._service_ver, context
+        )
 
     def list_module_versions(self, params, context=None):
         """
@@ -4579,8 +4645,9 @@ class Workspace(object):
            version of a typespec file.), parameter "released_vers" of list of
            type "spec_version" (The version of a typespec file.)
         """
-        return self._client.call_method('Workspace.list_module_versions',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_module_versions", [params], self._service_ver, context
+        )
 
     def get_module_info(self, params, context=None):
         """
@@ -4643,8 +4710,9 @@ class Workspace(object):
            parameter "is_released" of type "boolean" (A boolean. 0 = false,
            other = true.)
         """
-        return self._client.call_method('Workspace.get_module_info',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_module_info", [params], self._service_ver, context
+        )
 
     def get_jsonschema(self, type, context=None):
         """
@@ -4665,8 +4733,9 @@ class Workspace(object):
         :returns: instance of type "jsonschema" (The JSON Schema (v4)
            representation of a type definition.)
         """
-        return self._client.call_method('Workspace.get_jsonschema',
-                                        [type], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_jsonschema", [type], self._service_ver, context
+        )
 
     def translate_from_MD5_types(self, md5_types, context=None):
         """
@@ -4710,8 +4779,12 @@ class Workspace(object):
            not provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.translate_from_MD5_types',
-                                        [md5_types], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.translate_from_MD5_types",
+            [md5_types],
+            self._service_ver,
+            context,
+        )
 
     def translate_to_MD5_types(self, sem_types, context=None):
         """
@@ -4755,8 +4828,9 @@ class Workspace(object):
            not provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.translate_to_MD5_types',
-                                        [sem_types], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.translate_to_MD5_types", [sem_types], self._service_ver, context
+        )
 
     def get_type_info(self, type, context=None):
         """
@@ -4875,8 +4949,9 @@ class Workspace(object):
            provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.get_type_info',
-                                        [type], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_type_info", [type], self._service_ver, context
+        )
 
     def get_all_type_info(self, mod, context=None):
         """
@@ -4984,8 +5059,9 @@ class Workspace(object):
            provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.get_all_type_info',
-                                        [mod], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_all_type_info", [mod], self._service_ver, context
+        )
 
     def get_func_info(self, func, context=None):
         """
@@ -5076,8 +5152,9 @@ class Workspace(object):
            not provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.get_func_info',
-                                        [func], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_func_info", [func], self._service_ver, context
+        )
 
     def get_all_func_info(self, mod, context=None):
         """
@@ -5157,8 +5234,9 @@ class Workspace(object):
            not provided the most recent version will be used. Example:
            MyModule.MyType-3.1)
         """
-        return self._client.call_method('Workspace.get_all_func_info',
-                                        [mod], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.get_all_func_info", [mod], self._service_ver, context
+        )
 
     def grant_module_ownership(self, params, context=None):
         """
@@ -5175,8 +5253,9 @@ class Workspace(object):
            user account.), parameter "with_grant_option" of type "boolean" (A
            boolean. 0 = false, other = true.)
         """
-        return self._client.call_method('Workspace.grant_module_ownership',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.grant_module_ownership", [params], self._service_ver, context
+        )
 
     def remove_module_ownership(self, params, context=None):
         """
@@ -5190,8 +5269,9 @@ class Workspace(object):
            defined in a KIDL typespec.), parameter "old_owner" of type
            "username" (Login name of a KBase user account.)
         """
-        return self._client.call_method('Workspace.remove_module_ownership',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.remove_module_ownership", [params], self._service_ver, context
+        )
 
     def list_all_types(self, params, context=None):
         """
@@ -5215,8 +5295,9 @@ class Workspace(object):
            version implies that the type has changed in a way that is
            backwards compatible with previous type definitions.)
         """
-        return self._client.call_method('Workspace.list_all_types',
-                                        [params], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.list_all_types", [params], self._service_ver, context
+        )
 
     def administer(self, command, context=None):
         """
@@ -5224,9 +5305,11 @@ class Workspace(object):
         :param command: instance of unspecified object
         :returns: instance of unspecified object
         """
-        return self._client.call_method('Workspace.administer',
-                                        [command], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.administer", [command], self._service_ver, context
+        )
 
     def status(self, context=None):
-        return self._client.call_method('Workspace.status',
-                                        [], self._service_ver, context)
+        return self._client.call_method(
+            "Workspace.status", [], self._service_ver, context
+        )

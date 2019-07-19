@@ -11,6 +11,8 @@ WORK_DIR = /kb/module/work/tmp
 EXECUTABLE_SCRIPT_NAME = run_$(SERVICE_CAPS)_async_job.sh
 STARTUP_SCRIPT_NAME = start_server.sh
 TEST_SCRIPT_NAME = run_tests.sh
+CONDOR_DOCKER_IMAGE_TAG_NAME = kbase/ee2:condor_test_instance 
+
 
 .PHONY: test
 
@@ -58,11 +60,21 @@ build-test-script:
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 
 test:
-	if [ ! -f /kb/module/work/token ]; then echo -e '\nOutside a docker container please run "kb-sdk test" rather than "make test"\n' && exit 1; fi
-	bash $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_test.py
+	#docker pull ee2:condor_tests
+
+integration_test:
+	./test/dockerfiles/condor/start_condor_docker_travis.sh
+	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
+
+
 
 clean:
 	rm -rfv $(LBIN_DIR)
 	
 build-docker-image:	
 	./build/build_docker_image.sh
+
+build-condor-test-image:
+	cd test/dockerfiles/condor && echo `pwd` && docker build -f Dockerfile . -t $(CONDOR_DOCKER_IMAGE_TAG_NAME)
+	docker push $(CONDOR_DOCKER_IMAGE_TAG_NAME)
