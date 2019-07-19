@@ -173,9 +173,9 @@ class Condor(Scheduler):
         return self.run_submit(condor_submit)
 
     # TODO add to pyi
-    def run_submit(self, condor_submit):
+    def run_submit(self, submit):
 
-        sub = htcondor.Submit(condor_submit)
+        sub = htcondor.Submit(submit)
         try:
             schedd = htcondor.Schedd()
             with schedd.transaction() as txn:
@@ -187,15 +187,15 @@ class Condor(Scheduler):
         except Exception as e:
             return self.submission_info(None, submit=sub, error=e)
 
-    def get_job_info(self, batch_name=None, cluster_id=None):
-        if batch_name is not None and cluster_id is not None:
+    def get_job_info(self, job_id=None, cluster_id=None):
+        if job_id is not None and cluster_id is not None:
             return self.job_info(
                 info={},
-                error=Exception("Please use only batch name or cluster_id, not both"),
+                error=Exception("Please use only batch name (job_id) or cluster_id, not both"),
             )
 
         constraint = None
-        if batch_name:
+        if job_id:
             constraint = f"JobBatchName=?={batch_name}"
         if cluster_id:
             constraint = f"ClusterID=?={cluster_id}"

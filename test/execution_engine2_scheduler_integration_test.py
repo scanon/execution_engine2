@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+import os
+import pwd
 import unittest
 
-
 import htcondor
-import classad
-import logging
-import pwd
-import os
 
 logging.basicConfig(level=logging.INFO)
 

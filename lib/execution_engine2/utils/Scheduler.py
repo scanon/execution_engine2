@@ -18,7 +18,7 @@ class Scheduler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def run_submit(self, submit_filepath):
+    def run_submit(self, submit):
         raise NotImplementedError
 
     @abstractmethod

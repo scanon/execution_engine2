@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-import os
-import pwd
 import unittest
-
-import htcondor
 
 logging.basicConfig(level=logging.INFO)
 
