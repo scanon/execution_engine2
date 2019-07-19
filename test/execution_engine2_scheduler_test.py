@@ -19,7 +19,6 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         cls.job_id = "1234"
         cls.user = "kbase"
 
-
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "wsName"):
@@ -29,25 +28,25 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
     def _create_sample_params(self):
         params = dict()
         params["job_id"] = self.job_id
-        params['user'] = 'kbase'
-        params['token'] = 'test_token'
-        params['client_group_and_requirements'] = "njs"
+        params["user"] = "kbase"
+        params["token"] = "test_token"
+        params["client_group_and_requirements"] = "njs"
         return params
 
     def test_empty_params(self):
         c = Condor("deploy.cfg")
         params = {"job_id": "test_job_id", "user": "test", "token": "test_token"}
         with self.assertRaisesRegex(
-                Exception, "client_group_and_requirements not found in params"
+            Exception, "client_group_and_requirements not found in params"
         ) as error:
-            c.create_submit_file(params)
+            c.create_submit(params)
 
     def test_create_submit_file(self):
         # Test with empty clientgroup
         c = Condor("deploy.cfg")
         params = self._create_sample_params()
 
-        default_sub = c.create_submit_file(params)
+        default_sub = c.create_submit(params)
 
         sub = default_sub
         self.assertEqual(sub["executable"], c.executable)
@@ -76,7 +75,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         ] = "njs,request_cpus=8,request_memory=10GB,request_apples=5"
         logging.info(params)
 
-        njs_sub = c.create_submit_file(params)
+        njs_sub = c.create_submit(params)
         sub = njs_sub
 
         self.assertEqual(sub["+CLIENTGROUP"], "njs")

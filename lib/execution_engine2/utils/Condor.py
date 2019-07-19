@@ -5,6 +5,7 @@ from configparser import ConfigParser
 import htcondor
 
 from execution_engine2.utils.Scheduler import Scheduler
+import enum
 
 
 class Condor(Scheduler):
@@ -25,6 +26,27 @@ class Condor(Scheduler):
     POOL_USER = "condor_pool"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
+
+    class JobStatusCodes(enum.Enum):
+        UNEXPANDED = 0
+        IDLE = 1
+        RUNNING = 2
+        REMOVED = 3
+        COMPLETED = 4
+        HELD = 5
+        SUBMISSION_ERROR = 6
+        NOT_FOUND = -1
+
+    jsc = {
+        "0": "Unexepanded",
+        1: "Idle",
+        2: "Running",
+        3: "Removed",
+        4: "Completed",
+        5: "Held",
+        6: "Submission_err",
+        -1: "Not found in condor",
+    }
 
     def __init__(self, config_filepath):
         self.config = ConfigParser()
@@ -116,7 +138,7 @@ class Condor(Scheduler):
             if item not in params:
                 raise Exception(f"{item} not found in params")
 
-    def create_submit_file(self, params):
+    def create_submit(self, params):
         self.validate_params(params)
         sub = dict()
         sub["executable"] = self.executable
@@ -128,7 +150,6 @@ class Condor(Scheduler):
         sub["+Owner"] = self.pool_user
         sub["ShouldTransferFiles"] = "YES"
         sub["When_To_Transfer_Output"] = "ON_EXIT"
-
 
         cg_and_params = self.get_client_group_and_requirements(
             cgr=params["client_group_and_requirements"]
@@ -148,22 +169,22 @@ class Condor(Scheduler):
         :return:
         """
         if submit_file is None:
-            condor_submit = htcondor.Submit(self.create_submit_file(params))
+            condor_submit = htcondor.Submit(self.create_submit(params))
         else:
             condor_submit = htcondor.Submit(submit_file)
-            condor_submit['+OWNER'] = ''
+            condor_submit["+OWNER"] = ""
 
         return self.run_condor_submit(condor_submit)
 
-
-
-    #TODO add to pyi
-    def run_condor_submit(self, condor_submit):
+    # TODO add to pyi
+    def run_submit(self, condor_submit):
         try:
             schedd = htcondor.Schedd()
             with schedd.transaction() as txn:
                 return self.submission_info(
-                    clusterid=condor_submit.queue(txn, 1), submit=condor_submit, error=None
+                    clusterid=condor_submit.queue(txn, 1),
+                    submit=condor_submit,
+                    error=None,
                 )
         except Exception as e:
             return self.submission_info(None, submit=condor_submit, error=e)

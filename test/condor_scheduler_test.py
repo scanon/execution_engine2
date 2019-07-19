@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
-import os
-import time
 import unittest
+
 import htcondor
 
-import os
-import unittest
-from unittest.mock import patch
+from lib.execution_engine2.utils.Condor import Condor
 
 
 # from nose.plugins.attrib import attr
-
-from lib.execution_engine2.utils.Condor import Condor
 
 
 class CondorSchedulerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.condor = Condor()
+        cls.condor = Condor('deploy.cfg')
         cls.job_id = ""
         cls.submit_some_jobs()
 

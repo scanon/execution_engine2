@@ -22,7 +22,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         cls.user = "kbase"
         cls.token = "bogus"
 
-        #cls.check_kbase_user()
+        # cls.check_kbase_user()
         cls.schedd = htcondor.Schedd()
         if cls.queue_is_empty():
             cls.add_a_sleep_job()
@@ -78,8 +78,6 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         params = dict()
         params["job_id"] = self.job_id
 
-
-
     def test_submit_job(self):
         # Test with empty clientgroup
         c = self.condor
@@ -90,7 +88,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
             "client_group_and_requirements": "",
         }
 
-        submit_file = c.create_submit_file(params)
+        submit_file = c.create_submit(params)
         # Fix for container
         # submit_file['+OWNER'] = ''
 
@@ -98,9 +96,5 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         print(submission_info)
         self.assertIsNotNone(submission_info.clusterid)
 
-
     def test_sleep_job(self):
         pass
-
-
-

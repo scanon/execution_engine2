@@ -7,32 +7,9 @@ import enum
 
 
 class HTCondorWrapper:
-    class JobStatusCodes(enum.Enum):
-        UNEXPANDED = 0
-        IDLE = 1
-        RUNNING = 2
-        REMOVED = 3
-        COMPLETED = 4
-        HELD = 5
-        SUBMISSION_ERROR = 6
-        NOT_FOUND = -1
-
-    jsc = {
-        "0": "Unexepanded",
-        1: "Idle",
-        2: "Running",
-        3: "Removed",
-        4: "Completed",
-        5: "Held",
-        6: "Submission_err",
-        -1: "Not found in condor",
-    }
-
     @staticmethod
     def get_job_status(job):
         pass
-
-
 
     @staticmethod
     def _check_if_not_root():
@@ -53,5 +30,3 @@ class HTCondorWrapper:
         """
 
         HTCondorWrapper._check_if_not_root()
-
-

@@ -1,27 +1,25 @@
-from abc import  ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-class Scheduler(ABCMeta):
 
+class Scheduler(ABC):
+    @abstractmethod
     def run_job(self, params, submit_file=None):
-        filepath = self.create_submit_file()
-        self.cleanup_submit_file()
-        job_id = self.run_submit_file(filepath)
-        return job_id
-
-    @abstractmethod
-    def cleanup_submit_file(self,submit_filepath):
         raise NotImplementedError
 
     @abstractmethod
-    def create_submit_file(self, params):
+    def cleanup_submit_file(self, submit_filepath):
         raise NotImplementedError
 
     @abstractmethod
-    def validate_submit_file(self, ):
+    def create_submit(self, params):
+        raise NotImplementedError
+
+
+    def validate_submit_file(self,):
         raise NotImplementedError
 
     @abstractmethod
-    def run_submit_file(self, submit_filepath):
+    def run_submit(self, submit_filepath):
         raise NotImplementedError
 
     @abstractmethod
