@@ -12,6 +12,7 @@ from execution_engine2.utils.Condor import Condor
 from configparser import ConfigParser
 import os
 
+
 class SDKMethodRunner:
     def _get_client_groups(self, method):
         """
@@ -108,7 +109,6 @@ class SDKMethodRunner:
 
         self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
 
-
     def run_job(self, params, user_id):
 
         method = params.get("method")
@@ -125,10 +125,8 @@ class SDKMethodRunner:
         # insert initial job document
         job_id = self._init_job_rec(user_id, params)
 
-
-        params['job_id'] = job_id
-        params['user_id'] = user_id
+        params["job_id"] = job_id
+        params["user_id"] = user_id
         condor_job_id = self.condor.run_job(params)
-
 
         return job_id

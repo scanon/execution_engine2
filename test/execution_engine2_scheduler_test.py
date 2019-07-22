@@ -31,7 +31,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 
     def test_empty_params(self):
         c = Condor("deploy.cfg")
-        params = {"job_id": "test_job_id", ""user_id"": "test", "token": "test_token"}
+        params = {"job_id": "test_job_id", "user_id": "test", "token": "test_token"}
         with self.assertRaisesRegex(
             Exception, "client_group_and_requirements not found in params"
         ) as error:

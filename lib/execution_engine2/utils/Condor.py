@@ -180,9 +180,7 @@ class Condor(Scheduler):
             schedd = htcondor.Schedd()
             with schedd.transaction() as txn:
                 return self.submission_info(
-                    clusterid=sub.queue(txn, 1),
-                    submit=sub,
-                    error=None,
+                    clusterid=sub.queue(txn, 1), submit=sub, error=None
                 )
         except Exception as e:
             return self.submission_info(None, submit=sub, error=e)
@@ -191,7 +189,9 @@ class Condor(Scheduler):
         if job_id is not None and cluster_id is not None:
             return self.job_info(
                 info={},
-                error=Exception("Please use only batch name (job_id) or cluster_id, not both"),
+                error=Exception(
+                    "Please use only batch name (job_id) or cluster_id, not both"
+                ),
             )
 
         constraint = None
