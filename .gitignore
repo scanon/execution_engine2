@@ -1,4 +1,6 @@
 test_local
+test/env/test.env
+test.env
 sdk.cfg
 *.pyc
 lib/execution_engine2/execution_engine2Impl.py.bak*

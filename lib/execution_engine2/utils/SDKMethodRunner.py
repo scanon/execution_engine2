@@ -109,7 +109,13 @@ class SDKMethodRunner:
 
         self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
 
-    def run_job(self, params, user_id):
+    def run_job(self, params, ctx):
+        """
+
+        :param params: RunJobParams object (See spec file)
+        :param ctx: User_Id and Token from the request
+        :return: The condor job id
+        """
 
         method = params.get("method")
 
@@ -123,10 +129,11 @@ class SDKMethodRunner:
         params["service_ver"] = git_commit_hash
 
         # insert initial job document
-        job_id = self._init_job_rec(user_id, params)
+        job_id = self._init_job_rec(ctx['user_id'], params)
 
         params["job_id"] = job_id
-        params["user_id"] = user_id
+        params["user_id"] = ctx['user_id']
+        params['token'] = ctx['token']
         condor_job_id = self.condor.run_job(params)
 
         return job_id

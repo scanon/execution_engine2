@@ -33,8 +33,8 @@ RUN pip install -r /kb/module/requirements.txt
 # -----------------------------------------
 
 COPY ./ /kb/module
-RUN mkdir -p /kb/module/work
-RUN chmod -R a+rw /kb/module
+RUN mkdir -p /kb/module/work && chmod -R a+rw /kb/module && mkdir -p /etc/condor/
+
 
 WORKDIR /kb/module
 
