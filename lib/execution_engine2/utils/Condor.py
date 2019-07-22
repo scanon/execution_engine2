@@ -134,7 +134,7 @@ class Condor(Scheduler):
     @staticmethod
     def validate_params(params):
         # TODO: Should we check them here or before?
-        for item in ("token", "user", "job_id", "client_group_and_requirements"):
+        for item in ("token", "user_id", "job_id", "client_group_and_requirements"):
             if item not in params:
                 raise Exception(f"{item} not found in params")
 
