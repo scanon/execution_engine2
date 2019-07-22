@@ -24,14 +24,14 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
     def _create_sample_params(self):
         params = dict()
         params["job_id"] = self.job_id
-        params["user"] = "kbase"
+        params["user_id"] = "kbase"
         params["token"] = "test_token"
         params["client_group_and_requirements"] = "njs"
         return params
 
     def test_empty_params(self):
         c = Condor("deploy.cfg")
-        params = {"job_id": "test_job_id", "user": "test", "token": "test_token"}
+        params = {"job_id": "test_job_id", ""user_id"": "test", "token": "test_token"}
         with self.assertRaisesRegex(
             Exception, "client_group_and_requirements not found in params"
         ) as error:
@@ -48,8 +48,8 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         self.assertEqual(sub["executable"], c.executable)
         self.assertEqual(sub["arguments"], f"{params['job_id']} {c.ee_endpoint}")
         self.assertEqual(sub["universe"], "vanilla")
-        self.assertEqual(sub["+AccountingGroup"], params["user"])
-        self.assertEqual(sub["Concurrency_Limits"], params["user"])
+        self.assertEqual(sub["+AccountingGroup"], params["user_id"])
+        self.assertEqual(sub["Concurrency_Limits"], params["user_id"])
         self.assertEqual(sub["+Owner"], "condor_pool")
         self.assertEqual(sub["ShouldTransferFiles"], "YES")
         self.assertEqual(sub["When_To_Transfer_Output"], "ON_EXIT")

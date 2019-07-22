@@ -23,7 +23,7 @@ class Condor(Scheduler):
     EXECUTABLE = "executable"
     AUTH_TOKEN = "KB_ADMIN_AUTH_TOKEN"
     DOCKER_TIMEOUT = "docker_timeout"
-    POOL_USER = "condor_pool"
+    POOL_USER = "pool_user"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
 
@@ -145,8 +145,8 @@ class Condor(Scheduler):
         sub["arguments"] = " ".join([params.get("job_id"), self.ee_endpoint])
         sub["environment"] = self.setup_environment_vars(params)
         sub["universe"] = "vanilla"
-        sub["+AccountingGroup"] = params.get("user")
-        sub["Concurrency_Limits"] = params.get("user")
+        sub["+AccountingGroup"] = params.get("user_id")
+        sub["Concurrency_Limits"] = params.get("user_id")
         sub["+Owner"] = self.pool_user
         sub["ShouldTransferFiles"] = "YES"
         sub["When_To_Transfer_Output"] = "ON_EXIT"

@@ -81,7 +81,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         c = self.condor
         params = {
             "job_id": "test_job_id",
-            "user": "test",
+            "user_id": "test",
             "token": "test_token",
             "client_group_and_requirements": "",
         }

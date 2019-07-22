@@ -7,7 +7,10 @@ from execution_engine2.models.models import Job, JobOutput, JobInput
 
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
+from execution_engine2.utils.Condor import Condor
 
+from configparser import ConfigParser
+import os
 
 class SDKMethodRunner:
     def _get_client_groups(self, method):
@@ -90,7 +93,7 @@ class SDKMethodRunner:
         return str(insert_rec)
 
     def __init__(self, config):
-
+        self.config = config
         self.mongo_util = MongoUtil(config)
 
         catalog_url = config["catalog-url"]
@@ -102,6 +105,9 @@ class SDKMethodRunner:
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.INFO
         )
+
+        self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+
 
     def run_job(self, params, user_id):
 
@@ -118,5 +124,11 @@ class SDKMethodRunner:
 
         # insert initial job document
         job_id = self._init_job_rec(user_id, params)
+
+
+        params['job_id'] = job_id
+        params['user_id'] = user_id
+        condor_job_id = self.condor.run_job(params)
+
 
         return job_id
