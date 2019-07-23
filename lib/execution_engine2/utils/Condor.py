@@ -6,7 +6,7 @@ import htcondor
 
 from execution_engine2.utils.Scheduler import Scheduler
 import enum
-
+from execution_engine2.exceptions import *
 
 class Condor(Scheduler):
     job_info = namedtuple("job_info", "info error")
@@ -80,6 +80,40 @@ class Condor(Scheduler):
 
         return default_resources
 
+
+
+    def _process_requirements_new_format(self, requirements):
+        requirements = dict()
+        cg = requirements.get("client_group", "")
+        if cg is "":
+            # requirements[
+
+            if bool(requirements.get("regex", False)) is True:
+                cg["client_group_requirement"] = f'regexp("{cg}",CLIENTGROUP)'
+            else:
+                cg["client_group_requirement"] = f"+CLIENTGROUP == {client_group} "
+
+    @staticmethod
+    def _process_client_groups_into_condor_requirements(client_groups):
+        if "{" in client_groups:
+            return SDKMethodRunner._process_requirements_new_format(
+                json.loads(client_groups)
+            )
+        else:
+            items = client_groups.split(",")
+            client_group = items.pop(0)
+            cg = {"client_group": client_group}
+            cg["client_group_requirement"] = f"+CLIENTGROUP == {client_group} "
+            for item in items:
+                (key, value) = item.split("=")
+                cg[key] = value
+            return cg
+
+
+
+
+
+
     def get_client_group_and_requirements(self, cgr, json_input=False):
         """
           Example CGR string = njs,required_cpus=1,required_mem=5
@@ -132,14 +166,32 @@ class Condor(Scheduler):
         return environment
 
     @staticmethod
-    def validate_params(params):
-        # TODO: Should we check them here or before?
-        for item in ("token", "user_id  ", "job_id", "client_group_and_requirements"):
+    def check_for_missing_runjob_params(params):
+        for item in ("token", "user_id", "job_id", "client_group_and_requirements"):
             if item not in params:
-                raise Exception(f"{item} not found in params")
+                raise MissingRunJobParamsException(f"{item} not found in params")
+
+
+    @staticmethod
+    def check_for_missing_requirements(requirements):
+        for item in ("client_group_expression", "request_cpus", "request_disk", "request_memory"):
+            if item not in requirements:
+                raise MissingCondorRequirementsException(f"{item} not found in requirements")
+
+
+    def generate_requirements(self,client_group_and_requirements):
+        resource_requirements = namedtuple('resource_requirements', 'request_cpus request_disk request_memory')
+        if "{" in client_group_and_requirements:
+            reqs = process_old_format(client_group_and_requirements)
+        else:
+            reqs = process_new_format(client_group_and_requirements)
+
+        self.check_for_missing_requirements(reqs)
+        return reqs
+
 
     def create_submit(self, params):
-        self.validate_params(params)
+        self.check_for_missing_runjob_params(params)
         sub = dict()
         sub["executable"] = self.executable
         sub["arguments"] = " ".join([params.get("job_id"), self.ee_endpoint])
@@ -151,12 +203,11 @@ class Condor(Scheduler):
         sub["ShouldTransferFiles"] = "YES"
         sub["When_To_Transfer_Output"] = "ON_EXIT"
 
-        cg_and_params = self.get_client_group_and_requirements(
-            cgr=params["client_group_and_requirements"]
-        )
-        print(cg_and_params)
-        for key, value in cg_and_params.items():
-            sub[key] = value
+        reqs = self.generate_requirements(params['client_group_and_requirements'])
+        sub['request_cpus'] = reqs.get('request_cpus')
+        sub['request_memory'] = reqs.get('request_cpus')
+        sub['request_disk'] = reqs.get('request_cpus')
+        sub['requirements'] = reqs.get('requirements')
 
         return sub
 

@@ -12,15 +12,22 @@ from execution_engine2.utils.Condor import Condor
 from configparser import ConfigParser
 import os
 
+logging.basicConfig(level=logging.INFO)
+import json
+
 
 class SDKMethodRunner:
+
+
     def _get_client_groups(self, method):
         """
         get client groups info from Catalog
         """
+        if method is None:
+            raise ValueError('Please input module_name.function_name')
 
         pattern = re.compile(".*\..*")
-        if not pattern.match(method):
+        if method is not None and not pattern.match(method):
             raise ValueError(
                 "unrecognized method: {}. Please input module_name.function_name".format(
                     method
@@ -93,9 +100,21 @@ class SDKMethodRunner:
 
         return str(insert_rec)
 
+
+    def get_mongo_util(self):
+        if self.mongo_util is None:
+            self.mongo_util = MongoUtil(self.config)
+        return self.mongo_util
+
+    def get_condor(self):
+        if self.condor is None:
+            self.condor = self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+        return self.condor
+
     def __init__(self, config):
         self.config = config
-        self.mongo_util = MongoUtil(config)
+        self.mongo_util = None
+        self.condor = None
 
         catalog_url = config["catalog-url"]
         self.catalog = Catalog(catalog_url)
@@ -107,7 +126,7 @@ class SDKMethodRunner:
             format="%(created)s %(levelname)s: %(message)s", level=logging.INFO
         )
 
-        self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+
 
     def run_job(self, params, ctx):
         """
@@ -121,6 +140,7 @@ class SDKMethodRunner:
 
         client_groups = self._get_client_groups(method)
 
+
         # perform sanity checks before creating job
         self._check_ws_ojects(params.get("source_ws_objects"))
 
@@ -129,11 +149,20 @@ class SDKMethodRunner:
         params["service_ver"] = git_commit_hash
 
         # insert initial job document
-        job_id = self._init_job_rec(ctx['user_id'], params)
+        job_id = self._init_job_rec(ctx["user_id"], params)
 
+        logging.info("About to run job with")
+        logging.info(params)
+        logging.info(ctx)
         params["job_id"] = job_id
-        params["user_id"] = ctx['user_id']
-        params['token'] = ctx['token']
-        condor_job_id = self.condor.run_job(params)
+        params["user_id"] = ctx["user_id"]
+        params["token"] = ctx["token"]
+        params['client_groups_and_requirements'] = client_groups
+        try:
+            condor_job_id = self.condor.run_job(params)
+        except Exception as e:
+            ## delete job from database? Or mark it to a state it will never run?
+            raise e
+            pass
 
         return job_id
