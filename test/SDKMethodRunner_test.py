@@ -77,7 +77,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         self.assertIn("unrecognized method:", str(context.exception.args))
 
-    def test_check_ws_ojects(self):
+    def test_check_ws_objects(self):
         runner = self.getRunner()
 
         [info1, info2] = self.foft.create_fake_reads(
@@ -86,12 +86,12 @@ class SDKMethodRunner_test(unittest.TestCase):
         read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
         read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
 
-        runner._check_ws_ojects([read1ref, read2ref])
+        runner._check_ws_objects([read1ref, read2ref])
 
         fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
 
         with self.assertRaises(ValueError) as context:
-            runner._check_ws_ojects([read1ref, read2ref, fake_read1ref])
+            runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
 
         self.assertIn(
             "Some workspace object is inaccessible", str(context.exception.args)

@@ -36,7 +36,7 @@ class SDKMethodRunner:
 
         return client_groups
 
-    def _check_ws_ojects(self, source_objects):
+    def _check_ws_objects(self, source_objects):
         """
         perform sanity checks on input WS objects
         """
@@ -110,7 +110,7 @@ class SDKMethodRunner:
         client_groups = self._get_client_groups(method)
 
         # perform sanity checks before creating job
-        self._check_ws_ojects(params.get("source_ws_objects"))
+        self._check_ws_objects(params.get("source_ws_objects"))
 
         # update service_ver
         git_commit_hash = self._get_module_git_commit(method, params.get("service_ver"))
