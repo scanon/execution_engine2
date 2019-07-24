@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import logging
 import unittest
 
@@ -16,6 +17,11 @@ load_dotenv("env/test.env", verbose=True)
 class ExecutionEngine2SchedulerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """
+        This test is used for sending commands to a live environment, such as CI.
+        TravisCI doesn't need to run this test.
+        :return:
+        """
         if "KB_AUTH_TOKEN" not in os.environ or "ENDPOINT" not in os.environ:
             logging.error(
                 "Make sure you copy the env/test.env.example file to test/env/test.env and populate it"
@@ -58,11 +64,11 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 
         :return:
         """
-        params = {"base_number": "100"}
+        params = {"base_number": "105"}
         runjob_params = {
             "method": "simpleapp.simple_add",
             "params": params,
             "service_ver": "dev",
         }
 
-        self.ee2.run_job(runjob_params)
+        print(self.ee2.run_job(runjob_params))

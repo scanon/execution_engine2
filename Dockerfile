@@ -6,7 +6,13 @@ RUN apt-get update
 # to run your App.  For instance, you could place an apt-get update or
 # install line here, a git checkout to download code, or run any other
 # installation scripts.
-RUN apt-get install -y gcc
+RUN apt-get install -y gcc wget vim
+
+RUN DEBIAN_FRONTEND=noninteractive wget -qO - https://research.cs.wisc.edu/htcondor/debian/HTCondor-Release.gpg.key | sudo apt-key add - \
+    && echo "deb http://research.cs.wisc.edu/htcondor/debian/8.8/stretch stretch contrib" >> /etc/apt/sources.list \
+    && echo "deb-src http://research.cs.wisc.edu/htcondor/debian/8.8/stretch stretch contrib" >> /etc/apt/sources.list \
+    && apt-get update -y \
+    && apt-get install -y condor
 
 # install mongodb
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5 \
@@ -23,12 +29,12 @@ RUN echo "mongodb-org hold" | dpkg --set-selections \
     && echo "mongodb-org-mongos hold" | dpkg --set-selections \
     && echo "mongodb-org-tools hold" | dpkg --set-selections
 
-RUN pip install pymongo==3.8.0
-RUN pip install mock==3.0.5
-RUN pip install mongoengine==0.18.2
+
 
 COPY ./requirements.txt /kb/module/requirements.txt
 RUN pip install -r /kb/module/requirements.txt
+RUN useradd kbase
+
 
 # -----------------------------------------
 
@@ -41,5 +47,5 @@ WORKDIR /kb/module
 RUN make all
 
 ENTRYPOINT [ "./scripts/entrypoint.sh" ]
-
 CMD [ ]
+
