@@ -8,7 +8,7 @@ RUN apt-get update
 # installation scripts.
 RUN apt-get install -y gcc wget vim
 
-RUN DEBIAN_FRONTEND=noninteractive wget -qO - https://research.cs.wisc.edu/htcondor/debian/HTCondor-Release.gpg.key | sudo apt-key add - \
+RUN DEBIAN_FRONTEND=noninteractive wget -qO - https://research.cs.wisc.edu/htcondor/debian/HTCondor-Release.gpg.key | apt-key add - \
     && echo "deb http://research.cs.wisc.edu/htcondor/debian/8.8/stretch stretch contrib" >> /etc/apt/sources.list \
     && echo "deb-src http://research.cs.wisc.edu/htcondor/debian/8.8/stretch stretch contrib" >> /etc/apt/sources.list \
     && apt-get update -y \
