@@ -29,5 +29,6 @@ script:
   # - make integration_test Doesn't yet work in travis
   - make build-docker-image
 
- after_success:
-   # - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
+
+ # after_success:
+ #  - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
