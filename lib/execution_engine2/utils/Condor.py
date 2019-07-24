@@ -1,17 +1,25 @@
+import enum
 import json
 from collections import namedtuple
 from configparser import ConfigParser
 
 import htcondor
 
-from execution_engine2.utils.Scheduler import Scheduler
-import enum
 from execution_engine2.exceptions import *
+from execution_engine2.utils.Scheduler import Scheduler
+
 
 class Condor(Scheduler):
     job_info = namedtuple("job_info", "info error")
     submission_info = namedtuple("submission_info", "clusterid submit error")
     job_resource = namedtuple("job_resource", "amount unit")
+    resource_requirements = namedtuple(
+        "resource_requirements",
+        "request_cpus request_disk request_memory requirements_statement",
+    )
+    condor_resources = namedtuple(
+        "condor_resources", "request_cpus request_memory request_disk client_group"
+    )
 
     # TODO: Should these be outside of the class?
     REQUEST_CPUS = "request_cpus"
@@ -61,7 +69,7 @@ class Condor(Scheduler):
             section=self.EE2, option=self.POOL_USER, fallback="condor_pool"
         )
 
-    def get_default_client_group_and_requirements(self, client_group):
+    def get_default_resources(self, client_group):
         """
         Search the config file for default client groups and requirements
         :param client_group: The section of the config file to search for requirements
@@ -72,77 +80,15 @@ class Condor(Scheduler):
             section = client_group
             default_resources[self.CG] = client_group
         else:
-            section = self.config["DEFAULT"][self.DEFAULT_CLIENT_GROUP]
-            default_resources[self.CG] = section
+            client_group = self.config["DEFAULT"][self.DEFAULT_CLIENT_GROUP]
+            default_resources[self.CG] = client_group
+            section = client_group
 
+        # Get settings from config file based on clientgroup or default_clientgroup
         for item in [self.REQUEST_CPUS, self.REQUEST_DISK, self.REQUEST_MEMORY]:
             default_resources[item] = self.config.get(section=section, option=item)
 
         return default_resources
-
-
-
-    def _process_requirements_new_format(self, requirements):
-        requirements = dict()
-        cg = requirements.get("client_group", "")
-        if cg is "":
-            # requirements[
-
-            if bool(requirements.get("regex", False)) is True:
-                cg["client_group_requirement"] = f'regexp("{cg}",CLIENTGROUP)'
-            else:
-                cg["client_group_requirement"] = f"+CLIENTGROUP == {client_group} "
-
-    @staticmethod
-    def _process_client_groups_into_condor_requirements(client_groups):
-        if "{" in client_groups:
-            return SDKMethodRunner._process_requirements_new_format(
-                json.loads(client_groups)
-            )
-        else:
-            items = client_groups.split(",")
-            client_group = items.pop(0)
-            cg = {"client_group": client_group}
-            cg["client_group_requirement"] = f"+CLIENTGROUP == {client_group} "
-            for item in items:
-                (key, value) = item.split("=")
-                cg[key] = value
-            return cg
-
-
-
-
-
-
-    def get_client_group_and_requirements(self, cgr, json_input=False):
-        """
-          Example CGR string = njs,required_cpus=1,required_mem=5
-        :param cgr:
-        :param json_input:
-        :return:
-        """
-
-        reqs = dict()
-        client_group = None
-        if json_input is False:
-            cgr_split = cgr.split(",")  # List
-            client_group = cgr_split.pop(0)
-            requirements = {self.CG: client_group}
-            for item in cgr_split:
-                (req, value) = item.split("=")
-                requirements[req] = value
-            reqs = requirements
-        else:
-            reqs = json.loads(cgr)
-
-        default_requirements = self.get_default_client_group_and_requirements(
-            client_group
-        )
-        for key, value in default_requirements.items():
-            if key not in reqs or reqs[key].strip() is "":
-                reqs[key] = value
-
-        return reqs
 
     def cleanup_submit_file(self, submit_filepath):
         pass
@@ -167,28 +113,110 @@ class Condor(Scheduler):
 
     @staticmethod
     def check_for_missing_runjob_params(params):
-        for item in ("token", "user_id", "job_id", "client_group_and_requirements"):
+        for item in ("token", "user_id", "job_id", "cg_resources_requirements"):
             if item not in params:
                 raise MissingRunJobParamsException(f"{item} not found in params")
 
-
+    # TODO Return type
     @staticmethod
-    def check_for_missing_requirements(requirements):
-        for item in ("client_group_expression", "request_cpus", "request_disk", "request_memory"):
-            if item not in requirements:
-                raise MissingCondorRequirementsException(f"{item} not found in requirements")
+    def normalize(resources_request):
+        """
+        Ensure that the client_groups are processed as a dictionary and has at least one value
+        :param resources_request: either an empty string, a json object, or cg,key1=value,key2=value
+        :return:
+        """
+        if type(resources_request) is not str:
+            raise TypeError()
 
+        # No clientgroup provided
+        if resources_request is "":
+            return {}
+        # JSON
+        if "{" in resources_request:
+            return json.loads(resources_request)
 
-    def generate_requirements(self,client_group_and_requirements):
-        resource_requirements = namedtuple('resource_requirements', 'request_cpus request_disk request_memory')
-        if "{" in client_group_and_requirements:
-            reqs = process_old_format(client_group_and_requirements)
+        rr = resources_request.split(",")
+        # Default
+
+        rv = {"client_group": rr.pop(0), "client_group_regex": True}
+        for item in rr:
+            if "=" not in item:
+                raise Exception(
+                    f"Malformed requirement. Format is <key>=<value> . Item is {item}"
+                )
+            (key, value) = item.split("=")
+            rv[key] = value
+
+            if key in ["client_group_regex"]:
+                raise ValueError(
+                    "Illegal argument! Old format does not support this option ('client_group_regex')"
+                )
+
+        return rv
+
+    def extract_resources(self, cgrr):
+        """
+        Checks to see if request_cpus/memory/disk is available
+        If not, it sets them based on defaults from the config
+        :param cgrr:
+        :return:
+        """
+        client_group = cgrr.get("client_group", None)
+        if client_group is None or client_group is "":
+            client_group = self.config.get(
+                section="DEFAULT", option=self.DEFAULT_CLIENT_GROUP
+            )
+
+        if client_group not in self.config.sections():
+            raise ValueError(f"{client_group} not found in {self.config.sections()}")
+
+        # TODO Validate that they are a resource followed by a unit
+        for key in [self.REQUEST_DISK, self.REQUEST_CPUS, self.REQUEST_MEMORY]:
+            if key not in cgrr or cgrr[key] in ["", None]:
+                cgrr[key] = self.config.get(section=client_group, option=key)
+
+        cr = self.condor_resources(
+            request_cpus=cgrr.get(self.REQUEST_CPUS),
+            request_disk=cgrr.get(self.REQUEST_DISK),
+            request_memory=cgrr.get(self.REQUEST_MEMORY),
+            client_group=client_group,
+        )
+
+        return cr
+
+    def extract_requirements(self, cgrr=None, client_group=None):
+        """
+
+        :param cgrr:
+        :param client_group:
+        :return: A list of condor submit file requirements in (key == value) format
+        """
+        if cgrr is None or client_group is None:
+            raise Exception("Please provide normalized cgrr and client_group")
+
+        requirements_statement = []
+
+        client_group_regex = str(cgrr.get("client_group_regex", True))
+        client_group_regex = json.loads(client_group_regex.lower())
+
+        if client_group_regex is True:
+            requirements_statement.append(f'regexp("{client_group}",CLIENTGROUP)')
         else:
-            reqs = process_new_format(client_group_and_requirements)
+            requirements_statement.append(f'(CLIENTGROUP == "{client_group}")')
 
-        self.check_for_missing_requirements(reqs)
-        return reqs
+        special_requirements = [
+            "client_group",
+            "client_group_regex",
+            self.REQUEST_MEMORY,
+            self.REQUEST_DISK,
+            self.REQUEST_CPUS,
+        ]
 
+        for key, value in cgrr.items():
+            if key not in special_requirements:
+                requirements_statement.append(f'({key} == "{value}")')
+
+        return requirements_statement
 
     def create_submit(self, params):
         self.check_for_missing_runjob_params(params)
@@ -203,17 +231,25 @@ class Condor(Scheduler):
         sub["ShouldTransferFiles"] = "YES"
         sub["When_To_Transfer_Output"] = "ON_EXIT"
 
-        reqs = self.generate_requirements(params['client_group_and_requirements'])
-        sub['request_cpus'] = reqs.get('request_cpus')
-        sub['request_memory'] = reqs.get('request_cpus')
-        sub['request_disk'] = reqs.get('request_cpus')
-        sub['requirements'] = reqs.get('requirements')
+        # Ensure cgrr is a dictionary
+        cgrr = self.normalize(params["cg_resources_requirements"])
+
+        # Extract minimum condor resource requirements and client_group
+        resources = self.extract_resources(cgrr)
+        sub["request_cpus"] = resources.request_cpus
+        sub["request_memory"] = resources.request_memory
+        sub["request_disk"] = resources.request_disk
+        client_group = resources.client_group
+
+        # Set requirements statement
+        requirements = self.extract_requirements(cgrr=cgrr, client_group=client_group)
+        sub["requirements"] = " && ".join(requirements)
 
         return sub
 
     def run_job(self, params, submit_file=None):
         """
-       TODO: Add a retry
+        TODO: Add a retry
         TODO: Add list of required params
         :param params:  Params to run the job, such as the username, job_id, token, client_group_and_requirements
         :param submit_file:

@@ -5,8 +5,10 @@ class IncorrectParamsException(ValueError):
 class MissingRunJobParamsException(ValueError):
     pass
 
+
 class MissingCondorRequirementsException(ValueError):
     pass
+
 
 class MalformedJobIdException(Exception):
     pass

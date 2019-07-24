@@ -97,7 +97,6 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
     def test_sleep_job(self):
         pass
 
-
     def test_client_groups(self):
         client_group = "njs,bigmem,bigmemlong"
 
@@ -110,4 +109,3 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
             "machine": "chicagoawe206",
             "dynamic_memory": "false",
         }
-

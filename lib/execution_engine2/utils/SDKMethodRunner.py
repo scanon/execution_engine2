@@ -17,14 +17,12 @@ import json
 
 
 class SDKMethodRunner:
-
-
     def _get_client_groups(self, method):
         """
         get client groups info from Catalog
         """
         if method is None:
-            raise ValueError('Please input module_name.function_name')
+            raise ValueError("Please input module_name.function_name")
 
         pattern = re.compile(".*\..*")
         if method is not None and not pattern.match(method):
@@ -100,7 +98,6 @@ class SDKMethodRunner:
 
         return str(insert_rec)
 
-
     def get_mongo_util(self):
         if self.mongo_util is None:
             self.mongo_util = MongoUtil(self.config)
@@ -126,8 +123,6 @@ class SDKMethodRunner:
             format="%(created)s %(levelname)s: %(message)s", level=logging.INFO
         )
 
-
-
     def run_job(self, params, ctx):
         """
 
@@ -139,7 +134,6 @@ class SDKMethodRunner:
         method = params.get("method")
 
         client_groups = self._get_client_groups(method)
-
 
         # perform sanity checks before creating job
         self._check_ws_ojects(params.get("source_ws_objects"))
@@ -157,7 +151,7 @@ class SDKMethodRunner:
         params["job_id"] = job_id
         params["user_id"] = ctx["user_id"]
         params["token"] = ctx["token"]
-        params['client_groups_and_requirements'] = client_groups
+        params["cg_resources_requirements"] = client_groups
         try:
             condor_job_id = self.condor.run_job(params)
         except Exception as e:
