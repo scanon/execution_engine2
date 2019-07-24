@@ -109,7 +109,7 @@ class SDKMethodRunner:
 
     def get_condor(self):
         if self.condor is None:
-            self.condor = self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+            self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
         return self.condor
 
     def __init__(self, config):
