@@ -30,4 +30,4 @@ script:
   - make build-docker-image
 
  after_success:
-   - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
+   # - IMAGE_NAME=kbase/ee2 ./build/push2dockerhub.sh
