@@ -1,8 +1,12 @@
-class IncorrectParamsException(Exception):
+class IncorrectParamsException(ValueError):
     pass
 
 
-class MissingParamsException(Exception):
+class MissingRunJobParamsException(ValueError):
+    pass
+
+
+class MissingCondorRequirementsException(ValueError):
     pass
 
 

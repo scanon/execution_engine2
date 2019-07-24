@@ -81,7 +81,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         c = self.condor
         params = {
             "job_id": "test_job_id",
-            "user": "test",
+            "user_id": "test",
             "token": "test_token",
             "client_group_and_requirements": "",
         }
@@ -96,3 +96,16 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
 
     def test_sleep_job(self):
         pass
+
+    def test_client_groups(self):
+        client_group = "njs,bigmem,bigmemlong"
+
+        client_group_json = {
+            "client_group": "njs",
+            "cg_regex": "True",
+            "request_cpus": 1,
+            "request_disk": 100,
+            "request_memory": 10000,
+            "machine": "chicagoawe206",
+            "dynamic_memory": "false",
+        }
