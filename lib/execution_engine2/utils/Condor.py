@@ -126,7 +126,7 @@ class Condor(Scheduler):
         :return:
         """
         if type(resources_request) is not str:
-            raise TypeError()
+            raise TypeError(str(type(resources_request)))
 
         # No clientgroup provided
         if resources_request is "":

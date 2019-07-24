@@ -12,7 +12,11 @@ from execution_engine2.utils.Condor import Condor
 from configparser import ConfigParser
 import os
 
+
+
 logging.basicConfig(level=logging.INFO)
+logging.info(os.environ['debug'])
+
 import json
 
 
@@ -94,7 +98,7 @@ class SDKMethodRunner:
         job.job_input = inputs
         job.job_output = output
 
-        insert_rec = self.mongo_util.insert_one(job.to_mongo())
+        insert_rec = self.get_mongo_util().insert_one(job.to_mongo())
 
         return str(insert_rec)
 
@@ -145,7 +149,10 @@ class SDKMethodRunner:
         # insert initial job document
         job_id = self._init_job_rec(ctx["user_id"], params)
 
+
+        #TODO Figure out log level
         logging.info("About to run job with")
+        logging.info(client_groups)
         logging.info(params)
         logging.info(ctx)
         params["job_id"] = job_id
@@ -153,7 +160,7 @@ class SDKMethodRunner:
         params["token"] = ctx["token"]
         params["cg_resources_requirements"] = client_groups
         try:
-            condor_job_id = self.condor.run_job(params)
+            condor_job_id = self.get_condor().run_job(params)
         except Exception as e:
             ## delete job from database? Or mark it to a state it will never run?
             raise e
