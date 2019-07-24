@@ -26,3 +26,4 @@ htcondor==8.9.2
 docker==4.0.2
 mock==3.0.5
 mongoengine==0.18.2
+codecov==2.0.15
