@@ -62,7 +62,7 @@ build-test-script:
 
 TEST_FILES = test/execution_engine2_scheduler_test.py test/MongoUtil_test.py test/SDKMethodRunner_test.py
 test:
-    nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_test.py
+	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_test.py
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/MongoUtil_test.py
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/SDKMethodRunner_test.py
 	#docker pull ee2:condor_tests
