@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
-import os
 import unittest
-from configparser import ConfigParser
 
-from mongo_test_helper import MongoTestHelper
+from test.mongo_test_helper import MongoTestHelper
 from execution_engine2.utils.MongoUtil import MongoUtil
 
 
 class MongoUtilTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", None)
-        cls.cfg = {}
-        config = ConfigParser()
-        config.read(config_file)
-        for nameval in config.items("execution_engine2"):
-            cls.cfg[nameval[0]] = nameval[1]
 
-        cls.cfg["mongo-collection"] = "exec_engine"
-        cls.cfg["mongo-authmechanism"] = "DEFAULT"
+        cls.config = {}
+
+        cls.config['mongo-host'] = 'localhost'
+        cls.config['mongo-database'] = 'ee2'
+        cls.config['mongo-collection'] = "exec_engine"
+        cls.config['mongo-port'] = 27017
+        cls.config['mongo-user'] = ''
+        cls.config['mongo-password'] = ''
+        cls.config['mongo-authmechanism'] = "DEFAULT"
+        cls.config['start-local-mongo'] = 1
 
         cls.mongo_helper = MongoTestHelper()
         cls.test_collection = cls.mongo_helper.create_test_db(
-            db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
+            db=cls.config["mongo-database"], col=cls.config["mongo-collection"]
         )
-        cls.mongo_util = MongoUtil(cls.cfg)
+        cls.mongo_util = MongoUtil(cls.config)
 
     @classmethod
     def tearDownClass(cls):

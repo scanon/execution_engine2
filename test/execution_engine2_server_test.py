@@ -12,7 +12,7 @@ from execution_engine2.authclient import KBaseAuth as _KBaseAuth
 from installed_clients.WorkspaceClient import Workspace
 
 
-    class execution_engine2Test(unittest.TestCase):
+class execution_engine2Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         token = os.environ.get("KB_AUTH_TOKEN", None)
@@ -58,7 +58,6 @@ from installed_clients.WorkspaceClient import Workspace
             cls.wsClient.delete_workspace({"workspace": cls.wsName})
             print("Test workspace was deleted")
 
-
     def test_status(self):
         status = self.serviceImpl.status(self.ctx)[0]
 
@@ -70,4 +69,3 @@ from installed_clients.WorkspaceClient import Workspace
         self.assertTrue(isinstance(ver, str))
         pattern = re.compile("\d\.\d\.\d")
         self.assertTrue(pattern.match(ver))
-
