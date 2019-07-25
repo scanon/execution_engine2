@@ -64,13 +64,10 @@ TEST_FILES = test/execution_engine2_scheduler_test.py test/MongoUtil_test.py tes
 test:
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  $(TEST_FILES)
 	#docker pull ee2:condor_tests
-# 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/SDKMethodRunner_test.py
 
 integration_test:
 	./test/dockerfiles/condor/start_condor_docker_travis.sh
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
-
-
 
 clean:
 	rm -rfv $(LBIN_DIR)

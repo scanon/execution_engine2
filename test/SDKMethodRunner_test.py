@@ -2,13 +2,10 @@
 import os
 import unittest
 from configparser import ConfigParser
-import time
 from bson.objectid import ObjectId
 
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
-from installed_clients.WorkspaceClient import Workspace
 from test.mongo_test_helper import MongoTestHelper
 
 
@@ -32,23 +29,8 @@ class SDKMethodRunner_test(unittest.TestCase):
             db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
         )
 
-        # cls.callback_url = os.environ["SDK_CALLBACK_URL"]
-        # cls.foft = FakeObjectsForTests(cls.callback_url, service_ver="dev")
-
-        cls.wsURL = cls.cfg["workspace-url"]
-        cls.wsClient = Workspace(cls.wsURL)
-        suffix = int(time.time() * 1000)
-        cls.wsName = "test_ContigFilter_" + str(suffix)
-        cls.ws = cls.wsClient.create_workspace({"workspace": cls.wsName})
-        cls.ws_id = cls.ws[0]
-
         cls.user_id = "fake_test_user"
-
-    @classmethod
-    def tearDownClass(cls):
-        if hasattr(cls, 'wsName'):
-            cls.wsClient.delete_workspace({'workspace': cls.wsName})
-            print('Test workspace was deleted')
+        cls.ws_id = "fake_ws_0000"
 
     def getRunner(self):
         return self.__class__.method_runner
