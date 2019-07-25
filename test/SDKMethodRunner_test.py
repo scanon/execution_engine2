@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
-import time
 import unittest
 from configparser import ConfigParser
-
+import time
 from bson.objectid import ObjectId
 
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
 from installed_clients.WorkspaceClient import Workspace
-from lib.installed_clients.authclient import KBaseAuth as _KBaseAuth
 from test.mongo_test_helper import MongoTestHelper
 
 
 class SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join('test', 'deploy.cfg'))
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join("test", "deploy.cfg"))
         config_parser = ConfigParser()
         config_parser.read(config_file)
 
@@ -33,6 +31,24 @@ class SDKMethodRunner_test(unittest.TestCase):
         cls.test_collection = cls.mongo_helper.create_test_db(
             db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
         )
+
+        cls.callback_url = os.environ["SDK_CALLBACK_URL"]
+        cls.foft = FakeObjectsForTests(cls.callback_url, service_ver="dev")
+
+        cls.wsURL = cls.cfg["workspace-url"]
+        cls.wsClient = Workspace(cls.wsURL)
+        suffix = int(time.time() * 1000)
+        cls.wsName = "test_ContigFilter_" + str(suffix)
+        cls.ws = cls.wsClient.create_workspace({"workspace": cls.wsName})
+        cls.ws_id = cls.ws[0]
+
+        cls.user_id = "fake_test_user"
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, 'wsName'):
+            cls.wsClient.delete_workspace({'workspace': cls.wsName})
+            print('Test workspace was deleted')
 
     def getRunner(self):
         return self.__class__.method_runner
@@ -59,25 +75,25 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         self.assertIn("unrecognized method:", str(context.exception.args))
 
-    # def test_check_ws_objects(self):
-    #     runner = self.getRunner()
+    def test_check_ws_objects(self):
+        runner = self.getRunner()
 
-    #     [info1, info2] = self.foft.create_fake_reads(
-    #         {"ws_name": self.wsName, "obj_names": ["reads1", "reads2"]}
-    #     )
-    #     read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
-    #     read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
+        [info1, info2] = self.foft.create_fake_reads(
+            {"ws_name": self.wsName, "obj_names": ["reads1", "reads2"]}
+        )
+        read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
+        read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
 
-    #     runner._check_ws_objects([read1ref, read2ref])
+        runner._check_ws_objects([read1ref, read2ref])
 
-    #     fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
+        fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
 
-    #     with self.assertRaises(ValueError) as context:
-    #         runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
+        with self.assertRaises(ValueError) as context:
+            runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
 
-    #     self.assertIn(
-    #         "Some workspace object is inaccessible", str(context.exception.args)
-    #     )
+        self.assertIn(
+            "Some workspace object is inaccessible", str(context.exception.args)
+        )
 
     def test_get_module_git_commit(self):
 
@@ -93,62 +109,62 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(len(git_commit_1), len(git_commit_2))
         self.assertNotEqual(git_commit_1, git_commit_2)
 
-    # def test_init_job_rec(self):
+    def test_init_job_rec(self):
 
-    #     runner = self.getRunner()
+        runner = self.getRunner()
 
-    #     self.assertEqual(self.test_collection.count(), 0)
+        self.assertEqual(self.test_collection.count(), 0)
 
-    #     job_params = {
-    #         "wsid": self.ws_id,
-    #         "method": "MEGAHIT.run_megahit",
-    #         "app_id": "MEGAHIT/run_megahit",
-    #         "service_ver": "2.2.1",
-    #         "params": [
-    #             {
-    #                 "k_list": [],
-    #                 "k_max": None,
-    #                 "output_contigset_name": "MEGAHIT.contigs",
-    #             }
-    #         ],
-    #     }
+        job_params = {
+            "wsid": self.ws_id,
+            "method": "MEGAHIT.run_megahit",
+            "app_id": "MEGAHIT/run_megahit",
+            "service_ver": "2.2.1",
+            "params": [
+                {
+                    "k_list": [],
+                    "k_max": None,
+                    "output_contigset_name": "MEGAHIT.contigs",
+                }
+            ],
+        }
 
-    #     job_id = runner._init_job_rec(self.user_id, job_params)
+        job_id = runner._init_job_rec(self.user_id, job_params)
 
-    #     self.assertEqual(self.test_collection.count(), 1)
+        self.assertEqual(self.test_collection.count(), 1)
 
-    #     result = list(self.test_collection.find({"_id": ObjectId(job_id)}))[0]
+        result = list(self.test_collection.find({"_id": ObjectId(job_id)}))[0]
 
-    #     expected_keys = [
-    #         "_id",
-    #         "user",
-    #         "authstrat",
-    #         "wsid",
-    #         "created",
-    #         "updated",
-    #         "creation_time",
-    #         "complete",
-    #         "error",
-    #         "job_input",
-    #         "job_output",
-    #     ]
-    #     self.assertCountEqual(result.keys(), expected_keys)
-    #     self.assertEqual(result["user"], self.user_id)
-    #     self.assertEqual(result["authstrat"], "kbaseworkspace")
-    #     self.assertEqual(result["wsid"], self.ws_id)
-    #     self.assertFalse(result["complete"])
-    #     self.assertFalse(result["error"])
+        expected_keys = [
+            "_id",
+            "user",
+            "authstrat",
+            "wsid",
+            "created",
+            "updated",
+            "creation_time",
+            "complete",
+            "error",
+            "job_input",
+            "job_output",
+        ]
+        self.assertCountEqual(result.keys(), expected_keys)
+        self.assertEqual(result["user"], self.user_id)
+        self.assertEqual(result["authstrat"], "kbaseworkspace")
+        self.assertEqual(result["wsid"], self.ws_id)
+        self.assertFalse(result["complete"])
+        self.assertFalse(result["error"])
 
-    #     job_input = result["job_input"]
-    #     expected_ji_keys = ["wsid", "method", "params", "service_ver", "app_id"]
-    #     self.assertCountEqual(job_input.keys(), expected_ji_keys)
-    #     self.assertEqual(job_input["wsid"], self.ws_id)
-    #     self.assertEqual(job_input["method"], "MEGAHIT.run_megahit")
-    #     self.assertEqual(job_input["app_id"], "MEGAHIT/run_megahit")
-    #     self.assertEqual(job_input["service_ver"], "2.2.1")
+        job_input = result["job_input"]
+        expected_ji_keys = ["wsid", "method", "params", "service_ver", "app_id"]
+        self.assertCountEqual(job_input.keys(), expected_ji_keys)
+        self.assertEqual(job_input["wsid"], self.ws_id)
+        self.assertEqual(job_input["method"], "MEGAHIT.run_megahit")
+        self.assertEqual(job_input["app_id"], "MEGAHIT/run_megahit")
+        self.assertEqual(job_input["service_ver"], "2.2.1")
 
-    #     job_output = result["job_output"]
-    #     self.assertEqual(len(job_output), 0)
+        job_output = result["job_output"]
+        self.assertEqual(len(job_output), 0)
 
-    #     self.test_collection.delete_one({"_id": ObjectId(job_id)})
-    #     self.assertEqual(self.test_collection.count(), 0)
+        self.test_collection.delete_one({"_id": ObjectId(job_id)})
+        self.assertEqual(self.test_collection.count(), 0)
