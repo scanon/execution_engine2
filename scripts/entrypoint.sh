@@ -9,7 +9,14 @@ if [ -f ./work/token ] ; then
 fi
 
 if [ $# -eq 0 ] ; then
+  useradd kbase
+  if [ "${POOL_PASSWORD}" ] ; then
+        /usr/sbin/condor_store_cred -p "${POOL_PASSWORD}" -f /etc/condor/password
+  fi
+  chown kbase /etc/condor/password
   sh ./scripts/start_server.sh
+
+
 elif [ "${1}" = "test" ] ; then
   echo "Run Tests"
   make test

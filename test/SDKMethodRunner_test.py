@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
-import unittest
 import time
+import unittest
 from configparser import ConfigParser
+
 from bson.objectid import ObjectId
 
-from execution_engine2.authclient import KBaseAuth as _KBaseAuth
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from execution_engine2.utils.MongoUtil import MongoUtil
-from test.mongo_test_helper import MongoTestHelper
-
-from installed_clients.WorkspaceClient import Workspace
+from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
+from installed_clients.WorkspaceClient import Workspace
+from lib.installed_clients.authclient import KBaseAuth as _KBaseAuth
+from test.mongo_test_helper import MongoTestHelper
 
 
 class SDKMethodRunner_test(unittest.TestCase):
@@ -73,7 +73,6 @@ class SDKMethodRunner_test(unittest.TestCase):
 
     #     expected_groups = ["kb_upload"]  # expected to fail if catalog is updated
     #     self.assertCountEqual(expected_groups, client_groups)
-
     #     client_groups = runner._get_client_groups("MEGAHIT.run_megahit")
     #     self.assertEqual(0, len(client_groups))
 

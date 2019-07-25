@@ -10,9 +10,10 @@ from installed_clients.WorkspaceClient import Workspace
 from execution_engine2.utils.Condor import Condor
 
 import os
+import json
 
 logging.basicConfig(level=logging.INFO)
-logging.info(os.environ.get('debug'))
+logging.info(json.loads(os.environ.get("debug", "False").lower()))
 
 
 class SDKMethodRunner:
@@ -38,9 +39,9 @@ class SDKMethodRunner:
         )
 
         if group_config:
-            client_groups = group_config[0].get("client_groups")
+            client_groups = group_config[0].get("client_groups")[0]
         else:
-            client_groups = list()
+            client_groups = ""
 
         return client_groups
 
@@ -144,8 +145,7 @@ class SDKMethodRunner:
         # insert initial job document
         job_id = self._init_job_rec(ctx["user_id"], params)
 
-
-        #TODO Figure out log level
+        # TODO Figure out log level
         logging.info("About to run job with")
         logging.info(client_groups)
         logging.info(params)
@@ -155,10 +155,20 @@ class SDKMethodRunner:
         params["token"] = ctx["token"]
         params["cg_resources_requirements"] = client_groups
         try:
-            condor_job_id = self.get_condor().run_job(params)
+            submission_info = self.get_condor().run_job(params)
+            condor_job_id = submission_info.clusterid
+            logging.info("Submitted job id and got ")
+            logging.info(condor_job_id)
         except Exception as e:
             ## delete job from database? Or mark it to a state it will never run?
+            logging.error(e)
             raise e
-            pass
 
-        return job_id
+        if submission_info.error is not None or condor_job_id is None:
+            raise (submission_info.error)
+
+        logging.info("Submission info is")
+        logging.info(submission_info)
+        logging.info(condor_job_id)
+        logging.info(type(condor_job_id))
+        return condor_job_id
