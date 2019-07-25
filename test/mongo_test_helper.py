@@ -180,7 +180,11 @@ class MongoTestHelper:
 
         logging.info("creating collection and dbs")
 
-        my_client = MongoClient("localhost", 27017)
+        try:
+            my_client = MongoClient("localhost", 27017)
+            my_client.ee2.command("createUser", "travis", pwd="test", roles=["readWrite"])
+        except Exception:
+            pass
 
         my_client = MongoClient("localhost", 27017, username="travis", password="test",
                                 authSource=db, authMechanism="DEFAULT")

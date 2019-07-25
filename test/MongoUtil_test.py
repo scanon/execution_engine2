@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
+import os
+from configparser import ConfigParser
 
 from test.mongo_test_helper import MongoTestHelper
 from execution_engine2.utils.MongoUtil import MongoUtil
@@ -9,16 +11,15 @@ class MongoUtilTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
 
-        cls.config = {}
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join('test', 'deploy.cfg'))
+        config_parser = ConfigParser()
+        config_parser.read(config_file)
 
-        cls.config['mongo-host'] = 'localhost'
-        cls.config['mongo-database'] = 'ee2'
-        cls.config['mongo-collection'] = "exec_engine"
-        cls.config['mongo-port'] = 27017
-        cls.config['mongo-user'] = ''
-        cls.config['mongo-password'] = ''
-        cls.config['mongo-authmechanism'] = "DEFAULT"
-        cls.config['start-local-mongo'] = 1
+        cls.config = {}
+        for nameval in config_parser.items("execution_engine2"):
+            cls.config[nameval[0]] = nameval[1]
+
+        cls.config["mongo-collection"] = "jobs"
 
         cls.mongo_helper = MongoTestHelper()
         cls.test_collection = cls.mongo_helper.create_test_db(
@@ -57,7 +58,7 @@ class MongoUtilTest(unittest.TestCase):
         self.assertTrue(set(class_attri) <= set(mongo_util.__dict__.keys()))
 
         job_col = mongo_util.job_col
-        self.assertEqual(job_col.name, "exec_engine")
+        self.assertEqual(job_col.name, "jobs")
         self.assertEqual(job_col.count_documents({}), 0)
 
     # def test_find_in_ok(self):
