@@ -186,7 +186,7 @@ class MongoTestHelper:
 
         # jobs = self._get_default_jobs()
 
-        my_collection.delete_many({})
+        # my_collection.delete_many({})
 
         # my_collection.insert_many(jobs)
 
