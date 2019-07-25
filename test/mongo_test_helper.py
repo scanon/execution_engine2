@@ -181,6 +181,10 @@ class MongoTestHelper:
         logging.info("creating collection and dbs")
 
         my_client = MongoClient("localhost", 27017)
+
+        my_client = MongoClient("localhost", 27017, username="travis", password="test",
+                                authSource=db, authMechanism="DEFAULT")
+
         my_db = my_client[db]
         my_collection = my_db[col]
 
