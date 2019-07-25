@@ -18,9 +18,7 @@ class MongoTestHelper:
         stdout, stderr = pipe.communicate()
 
         logging.info(stdout)
-
-        if stderr:
-            raise ValueError("Cannot start mongodb")
+        logging.info(stderr)
 
         logging.info("running mongod --version")
         pipe = subprocess.Popen(
@@ -176,18 +174,24 @@ class MongoTestHelper:
     def __init__(self):
         self._start_service()
 
-    def create_test_db(self, db="exec_engine", col="job"):
+    def create_test_db(self, db="ee2", col="jobs"):
 
         logging.info("creating collection and dbs")
 
-        my_client = MongoClient("localhost", 27017)
+        try:
+            my_client = MongoClient("localhost", 27017)
+            my_client.ee2.command("createUser", "travis", pwd="test", roles=["readWrite"])
+        except Exception:
+            pass
+
+        my_client = MongoClient("localhost", 27017, username="travis", password="test",
+                                authSource=db, authMechanism="DEFAULT")
+
         my_db = my_client[db]
         my_collection = my_db[col]
-
-        # jobs = self._get_default_jobs()
-
         my_collection.delete_many({})
 
+        # jobs = self._get_default_jobs()
         # my_collection.insert_many(jobs)
 
         logging.info("created db: {}".format(my_client.list_database_names()))

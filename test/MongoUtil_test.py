@@ -1,30 +1,31 @@
 # -*- coding: utf-8 -*-
-import os
 import unittest
+import os
 from configparser import ConfigParser
 
-from mongo_test_helper import MongoTestHelper
+from test.mongo_test_helper import MongoTestHelper
 from execution_engine2.utils.MongoUtil import MongoUtil
 
 
 class MongoUtilTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", None)
-        cls.cfg = {}
-        config = ConfigParser()
-        config.read(config_file)
-        for nameval in config.items("execution_engine2"):
-            cls.cfg[nameval[0]] = nameval[1]
 
-        cls.cfg["mongo-collection"] = "exec_engine"
-        cls.cfg["mongo-authmechanism"] = "DEFAULT"
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join('test', 'deploy.cfg'))
+        config_parser = ConfigParser()
+        config_parser.read(config_file)
+
+        cls.config = {}
+        for nameval in config_parser.items("execution_engine2"):
+            cls.config[nameval[0]] = nameval[1]
+
+        cls.config["mongo-collection"] = "jobs"
 
         cls.mongo_helper = MongoTestHelper()
         cls.test_collection = cls.mongo_helper.create_test_db(
-            db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
+            db=cls.config["mongo-database"], col=cls.config["mongo-collection"]
         )
-        cls.mongo_util = MongoUtil(cls.cfg)
+        cls.mongo_util = MongoUtil(cls.config)
 
     @classmethod
     def tearDownClass(cls):
@@ -57,7 +58,7 @@ class MongoUtilTest(unittest.TestCase):
         self.assertTrue(set(class_attri) <= set(mongo_util.__dict__.keys()))
 
         job_col = mongo_util.job_col
-        self.assertEqual(job_col.name, "exec_engine")
+        self.assertEqual(job_col.name, "jobs")
         self.assertEqual(job_col.count_documents({}), 0)
 
     # def test_find_in_ok(self):

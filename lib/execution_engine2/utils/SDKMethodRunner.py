@@ -9,15 +9,11 @@ from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from execution_engine2.utils.Condor import Condor
 
-from configparser import ConfigParser
 import os
 import json
 
 logging.basicConfig(level=logging.INFO)
 logging.info(json.loads(os.environ.get("debug", "False").lower()))
-
-
-import json
 
 
 class SDKMethodRunner:
@@ -91,7 +87,7 @@ class SDKMethodRunner:
 
         inputs.wsid = job.wsid
         inputs.method = params.get("method")
-        inputs.params = params
+        inputs.params = params.get("params")
         inputs.service_ver = params.get("service_ver")
         inputs.app_id = params.get("app_id")
 
