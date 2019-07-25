@@ -4,9 +4,14 @@ from collections import namedtuple
 from configparser import ConfigParser
 
 import htcondor
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from execution_engine2.exceptions import *
 from execution_engine2.utils.Scheduler import Scheduler
+import os, pwd
+import pathlib
 
 
 class Condor(Scheduler):
@@ -32,6 +37,8 @@ class Condor(Scheduler):
     AUTH_TOKEN = "KB_ADMIN_AUTH_TOKEN"
     DOCKER_TIMEOUT = "docker_timeout"
     POOL_USER = "pool_user"
+    INITIAL_DIR = "initial_dir"
+    LEAVE_JOB_IN_QUEUE = "leavejobinqueue"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
 
@@ -60,13 +67,23 @@ class Condor(Scheduler):
         self.config = ConfigParser()
         self.config.read(config_filepath)
         self.ee_endpoint = self.config.get(section=self.EE2, option=self.ENDPOINT)
-        self.executable = self.config.get(section=self.EE2, option=self.EXECUTABLE)
+        executable = self.config.get(section=self.EE2, option=self.EXECUTABLE)
+        if not pathlib.Path(executable).exists():
+            raise FileNotFoundError(executable)
+        self.executable = executable
+
         self.kb_auth_token = self.config.get(section=self.EE2, option=self.AUTH_TOKEN)
         self.docker_timeout = self.config.get(
             section=self.EE2, option=self.DOCKER_TIMEOUT, fallback="604801"
         )
         self.pool_user = self.config.get(
             section=self.EE2, option=self.POOL_USER, fallback="condor_pool"
+        )
+        self.initial_dir = self.config.get(
+            section=self.EE2, option=self.INITIAL_DIR, fallback="/condor_shared"
+        )
+        self.leave_job_in_queue = self.config.get(
+            section=self.EE2, option=self.LEAVE_JOB_IN_QUEUE, fallback="True"
         )
 
     def get_default_resources(self, client_group):
@@ -221,13 +238,16 @@ class Condor(Scheduler):
     def create_submit(self, params):
         self.check_for_missing_runjob_params(params)
         sub = dict()
-        sub["executable"] = self.executable
+        sub["JobBatchName"] = params.get("job_id")
+        sub[self.LEAVE_JOB_IN_QUEUE] = self.leave_job_in_queue
+        sub["initial_dir"] = self.initial_dir
+        sub["executable"] = self.executable  # Must exist
         sub["arguments"] = " ".join([params.get("job_id"), self.ee_endpoint])
         sub["environment"] = self.setup_environment_vars(params)
         sub["universe"] = "vanilla"
         sub["+AccountingGroup"] = params.get("user_id")
         sub["Concurrency_Limits"] = params.get("user_id")
-        sub["+Owner"] = self.pool_user
+        sub["+Owner"] = f'"{self.pool_user}"'  # Must be quoted
         sub["ShouldTransferFiles"] = "YES"
         sub["When_To_Transfer_Output"] = "ON_EXIT"
 
@@ -256,8 +276,9 @@ class Condor(Scheduler):
         :return:
         """
         if submit_file is None:
-            condor_submit = self.create_submit(params)
-        return self.run_submit(condor_submit)
+            submit_file = self.create_submit(params)
+
+        return self.run_submit(submit_file)
 
     # TODO add to pyi
     def run_submit(self, submit):
@@ -265,12 +286,17 @@ class Condor(Scheduler):
         sub = htcondor.Submit(submit)
         try:
             schedd = htcondor.Schedd()
+            logging.info(schedd)
+            logging.info(submit)
+            logging.info(os.getuid())
+            logging.info(pwd.getpwuid(os.getuid()).pw_name)
+            logging.info(submit)
             with schedd.transaction() as txn:
                 return self.submission_info(
-                    clusterid=sub.queue(txn, 1), submit=sub, error=None
+                    clusterid=str(sub.queue(txn, 1)), submit=sub, error=None
                 )
         except Exception as e:
-            return self.submission_info(None, submit=sub, error=e)
+            return self.submission_info(clusterid=None, submit=sub, error=e)
 
     def get_job_info(self, job_id=None, cluster_id=None):
         if job_id is not None and cluster_id is not None:

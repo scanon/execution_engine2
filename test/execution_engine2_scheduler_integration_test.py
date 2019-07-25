@@ -40,6 +40,43 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
         with cls.schedd.transaction() as txn:
             print(sub.queue(txn, 1))
 
+    def example(self):
+        import htcondor
+
+        schedd = htcondor.Schedd()
+        sub = htcondor.Submit({})
+        sub["executable"] = "/bin/sleep"
+        sub["arguments"] = "5m"
+        sub["AccountingGroup"] = "kbase"
+        with schedd.transaction() as txn:
+            print(sub.queue(txn, 1))
+
+    def longer_example(self):
+        import htcondor
+
+        schedd = htcondor.Schedd()
+        subdict = {
+            "JobBatchName": "5d38cbc5d9b2d9ce67fdbbc4",
+            "initial_dir": "/condor_shared",
+            "executable": "/bin/sleep",
+            "arguments": "5d38cbc5d9b2d9ce67fdbbc4 https://ci.kbase.us/services",
+            "environment": "DOCKER_JOB_TIMEOUT=604805 KB_ADMIN_AUTH_TOKEN=test_auth_token KB_AUTH_TOKEN=XXXX CLIENTGROUP=None JOB_ID=5d38cbc5d9b2d9ce67fdbbc4 CONDOR_ID=$(Cluster).$(Process) ",
+            "universe": "vanilla",
+            "+AccountingGroup": "bsadkhin",
+            "Concurrency_Limits": "bsadkhin",
+            "+Owner": '"condor_pool"',
+            "ShouldTransferFiles": "YES",
+            "When_To_Transfer_Output": "ON_EXIT",
+            "request_cpus": "4",
+            "request_memory": "2000M",
+            "request_disk": "30GB",
+            "requirements": 'regexp("njs",CLIENTGROUP)',
+        }
+
+        sub = htcondor.Submit(subdict)
+        with schedd.transaction() as txn:
+            print(sub.queue(txn, 1))
+
     @classmethod
     def check_kbase_user(cls):
         my_uid = os.getuid()
@@ -83,7 +120,7 @@ class ExecutionEngine2SchedulerIntegrationTest(unittest.TestCase):
             "job_id": "test_job_id",
             "user_id": "test",
             "token": "test_token",
-            "client_group_and_requirements": "",
+            "cg_resources_requirements": "",
         }
 
         submit_file = c.create_submit(params)

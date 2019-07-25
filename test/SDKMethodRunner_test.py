@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
-import unittest
 import time
+import unittest
 from configparser import ConfigParser
+
 from bson.objectid import ObjectId
 
-from execution_engine2.authclient import KBaseAuth as _KBaseAuth
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from execution_engine2.utils.MongoUtil import MongoUtil
-from mongo_test_helper import MongoTestHelper
-
-from installed_clients.WorkspaceClient import Workspace
+from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
+from installed_clients.WorkspaceClient import Workspace
+from lib.installed_clients.authclient import KBaseAuth as _KBaseAuth
+from test.mongo_test_helper import MongoTestHelper
 
 
 class SDKMethodRunner_test(unittest.TestCase):
@@ -98,7 +98,6 @@ class SDKMethodRunner_test(unittest.TestCase):
         )
 
     def test_get_module_git_commit(self):
-
         runner = self.getRunner()
 
         git_commit_1 = runner._get_module_git_commit("MEGAHIT.run_megahit", "2.2.1")
@@ -112,7 +111,6 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertNotEqual(git_commit_1, git_commit_2)
 
     def test_init_job_rec(self):
-
         runner = self.getRunner()
 
         self.assertEqual(self.test_collection.count(), 0)
