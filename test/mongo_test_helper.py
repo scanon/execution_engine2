@@ -176,7 +176,7 @@ class MongoTestHelper:
     def __init__(self):
         self._start_service()
 
-    def create_test_db(self, db="exec_engine", col="job"):
+    def create_test_db(self, db="ee2", col="jobs"):
 
         logging.info("creating collection and dbs")
 

@@ -17,8 +17,6 @@ from test.mongo_test_helper import MongoTestHelper
 class SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.token = os.environ.get("KB_AUTH_TOKEN", None)
-
         config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join('test', 'deploy.cfg'))
         config_parser = ConfigParser()
         config_parser.read(config_file)
@@ -27,30 +25,10 @@ class SDKMethodRunner_test(unittest.TestCase):
         for nameval in config_parser.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
 
-        print('fdsafsdafsd')
-        print(cls.cfg)
-
-        # Getting username from Auth profile for token
-        authServiceUrl = cls.cfg["auth-service-url"]
-        auth_client = _KBaseAuth(authServiceUrl)
-        cls.user_id = auth_client.get_user(cls.token)
-
-        cls.cfg["mongo-collection"] = "exec_engine"
-        cls.cfg["mongo-authmechanism"] = "DEFAULT"
+        cls.cfg["mongo-collection"] = "jobs"
 
         cls.method_runner = SDKMethodRunner(cls.cfg)
         cls.mongo_util = MongoUtil(cls.cfg)
-
-        cls.callback_url = os.environ["SDK_CALLBACK_URL"]
-        cls.foft = FakeObjectsForTests(cls.callback_url, service_ver="dev")
-
-        cls.wsURL = cls.cfg["workspace-url"]
-        cls.wsClient = Workspace(cls.wsURL)
-        suffix = int(time.time() * 1000)
-        cls.wsName = "test_ContigFilter_" + str(suffix)
-        cls.ws = cls.wsClient.create_workspace({"workspace": cls.wsName})
-        cls.ws_id = cls.ws[0]
-
         cls.mongo_helper = MongoTestHelper()
         cls.test_collection = cls.mongo_helper.create_test_db(
             db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
@@ -60,7 +38,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         return self.__class__.method_runner
 
     def test_init_ok(self):
-        class_attri = ["catalog", "workspace", "mongo_util"]
+        class_attri = ["config", "catalog", "workspace", "mongo_util", "condor"]
         runner = self.getRunner()
         self.assertTrue(set(class_attri) <= set(runner.__dict__.keys()))
 
