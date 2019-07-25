@@ -12,7 +12,9 @@ from test.mongo_test_helper import MongoTestHelper
 class SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join("test", "deploy.cfg"))
+        config_file = os.environ.get(
+            "KB_DEPLOYMENT_CONFIG", os.path.join("test", "deploy.cfg")
+        )
         config_parser = ConfigParser()
         config_parser.read(config_file)
 

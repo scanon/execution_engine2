@@ -68,8 +68,15 @@ class Condor(Scheduler):
         self.config = ConfigParser()
         self.config.read(config_filepath)
         self.ee_endpoint = self.config.get(section=self.EE2, option=self.ENDPOINT)
+
+        self.initial_dir = self.config.get(
+            section=self.EE2, option=self.INITIAL_DIR, fallback="/condor_shared"
+        )
+
         executable = self.config.get(section=self.EE2, option=self.EXECUTABLE)
-        if not pathlib.Path(executable).exists():
+        if not pathlib.Path(executable).exists() and not pathlib.Path(
+            self.initial_dir + "/" + executable
+        ):
             raise FileNotFoundError(executable)
         self.executable = executable
 
@@ -80,14 +87,14 @@ class Condor(Scheduler):
         self.pool_user = self.config.get(
             section=self.EE2, option=self.POOL_USER, fallback="condor_pool"
         )
-        self.initial_dir = self.config.get(
-            section=self.EE2, option=self.INITIAL_DIR, fallback="/condor_shared"
-        )
+
         self.leave_job_in_queue = self.config.get(
             section=self.EE2, option=self.LEAVE_JOB_IN_QUEUE, fallback="True"
         )
         self.transfer_input_files = self.config.get(
-            section=self.EE2, option=self.TRANSFER_INPUT_FILES, fallback="/condor_shared/JobRunner.tgz"
+            section=self.EE2,
+            option=self.TRANSFER_INPUT_FILES,
+            fallback="/condor_shared/JobRunner.tgz",
         )
 
     def get_default_resources(self, client_group):
