@@ -1,61 +1,42 @@
 # -*- coding: utf-8 -*-
 import os
-import time
 import unittest
 from configparser import ConfigParser
-
 from bson.objectid import ObjectId
 
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from installed_clients.FakeObjectsForTestsClient import FakeObjectsForTests
-from installed_clients.WorkspaceClient import Workspace
-from lib.installed_clients.authclient import KBaseAuth as _KBaseAuth
 from test.mongo_test_helper import MongoTestHelper
 
 
 class SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.token = os.environ.get("KB_AUTH_TOKEN", None)
-        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", None)
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", os.path.join("test", "deploy.cfg"))
+        config_parser = ConfigParser()
+        config_parser.read(config_file)
+
         cls.cfg = {}
-        config = ConfigParser()
-        config.read(config_file)
-        for nameval in config.items("execution_engine2"):
+        for nameval in config_parser.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
 
-        # Getting username from Auth profile for token
-        authServiceUrl = cls.cfg["auth-service-url"]
-        auth_client = _KBaseAuth(authServiceUrl)
-        cls.user_id = auth_client.get_user(cls.token)
-
-        cls.cfg["mongo-collection"] = "exec_engine"
-        cls.cfg["mongo-authmechanism"] = "DEFAULT"
+        cls.cfg["mongo-collection"] = "jobs"
 
         cls.method_runner = SDKMethodRunner(cls.cfg)
         cls.mongo_util = MongoUtil(cls.cfg)
-
-        cls.callback_url = os.environ["SDK_CALLBACK_URL"]
-        cls.foft = FakeObjectsForTests(cls.callback_url, service_ver="dev")
-
-        cls.wsURL = cls.cfg["workspace-url"]
-        cls.wsClient = Workspace(cls.wsURL)
-        suffix = int(time.time() * 1000)
-        cls.wsName = "test_ContigFilter_" + str(suffix)
-        cls.ws = cls.wsClient.create_workspace({"workspace": cls.wsName})
-        cls.ws_id = cls.ws[0]
-
         cls.mongo_helper = MongoTestHelper()
         cls.test_collection = cls.mongo_helper.create_test_db(
             db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
         )
 
+        cls.user_id = "fake_test_user"
+        cls.ws_id = "fake_ws_0000"
+
     def getRunner(self):
         return self.__class__.method_runner
 
     def test_init_ok(self):
-        class_attri = ["catalog", "workspace", "mongo_util"]
+        class_attri = ["config", "catalog", "workspace", "mongo_util", "condor"]
         runner = self.getRunner()
         self.assertTrue(set(class_attri) <= set(runner.__dict__.keys()))
 
@@ -66,9 +47,8 @@ class SDKMethodRunner_test(unittest.TestCase):
             "kb_uploadmethods.import_sra_from_staging"
         )
 
-        expected_groups = ["kb_upload"]  # expected to fail if catalog is updated
+        expected_groups = "kb_upload"  # expected to fail if CI catalog is updated
         self.assertCountEqual(expected_groups, client_groups)
-
         client_groups = runner._get_client_groups("MEGAHIT.run_megahit")
         self.assertEqual(0, len(client_groups))
 
@@ -77,27 +57,28 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         self.assertIn("unrecognized method:", str(context.exception.args))
 
-    def test_check_ws_objects(self):
-        runner = self.getRunner()
+    # def test_check_ws_objects(self):
+    #     runner = self.getRunner()
 
-        [info1, info2] = self.foft.create_fake_reads(
-            {"ws_name": self.wsName, "obj_names": ["reads1", "reads2"]}
-        )
-        read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
-        read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
+    #     [info1, info2] = self.foft.create_fake_reads(
+    #         {"ws_name": self.wsName, "obj_names": ["reads1", "reads2"]}
+    #     )
+    #     read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
+    #     read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
 
-        runner._check_ws_objects([read1ref, read2ref])
+    #     runner._check_ws_objects([read1ref, read2ref])
 
-        fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
+    #     fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
 
-        with self.assertRaises(ValueError) as context:
-            runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
+    #     with self.assertRaises(ValueError) as context:
+    #         runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
 
-        self.assertIn(
-            "Some workspace object is inaccessible", str(context.exception.args)
-        )
+    #     self.assertIn(
+    #         "Some workspace object is inaccessible", str(context.exception.args)
+    #     )
 
     def test_get_module_git_commit(self):
+
         runner = self.getRunner()
 
         git_commit_1 = runner._get_module_git_commit("MEGAHIT.run_megahit", "2.2.1")
@@ -111,6 +92,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertNotEqual(git_commit_1, git_commit_2)
 
     def test_init_job_rec(self):
+
         runner = self.getRunner()
 
         self.assertEqual(self.test_collection.count(), 0)

@@ -11,7 +11,7 @@ WORK_DIR = /kb/module/work/tmp
 EXECUTABLE_SCRIPT_NAME = run_$(SERVICE_CAPS)_async_job.sh
 STARTUP_SCRIPT_NAME = start_server.sh
 TEST_SCRIPT_NAME = run_tests.sh
-CONDOR_DOCKER_IMAGE_TAG_NAME = kbase/ee2:condor_test_instance 
+CONDOR_DOCKER_IMAGE_TAG_NAME = kbase/ee2:condor_test_instance
 
 
 .PHONY: test
@@ -60,20 +60,19 @@ build-test-script:
 	echo 'python -m nose --with-coverage --cover-package=$(SERVICE_CAPS) --cover-html --cover-html-dir=/kb/module/work/test_coverage --nocapture  --nologcapture .' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 
+TEST_FILES = test/execution_engine2_scheduler_test.py test/MongoUtil_test.py test/SDKMethodRunner_test.py
 test:
-	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_test.py
+	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  $(TEST_FILES)
 	#docker pull ee2:condor_tests
 
 integration_test:
 	./test/dockerfiles/condor/start_condor_docker_travis.sh
 	nosetests -x -v  --nocapture --nologcapture  --with-coverage --cover-html  test/execution_engine2_scheduler_integration_test.py
 
-
-
 clean:
 	rm -rfv $(LBIN_DIR)
-	
-build-docker-image:	
+
+build-docker-image:
 	./build/build_docker_image.sh
 
 build-condor-test-image:
