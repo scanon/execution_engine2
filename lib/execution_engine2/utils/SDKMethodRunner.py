@@ -94,7 +94,8 @@ class SDKMethodRunner:
         job.job_input = inputs
         # job.job_output = output
 
-        job.save()
+        with self.get_mongo_util().me_collection():
+            job.save()
 
         return str(job.id)
 
