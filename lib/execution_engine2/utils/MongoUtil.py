@@ -4,6 +4,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 import subprocess
 import traceback
 from bson.objectid import ObjectId
+from mongoengine import connect
 
 
 class MongoUtil:
@@ -60,10 +61,23 @@ class MongoUtil:
                 authSource=mongo_database,
                 authMechanism=mongo_authmechanism,
             )
+
+            connect(
+                db=mongo_database,
+                host=mongo_host,
+                port=mongo_port,
+                username=mongo_user,
+                password=mongo_password,
+                authentication_source=mongo_database,
+                authentication_mechanism=mongo_authmechanism)
         else:
             logging.info("no mongo-user found in config file, connecting without auth")
             my_client = MongoClient(mongo_host, mongo_port)
 
+            connect(
+                mongo_database,
+                host=mongo_host,
+                port=mongo_port)
         try:
             my_client.server_info()  # force a call to server
         except ServerSelectionTimeoutError as e:

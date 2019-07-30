@@ -77,7 +77,7 @@ class SDKMethodRunner:
     def _init_job_rec(self, user_id, params):
 
         job = Job()
-        output = JobOutput()
+        # output = JobOutput()
         inputs = JobInput()
 
         job.user = user_id
@@ -92,11 +92,11 @@ class SDKMethodRunner:
         inputs.app_id = params.get("app_id")
 
         job.job_input = inputs
-        job.job_output = output
+        # job.job_output = output
 
-        insert_rec = self.get_mongo_util().insert_one(job.to_mongo())
+        job.save()
 
-        return str(insert_rec)
+        return str(job.id)
 
     def get_mongo_util(self):
         if self.mongo_util is None:

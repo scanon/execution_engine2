@@ -32,7 +32,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         )
 
         cls.user_id = "fake_test_user"
-        cls.ws_id = "fake_ws_0000"
+        cls.ws_id = 9999
 
     def getRunner(self):
         return self.__class__.method_runner
@@ -129,8 +129,7 @@ class SDKMethodRunner_test(unittest.TestCase):
             "creation_time",
             "complete",
             "error",
-            "job_input",
-            "job_output",
+            "job_input"
         ]
         self.assertCountEqual(result.keys(), expected_keys)
         self.assertEqual(result["user"], self.user_id)
@@ -147,8 +146,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(job_input["app_id"], "MEGAHIT/run_megahit")
         self.assertEqual(job_input["service_ver"], "2.2.1")
 
-        job_output = result["job_output"]
-        self.assertEqual(len(job_output), 0)
+        self.assertFalse(result.get("job_output"))
 
         self.test_collection.delete_one({"_id": ObjectId(job_id)})
         self.assertEqual(self.test_collection.count(), 0)

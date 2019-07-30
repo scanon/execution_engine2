@@ -177,6 +177,7 @@ class MongoTestHelper:
     def create_test_db(self, db="ee2", col="jobs"):
 
         logging.info("creating collection and dbs")
+        col = 'job'
 
         try:
             my_client = MongoClient("localhost", 27017)
