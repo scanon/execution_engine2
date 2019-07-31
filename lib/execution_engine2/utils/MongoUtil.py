@@ -4,6 +4,9 @@ from pymongo.errors import ServerSelectionTimeoutError
 import subprocess
 import traceback
 from bson.objectid import ObjectId
+from mongoengine import connect
+
+from contextlib import contextmanager
 
 
 class MongoUtil:
@@ -38,7 +41,6 @@ class MongoUtil:
         mongo_host,
         mongo_port,
         mongo_database,
-        mongo_collection,
         mongo_user=None,
         mongo_password=None,
         mongo_authmechanism="DEFAULT",
@@ -52,7 +54,7 @@ class MongoUtil:
                 "mongo-user found in config file, configuring client for authentication using mech "
                 + str(mongo_authmechanism)
             )
-            my_client = MongoClient(
+            pymongo_client = MongoClient(
                 mongo_host,
                 mongo_port,
                 username=mongo_user,
@@ -60,12 +62,25 @@ class MongoUtil:
                 authSource=mongo_database,
                 authMechanism=mongo_authmechanism,
             )
+
+            mongoengine_client = connect(
+                db=mongo_database,
+                host=mongo_host,
+                port=mongo_port,
+                username=mongo_user,
+                password=mongo_password,
+                authentication_source=mongo_database,
+                authentication_mechanism=mongo_authmechanism)
         else:
             logging.info("no mongo-user found in config file, connecting without auth")
-            my_client = MongoClient(mongo_host, mongo_port)
+            pymongo_client = MongoClient(mongo_host, mongo_port)
 
+            mongoengine_client = connect(
+                mongo_database,
+                host=mongo_host,
+                port=mongo_port)
         try:
-            my_client.server_info()  # force a call to server
+            pymongo_client.server_info()  # force a call to server
         except ServerSelectionTimeoutError as e:
             error_msg = "Connot connect to Mongo server\n"
             error_msg += "ERROR -- {}:\n{}".format(
@@ -73,11 +88,7 @@ class MongoUtil:
             )
             raise ValueError(error_msg)
 
-        # TODO: check potential problems. MongoDB will create the collection if it does not exist.
-        my_database = my_client[mongo_database]
-        my_collection = my_database[mongo_collection]
-
-        return my_collection
+        return pymongo_client, mongoengine_client
 
     def __init__(self, config):
         self.mongo_host = config["mongo-host"]
@@ -100,19 +111,24 @@ class MongoUtil:
         if start_local:
             self._start_local_service()
 
-        self.job_col = self._get_collection(
-            self.mongo_host,
-            self.mongo_port,
-            self.mongo_database,
-            self.mongo_collection,
-            self.mongo_user,
-            self.mongo_pass,
-            self.mongo_authmechanism,
-        )
-
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.INFO
         )
+
+    @contextmanager
+    def me_collection(self):
+        try:
+            pymongo_client, mongoengine_client = self._get_collection(
+                                                    self.mongo_host,
+                                                    self.mongo_port,
+                                                    self.mongo_database,
+                                                    self.mongo_user,
+                                                    self.mongo_pass,
+                                                    self.mongo_authmechanism,)
+            yield pymongo_client, mongoengine_client
+        finally:
+            pymongo_client.close()
+            mongoengine_client.close()
 
     def insert_one(self, doc):
         """
@@ -120,14 +136,15 @@ class MongoUtil:
         """
         logging.info("start inserting document")
 
-        try:
-            rec = self.job_col.insert_one(doc)
-        except Exception as e:
-            error_msg = "Connot insert doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            try:
+                rec = pymongo_client[self.mongo_database][self.mongo_collection].insert_one(doc)
+            except Exception as e:
+                error_msg = "Connot insert doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
         return rec.inserted_id
 
@@ -138,56 +155,61 @@ class MongoUtil:
         """
         logging.info("start updating document")
 
-        try:
-            update_filter = {"_id": ObjectId(job_id)}
-            update = {"$set": doc}
-            self.job_col.update_one(update_filter, update)
-        except Exception as e:
-            error_msg = "Connot update doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                update_filter = {"_id": ObjectId(job_id)}
+                update = {"$set": doc}
+                job_col.update_one(update_filter, update)
+            except Exception as e:
+                error_msg = "Connot update doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
         return True
 
-    def delete_one(self, doc, job_id):
+    def delete_one(self, job_id):
         """
-        delete a doc
+        delete a doc by _id
         """
         logging.info("start deleting document")
-
-        try:
-            delete_filter = {"_id": ObjectId(job_id)}
-            self.job_col.delete_one(delete_filter)
-        except Exception as e:
-            error_msg = "Connot delete doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                delete_filter = {"_id": ObjectId(job_id)}
+                job_col.delete_one(delete_filter)
+            except Exception as e:
+                error_msg = "Connot delete doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
         return True
 
-    def find_in(self, elements, field_name, projection={"_id": False}, batch_size=1000):
+    def find_in(self, elements, field_name, projection=None, batch_size=1000):
         """
         return cursor that contains docs which field column is in elements
         """
         logging.info("start querying MongoDB")
 
-        try:
-            result = self.handle_collection.find(
-                {field_name: {"$in": elements}},
-                projection=projection,
-                batch_size=batch_size,
-            )
-        except Exception as e:
-            error_msg = "Connot query doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                result = job_col.find(
+                    {field_name: {"$in": elements}},
+                    projection=projection,
+                    batch_size=batch_size,
+                )
+            except Exception as e:
+                error_msg = "Connot query doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
-        logging.info("returned {} results".format(result.count()))
+            logging.info("returned {} results".format(result.count()))
 
         return result
