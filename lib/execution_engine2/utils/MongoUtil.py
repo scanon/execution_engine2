@@ -155,56 +155,61 @@ class MongoUtil:
         """
         logging.info("start updating document")
 
-        try:
-            update_filter = {"_id": ObjectId(job_id)}
-            update = {"$set": doc}
-            self.job_col.update_one(update_filter, update)
-        except Exception as e:
-            error_msg = "Connot update doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                update_filter = {"_id": ObjectId(job_id)}
+                update = {"$set": doc}
+                job_col.update_one(update_filter, update)
+            except Exception as e:
+                error_msg = "Connot update doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
         return True
 
-    def delete_one(self, doc, job_id):
+    def delete_one(self, job_id):
         """
-        delete a doc
+        delete a doc by _id
         """
         logging.info("start deleting document")
-
-        try:
-            delete_filter = {"_id": ObjectId(job_id)}
-            self.job_col.delete_one(delete_filter)
-        except Exception as e:
-            error_msg = "Connot delete doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                delete_filter = {"_id": ObjectId(job_id)}
+                job_col.delete_one(delete_filter)
+            except Exception as e:
+                error_msg = "Connot delete doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
         return True
 
-    def find_in(self, elements, field_name, projection={"_id": False}, batch_size=1000):
+    def find_in(self, elements, field_name, projection=None, batch_size=1000):
         """
         return cursor that contains docs which field column is in elements
         """
         logging.info("start querying MongoDB")
 
-        try:
-            result = self.handle_collection.find(
-                {field_name: {"$in": elements}},
-                projection=projection,
-                batch_size=batch_size,
-            )
-        except Exception as e:
-            error_msg = "Connot query doc\n"
-            error_msg += "ERROR -- {}:\n{}".format(
-                e, "".join(traceback.format_exception(None, e, e.__traceback__))
-            )
-            raise ValueError(error_msg)
+        with self.me_collection() as (pymongo_client, mongoengine_client):
+            job_col = pymongo_client[self.mongo_database][self.mongo_collection]
+            try:
+                result = job_col.find(
+                    {field_name: {"$in": elements}},
+                    projection=projection,
+                    batch_size=batch_size,
+                )
+            except Exception as e:
+                error_msg = "Connot query doc\n"
+                error_msg += "ERROR -- {}:\n{}".format(
+                    e, "".join(traceback.format_exception(None, e, e.__traceback__))
+                )
+                raise ValueError(error_msg)
 
-        logging.info("returned {} results".format(result.count()))
+            logging.info("returned {} results".format(result.count()))
 
         return result

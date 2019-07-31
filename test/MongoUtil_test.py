@@ -52,7 +52,7 @@ class MongoUtilTest(unittest.TestCase):
         mongo_util = self.getMongoUtil()
         self.assertTrue(set(class_attri) <= set(mongo_util.__dict__.keys()))
 
-    def test_connection(self):
+    def test_connection_ok(self):
 
         job = Job()
 
@@ -96,13 +96,13 @@ class MongoUtilTest(unittest.TestCase):
     def test_insert_one_ok(self):
 
         mongo_util = self.getMongoUtil()
-        self.assertEqual(self.test_collection.count(), 0)
-
-        doc = {"test_key": "foo"}
-        job_id = mongo_util.insert_one(doc)
 
         with mongo_util.me_collection() as (pymongo_client, mongoengine_client):
             col = pymongo_client[self.config["mongo-database"]][self.config["mongo-collection"]]
+
+            self.assertEqual(col.count(), 0)
+            doc = {"test_key": "foo"}
+            job_id = mongo_util.insert_one(doc)
             self.assertEqual(col.count(), 1)
 
             result = list(col.find({"_id": ObjectId(job_id)}))[0]
@@ -111,98 +111,79 @@ class MongoUtilTest(unittest.TestCase):
             col.delete_one({"_id": ObjectId(job_id)})
             self.assertEqual(col.count(), 0)
 
-    # def test_find_in_ok(self):
-    #     self.start_test()
-    #     mongo_util = self.getMongoUtil()
+    def test_find_in_ok(self):
 
-    #     # test query 'hid' field
-    #     elements = ['KBH_68020', 'KBH_68022', 'fake_id']
-    #     docs = mongo_util.find_in(elements, 'hid')
-    #     self.assertEqual(docs.count(), 2)
+        mongo_util = self.getMongoUtil()
 
-    #     # test query 'hid' field with empty data
-    #     elements = [0]
-    #     docs = mongo_util.find_in(elements, 'hid')
-    #     self.assertEqual(docs.count(), 0)
+        with mongo_util.me_collection() as (pymongo_client, mongoengine_client):
+            col = pymongo_client[self.config["mongo-database"]][self.config["mongo-collection"]]
 
-    #     # test query 'id' field
-    #     elements = ['b753774f-0bbd-4b96-9202-89b0c70bf31c']
-    #     docs = mongo_util.find_in(elements, 'id')
-    #     self.assertEqual(docs.count(), 1)
-    #     doc = docs.next()
-    #     self.assertFalse('_id' in doc.keys())
-    #     self.assertEqual(doc.get('hid'), 'KBH_68020')
+            self.assertEqual(col.count(), 0)
+            doc = {"test_key_1": "foo", "test_key_2": "bar"}
+            job_id = mongo_util.insert_one(doc)
+            self.assertEqual(col.count(), 1)
 
-    #     # test null projection
-    #     elements = ['b753774f-0bbd-4b96-9202-89b0c70bf31c']
-    #     docs = mongo_util.find_in(elements, 'id', projection=None)
-    #     self.assertEqual(docs.count(), 1)
-    #     doc = docs.next()
-    #     self.assertEqual(doc.get('_id'), 'KBH_68020')
-    #     self.assertEqual(doc.get('hid'), 'KBH_68020')
+            # test query empty field
+            elements = ["foobar"]
+            docs = mongo_util.find_in(elements, "test_key_1")
+            self.assertEqual(docs.count(), 0)
 
-    # def test_update_one_ok(self):
-    #     self.start_test()
-    #     mongo_util = self.getMongoUtil()
+            # test query "foo"
+            elements = ["foo"]
+            docs = mongo_util.find_in(elements, "test_key_1")
+            self.assertEqual(docs.count(), 1)
+            doc = docs.next()
+            self.assertTrue("_id" in doc.keys())
+            self.assertTrue(doc.get("_id"), job_id)
+            self.assertEqual(doc.get("test_key_1"), "foo")
 
-    #     elements = ['b753774f-0bbd-4b96-9202-89b0c70bf31c']
-    #     docs = mongo_util.find_in(elements, 'id', projection=None)
-    #     self.assertEqual(docs.count(), 1)
-    #     doc = docs.next()
-    #     self.assertEqual(doc.get('created_by'), 'tgu2')
+            col.delete_one({"_id": ObjectId(job_id)})
+            self.assertEqual(col.count(), 0)
 
-    #     update_doc = copy.deepcopy(doc)
-    #     new_user = 'test_user'
-    #     update_doc['created_by'] = new_user
+    def test_update_one_ok(self):
 
-    #     mongo_util.update_one(update_doc)
+        mongo_util = self.getMongoUtil()
 
-    #     docs = mongo_util.find_in(elements, 'id', projection=None)
-    #     new_doc = docs.next()
-    #     self.assertEqual(new_doc.get('created_by'), new_user)
+        with mongo_util.me_collection() as (pymongo_client, mongoengine_client):
+            col = pymongo_client[self.config["mongo-database"]][self.config["mongo-collection"]]
 
-    #     mongo_util.update_one(doc)
+            self.assertEqual(col.count(), 0)
+            doc = {"test_key_1": "foo"}
+            job_id = mongo_util.insert_one(doc)
+            self.assertEqual(col.count(), 1)
 
-    # def test_delete_one_ok(self):
-    #     self.start_test()
-    #     mongo_util = self.getMongoUtil()
-    #     docs = mongo_util.handle_collection.find()
-    #     self.assertEqual(docs.count(), 10)
+            elements = ["foo"]
+            docs = mongo_util.find_in(elements, "test_key_1")
+            self.assertEqual(docs.count(), 1)
+            doc = docs.next()
+            self.assertTrue("_id" in doc.keys())
+            self.assertTrue(doc.get("_id"), job_id)
+            self.assertEqual(doc.get("test_key_1"), "foo")
 
-    #     doc = docs.next()
-    #     hid = doc.get('hid')
-    #     mongo_util.delete_one(doc)
-    #     self.assertEqual(mongo_util.handle_collection.find().count(), 9)
+            mongo_util.update_one({"test_key_1": "bar"}, job_id)
 
-    #     docs = mongo_util.find_in([hid], 'hid', projection=None)
-    #     self.assertEqual(docs.count(), 0)
+            elements = ["foo"]
+            docs = mongo_util.find_in(elements, "test_key_1")
+            self.assertEqual(docs.count(), 0)
 
-    #     mongo_util.insert_one(doc)
-    #     self.assertEqual(mongo_util.handle_collection.find().count(), 10)
-    #     docs = mongo_util.find_in([hid], 'hid', projection=None)
-    #     self.assertEqual(docs.count(), 1)
+            elements = ["bar"]
+            docs = mongo_util.find_in(elements, "test_key_1")
+            self.assertEqual(docs.count(), 1)
 
-    # def test_delete_many_ok(self):
-    #     self.start_test()
-    #     mongo_util = self.getMongoUtil()
-    #     docs = mongo_util.handle_collection.find()
-    #     self.assertEqual(docs.count(), 10)
+            col.delete_one({"_id": ObjectId(job_id)})
+            self.assertEqual(col.count(), 0)
 
-    #     docs_to_delete = list()
-    #     docs_to_delete.append(docs.next())
-    #     docs_to_delete.append(docs.next())
-    #     docs_to_delete = docs_to_delete * 2  # test delete duplicate items
-    #     deleted_count = mongo_util.delete_many(docs_to_delete)
-    #     self.assertEqual(deleted_count, 2)
-    #     self.assertEqual(mongo_util.handle_collection.find().count(), 8)
-    #     docs = mongo_util.find_in([doc.get('hid') for doc in docs_to_delete], 'hid')
-    #     self.assertEqual(docs.count(), 0)
+    def test_delete_one_ok(self):
 
-    #     for doc in docs_to_delete:
-    #         try:
-    #             mongo_util.insert_one(doc)
-    #         except Exception:
-    #             pass
-    #     self.assertEqual(mongo_util.handle_collection.find().count(), 10)
-    #     docs = mongo_util.find_in([doc.get('hid') for doc in docs_to_delete], 'hid')
-    #     self.assertEqual(docs.count(), 2)
+        mongo_util = self.getMongoUtil()
+
+        with mongo_util.me_collection() as (pymongo_client, mongoengine_client):
+            col = pymongo_client[self.config["mongo-database"]][self.config["mongo-collection"]]
+
+            self.assertEqual(col.count(), 0)
+            doc = {"test_key_1": "foo", "test_key_2": "bar"}
+            job_id = mongo_util.insert_one(doc)
+            self.assertEqual(col.count(), 1)
+
+            mongo_util.delete_one(job_id)
+            self.assertEqual(col.count(), 0)
