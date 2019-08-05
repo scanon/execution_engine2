@@ -2,19 +2,21 @@
 import os
 import unittest
 from configparser import ConfigParser
+
 from bson.objectid import ObjectId
 
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
+from test.test_utils import bootstrap
+
+bootstrap()
 
 
 class SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        config_file = os.environ.get(
-            "KB_DEPLOYMENT_CONFIG", os.path.join("test", "deploy.cfg")
-        )
+        config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", "test/deploy.cfg")
         config_parser = ConfigParser()
         config_parser.read(config_file)
 
@@ -22,13 +24,14 @@ class SDKMethodRunner_test(unittest.TestCase):
         for nameval in config_parser.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
 
-        cls.cfg["mongo-collection"] = "jobs"
+        cls.cfg["start-local-mongo"] = "1"
 
         cls.method_runner = SDKMethodRunner(cls.cfg)
         cls.mongo_util = MongoUtil(cls.cfg)
-        cls.mongo_helper = MongoTestHelper()
+        cls.mongo_helper = MongoTestHelper(cls.cfg)
+
         cls.test_collection = cls.mongo_helper.create_test_db(
-            db=cls.cfg["mongo-database"], col=cls.cfg["mongo-collection"]
+            db=cls.cfg["mongo-database"], col=cls.cfg["mongo-jobs-collection"]
         )
 
         cls.user_id = "fake_test_user"
@@ -119,27 +122,15 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         result = list(self.test_collection.find({"_id": ObjectId(job_id)}))[0]
 
-        expected_keys = [
-            "_id",
-            "user",
-            "authstrat",
-            "wsid",
-            "created",
-            "updated",
-            "creation_time",
-            "complete",
-            "error",
-            "job_input"
-        ]
+        expected_keys = ['_id', 'user', 'authstrat', 'wsid', 'status', 'updated', 'job_input']
+
         self.assertCountEqual(result.keys(), expected_keys)
         self.assertEqual(result["user"], self.user_id)
         self.assertEqual(result["authstrat"], "kbaseworkspace")
         self.assertEqual(result["wsid"], self.ws_id)
-        self.assertFalse(result["complete"])
-        self.assertFalse(result["error"])
 
         job_input = result["job_input"]
-        expected_ji_keys = ["wsid", "method", "params", "service_ver", "app_id"]
+        expected_ji_keys = ["wsid", "method", "params", "service_ver", "app_id", "narrative_cell_info"]
         self.assertCountEqual(job_input.keys(), expected_ji_keys)
         self.assertEqual(job_input["wsid"], self.ws_id)
         self.assertEqual(job_input["method"], "MEGAHIT.run_megahit")

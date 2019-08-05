@@ -12,10 +12,11 @@ from mongoengine import (
     LongField,
     EmbeddedDocumentField,
     DynamicField,
+    ValidationError,
+    ObjectIdField,
+    EmbeddedDocumentListField,
 )
 
-status = ["created", "queued", "running", "finished"]
-authstrat = ["kbaseworkspace", "something_else"]
 
 # TODO Make sure Datetime is correct format
 # TODO Use ReferenceField to create a mapping between WSID and JOB IDS?
@@ -23,6 +24,22 @@ authstrat = ["kbaseworkspace", "something_else"]
 "created": ISODate("2019-02-19T23:00:57.119Z"),
 "updated": ISODate("2019-02-19T23:01:32.132Z"),
 """
+
+
+class LogLines(EmbeddedDocument):
+    line = StringField()
+    linepos = IntField()
+    error = BooleanField()
+
+
+class JobLog(Document):
+    primary_key = ObjectIdField(primary_key=True)
+    updated = DateTimeField(default=datetime.datetime.utcnow)
+    original_line_count = IntField()
+    stored_line_count = IntField()
+    lines = EmbeddedDocumentListField(LogLines)
+    # meta = {"db_alias": "logs"}
+    meta = {"collection": "ee2_logs"}
 
 
 class Meta(EmbeddedDocument):
@@ -42,7 +59,7 @@ class JobInput(EmbeddedDocument):
     service_ver = StringField(required=True)
     app_id = StringField(required=True)
 
-    narrative_cell_info = EmbeddedDocumentField(Meta)
+    narrative_cell_info = EmbeddedDocumentField(Meta, required=True)
 
 
 class JobOutput(EmbeddedDocument):
@@ -51,30 +68,54 @@ class JobOutput(EmbeddedDocument):
     result = DynamicField(required=True)
 
 
+class Status(Enum):
+    created = "created"
+    estimating = "estimating"
+    queued = "queued"
+    running = "running"
+    finished = "finished"
+    error = "error"
+
+
+class AuthStrat(Enum):
+    kbaseworkspace = "kbaseworkspace"
+    execution_engine = "execution_engine"
+
+
+def valid_status(status):
+    try:
+        Status(status)
+    except Exception as e:
+        raise ValidationError(
+            f"{status} is not a valid status {vars(Status)['_member_names_']}"
+        )
+
+
+def valid_authstrat(strat):
+    if strat is None:
+        pass
+    try:
+        AuthStrat(strat)
+    except Exception as e:
+        raise ValidationError(
+            f"{strat} is not a valid Authentication strategy {vars(AuthStrat)['_member_names_']}"
+        )
+
+
 class Job(Document):
     user = StringField(required=True)
-    authstrat = StringField(required=True, default="kbaseworkspace")
+    authstrat = StringField(required=True, default="kbaseworkspace", validation=valid_authstrat)
     wsid = IntField(required=True)
-
-    created = DateTimeField(default=datetime.datetime.utcnow)
+    status = StringField(required=True, validation=valid_status)
     updated = DateTimeField(default=datetime.datetime.utcnow)
-    started = DateTimeField()
-
-    creation_time = LongField()
-    exec_start_time = LongField()
-    finish_time = LongField()
-
-    complete = BooleanField(default=False)
-    error = BooleanField(default=False)
-
+    started = DateTimeField(default=None)
     errormsg = StringField()
-
     scheduler_type = StringField()
     scheduler_id = StringField()
-
-    job_input = EmbeddedDocumentField(JobInput)
-
+    job_input = EmbeddedDocumentField(JobInput, required=True)
     job_output = EmbeddedDocumentField(JobOutput)
+    # meta = {"db_alias": "ee2"}
+    meta = {"collection": "ee2_jobs"}
 
 
 ###
@@ -103,6 +144,8 @@ result_example = {
         "progtype": None,
     },
 }
+
+
 ####
 #### Unused Stuff to look at
 ####
@@ -114,17 +157,3 @@ class Results(EmbeddedDocument):
     workspaceids = ListField()
     workspaceurl = StringField()
     shocknodes = ListField()
-
-
-class ResultsResults(EmbeddedDocument):
-    run_id = StringField()
-    shockurl = StringField()
-    workspaceids = StringField()
-    workspaceurl = StringField()
-
-
-class Status(Enum):
-    created = 1
-    queued = 2
-    running = 3
-    finshed = 4

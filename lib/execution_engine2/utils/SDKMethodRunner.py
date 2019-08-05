@@ -1,16 +1,17 @@
+import json
 import logging
+import os
 import re
 from datetime import datetime
+from enum import Enum
 
+from mongoengine import connect, disconnect
+
+from execution_engine2.models.models import Job, JobInput, JobLog, LogLines, Meta
+from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
-from execution_engine2.models.models import Job, JobOutput, JobInput
-
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
-from execution_engine2.utils.Condor import Condor
-
-import os
-import json
 
 logging.basicConfig(level=logging.INFO)
 logging.info(json.loads(os.environ.get("debug", "False").lower()))
@@ -77,13 +78,13 @@ class SDKMethodRunner:
     def _init_job_rec(self, user_id, params):
 
         job = Job()
-        # output = JobOutput()
+
         inputs = JobInput()
 
         job.user = user_id
         job.authstrat = "kbaseworkspace"
         job.wsid = params.get("wsid")
-        job.creation_time = datetime.timestamp(job.created)
+        job.status = "created"
 
         inputs.wsid = job.wsid
         inputs.method = params.get("method")
@@ -91,10 +92,12 @@ class SDKMethodRunner:
         inputs.service_ver = params.get("service_ver")
         inputs.app_id = params.get("app_id")
 
-        job.job_input = inputs
-        # job.job_output = output
+        # TODO Add Meta Fields From Params
+        inputs.narrative_cell_info = Meta()
 
-        with self.get_mongo_util().me_collection():
+        job.job_input = inputs
+
+        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
             job.save()
 
         return str(job.id)
@@ -109,11 +112,96 @@ class SDKMethodRunner:
             self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
         return self.condor
 
+    def get_workspace(self, ctx):
+        if ctx is None:
+            raise Exception("Need to provide credentials for the workspace")
+        if self.workspace is None:
+            self.workspace = Workspace(ctx["token"])
+        return self.workspace
+
+    class WorkspacePermissions(Enum):
+        ADMINISTRATOR = "a"
+        READ_WRITE = "w"
+        READ = "r"
+        NONE = "n"
+
+    def connect_to_mongoengine(self):
+        mu = self.get_mongo_util()
+        connect(
+            db=mu.mongo_database,
+            host=mu.mongo_host,
+            port=mu.mongo_port,
+            authentication_source=mu.mongo_database,
+            username=mu.mongo_user,
+            password=mu.mongo_pass,
+            alias="ee2",
+        )
+
+    def get_workspace_permissions(self, wsid, ctx):
+        # Look up permissions for this workspace
+        permission = self.get_workspace(ctx).get_permissions_mass([wsid])[0]
+        return self.WorkspacePermissions(permission)
+
+    def get_job_status(self, job_id, ctx):
+        self.connect_to_mongoengine()
+        job = Job.objects(id=job_id)[0]
+        p = self.get_workspace_permissions(wsid=job.wsid, ctx=ctx)
+        if p not in [
+            self.WorkspacePermissions.ADMINISTRATOR,
+            self.WorkspacePermissions.READ_WRITE,
+            self.WorkspacePermissions.READ,
+        ]:
+            raise PermissionError(
+                f"User {ctx['user']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id}"
+            )
+
+        disconnect(alias="ee2")
+        # Return the job status
+
+    def view_job_logs(self, job_id, ctx):
+        job = JobLog.objects(id=job_id)[0]
+        p = self.get_workspace_permissions(wsid=job.wsid, ctx=ctx)
+        if p not in [
+            self.WorkspacePermissions.ADMINISTRATOR,
+            self.WorkspacePermissions.READ_WRITE,
+            self.WorkspacePermissions.READ,
+        ]:
+            raise PermissionError(
+                f"User {ctx['user']} does not have permissions to view job logs for wsid:{job.wsid}, job_id:{job_id}"
+            )
+        # Return the log
+
+    def add_job_logs(self, job_id, lines, ctx):
+        with self.get_mongo_util().me_collection(self.config["mongo-logs-collection"]):
+            jl = JobLog.objects(id=job_id)[0]  # type: JobLog
+            p = self.get_workspace_permissions(wsid=jl.wsid, ctx=ctx)
+            if p not in [
+                self.WorkspacePermissions.ADMINISTRATOR,
+                self.WorkspacePermissions.READ_WRITE,
+            ]:
+                raise PermissionError(
+                    f"User {ctx['user']} does not have permissions to view job logs for wsid:{job.wsid}, job_id:{job_id}"
+                )
+
+            linepos = jl.stored_line_count
+            line_count = jl.original_line_count
+            now = datetime.utcnow()
+
+            for line in lines:
+                line_count += 1
+                l = LogLines()
+                l.line = line.get("line", "")
+                l.linepos = line_count
+                l.error = line.get("error", 0)
+                l.ts = line.get("timestamp", now)
+
+        # Return the log
+
     def __init__(self, config):
         self.config = config
         self.mongo_util = None
         self.condor = None
-
+        self.workspace = None
         catalog_url = config["catalog-url"]
         self.catalog = Catalog(catalog_url)
 

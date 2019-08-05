@@ -1,0 +1,25 @@
+version: "3.7"
+
+services:
+  condor:
+    image: kbase/ee2:local_condor
+    ports: ["23:22"]
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+    privileged: true
+
+  mongo:
+    image: mongo:latest
+    ports: ["27017:27017"]
+    env_file: docker-compose.env
+
+
+##########################################
+# If something is wonky with mongodb, its probably due to volumes, try
+# docker-compose down -v
+# docker-compose rm -fv mongo
+# docker-compose up -d --force-recreate
+
+##########################################
+
+

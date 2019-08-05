@@ -1,13 +1,15 @@
+language: python
+python:
+  - "3.7"
 
 dist: xenial
 sudo: required
-language: python
-install:
-  - pip install -r requirements.txt
+
+
 
 services:
   - docker
-  - mongodb
+
 
 env:
   global: # The following are for the dockerhub DOCKER_USER and DOCKER_PASS env vars used in the push script
@@ -20,16 +22,20 @@ env:
 
 before_install:
   - sudo useradd kbase
-  - sleep 15
-  - mongo ee2 --eval 'db.createUser({user:"travis",pwd:"test",roles:["readWrite"]});'
+  - (cd test/dockerfiles/condor && docker-compose up -d)
+  - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
+  - cp test/env/test.travis.env test/env/test.env
+
+
+install:
+  - pip install -r requirements.txt
+  - make setup-database
 
 
 script:
-  - chmod +x ./build/build_docker_image.sh && chmod +x ./build/push2dockerhub.sh
   - make test
+  - make test-models
   # - make integration_test Doesn't yet work in travis
-
-
 
 after_success:
  # Need to set up credentials for this
