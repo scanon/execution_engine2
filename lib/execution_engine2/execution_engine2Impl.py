@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #BEGIN_HEADER
-from execution_engine2.MethodRunner import MethodRunner
+
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 #END_HEADER
 
@@ -37,7 +37,7 @@ class execution_engine2:
         self.config['mongo-collection'] = self.MONGO_COLLECTION
         self.config.setdefault('mongo-authmechanism', self.MONGO_AUTHMECHANISM)
 
-        self.method_runner = SDKMethodRunner(self.config)
+
         #END_CONSTRUCTOR
         pass
 
@@ -92,7 +92,9 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN status
-        returnVal = MethodRunner(ctx).status()
+        mr = SDKMethodRunner(self.config)
+        returnVal = mr.status()
+
         #END status
 
         # At some point might do deeper type checking...
@@ -157,7 +159,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_id
         #BEGIN run_job
-        job_id = self.method_runner.run_job(params, ctx)
+        mr = SDKMethodRunner(self.config)
+        job_id = mr.run_job(params, ctx)
         #END run_job
 
         # At some point might do deeper type checking...
@@ -267,7 +270,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: line_number
         #BEGIN add_job_logs
-        line_number = self.method_runner.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+        mr = SDKMethodRunner(self.config)
+        line_number = mr.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
         #END add_job_logs
 
         # At some point might do deeper type checking...
@@ -294,6 +298,12 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN get_job_logs
+        mr = SDKMethodRunner(self.config)
+        returnVal = mr.view_job_logs(job_id=params['job_id'], skip_lines=params.get('skip_lines',None), ctx=ctx)
+
+
+        #BEGIN add_job_logs
+
         #END get_job_logs
 
         # At some point might do deeper type checking...
@@ -537,7 +547,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: result
         #BEGIN check_job_canceled
-        result = MethodRunner(ctx).check_job_cancelled(params)
+        mr = SDKMethodRunner(self.config)
+        result = mr.check_job_cancelled(job_id=params['job_id'],ctx=ctx)
         #END check_job_canceled
 
         # At some point might do deeper type checking...

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 import unittest
 from configparser import ConfigParser
@@ -10,6 +11,7 @@ from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap
 
+logging.basicConfig(level=logging.INFO)
 bootstrap()
 
 
@@ -24,7 +26,9 @@ class SDKMethodRunner_test(unittest.TestCase):
         for nameval in config_parser.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
 
-        cls.cfg["start-local-mongo"] = "1"
+        mongo_in_docker = cls.cfg.get("mongo-in-docker-compose", None)
+        if mongo_in_docker is not None:
+            cls.cfg["mongo-host"] = cls.cfg["mongo-in-docker-compose"]
 
         cls.method_runner = SDKMethodRunner(cls.cfg)
         cls.mongo_util = MongoUtil(cls.cfg)
@@ -37,7 +41,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         cls.user_id = "fake_test_user"
         cls.ws_id = 9999
 
-    def getRunner(self):
+    def getRunner(self) -> SDKMethodRunner:
         return self.__class__.method_runner
 
     def test_init_ok(self):
@@ -100,7 +104,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         runner = self.getRunner()
 
-        self.assertEqual(self.test_collection.count(), 0)
+        self.assertEqual(self.test_collection.count_documents({}), 0)
 
         job_params = {
             "wsid": self.ws_id,
@@ -118,11 +122,19 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         job_id = runner._init_job_rec(self.user_id, job_params)
 
-        self.assertEqual(self.test_collection.count(), 1)
+        self.assertEqual(self.test_collection.count_documents({}), 1)
 
         result = list(self.test_collection.find({"_id": ObjectId(job_id)}))[0]
 
-        expected_keys = ['_id', 'user', 'authstrat', 'wsid', 'status', 'updated', 'job_input']
+        expected_keys = [
+            "_id",
+            "user",
+            "authstrat",
+            "wsid",
+            "status",
+            "updated",
+            "job_input",
+        ]
 
         self.assertCountEqual(result.keys(), expected_keys)
         self.assertEqual(result["user"], self.user_id)
@@ -130,7 +142,14 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(result["wsid"], self.ws_id)
 
         job_input = result["job_input"]
-        expected_ji_keys = ["wsid", "method", "params", "service_ver", "app_id", "narrative_cell_info"]
+        expected_ji_keys = [
+            "wsid",
+            "method",
+            "params",
+            "service_ver",
+            "app_id",
+            "narrative_cell_info",
+        ]
         self.assertCountEqual(job_input.keys(), expected_ji_keys)
         self.assertEqual(job_input["wsid"], self.ws_id)
         self.assertEqual(job_input["method"], "MEGAHIT.run_megahit")
@@ -140,4 +159,36 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertFalse(result.get("job_output"))
 
         self.test_collection.delete_one({"_id": ObjectId(job_id)})
-        self.assertEqual(self.test_collection.count(), 0)
+        self.assertEqual(self.test_collection.count_documents({}), 0)
+
+    def test_check_permissions(self):
+        logging.info("\n\nTESTING PERMISSIONS\n\n")
+        sdk = self.getRunner()
+        # Check for read access
+        # self.assertTrue(
+        #     sdk._check_permission(sdk.WorkspacePermissions.READ, write=False)
+        # )
+        # self.assertTrue(
+        #     sdk._check_permission(sdk.WorkspacePermissions.READ_WRITE, write=False)
+        # )
+        # self.assertTrue(
+        #     sdk._check_permission(sdk.WorkspacePermissions.ADMINISTRATOR, write=False)
+        # )
+        # self.assertFalse(
+        #     sdk._check_permission(sdk.WorkspacePermissions.NONE, write=False)
+        # )
+        #
+        # # Check for write access
+        # self.assertFalse(
+        #     sdk._check_permission(sdk.WorkspacePermissions.READ, write=True)
+        # )
+        # self.assertTrue(
+        #     sdk._check_permission(sdk.WorkspacePermissions.READ_WRITE, write=True)
+        # )
+        # self.assertTrue(
+        #     sdk._check_permission(sdk.WorkspacePermissions.ADMINISTRATOR, write=True)
+        # )
+        # self.assertFalse(
+        #     sdk._check_permission(sdk.WorkspacePermissions.NONE, write=True)
+        # )
+        # self.assertFalse(sdk._check_permission(-1, write=True))

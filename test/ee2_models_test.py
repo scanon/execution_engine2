@@ -54,7 +54,9 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 
     def test_insert_job(self):
         logging.info("Testing insert job")
-        with self.mongo_util.mongo_engine_connection(self.config["mongo-jobs-collection"]), self.mongo_util.pymongo_client(self.config["mongo-jobs-collection"]) as pc:
+        with self.mongo_util.mongo_engine_connection(), self.mongo_util.pymongo_client(
+            self.config["mongo-jobs-collection"]
+        ) as pc:
             job = self.get_example_job()
             job.save()
 
@@ -80,7 +82,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         This test inserts a log via the models
         :return:
         """
-        with self.mongo_util.mongo_engine_connection(self.config["mongo-logs-collection"]):
+        with self.mongo_util.mongo_engine_connection():
             job = self.get_example_job()
             job.save()
 

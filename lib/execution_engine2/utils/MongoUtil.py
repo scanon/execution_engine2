@@ -1,12 +1,14 @@
 import logging
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+
 import subprocess
 import traceback
 from bson.objectid import ObjectId
 from mongoengine import connect, connection
 
 from contextlib import contextmanager
+from execution_engine2.models.models import *
 
 
 class MongoUtil:
@@ -140,9 +142,20 @@ class MongoUtil:
         finally:
             mc.close()
 
+    def get_job_log(self, job_id=None) -> JobLog:
+        if job_id is None:
+            raise ValueError("Please provide a job id")
+        with self.mongo_engine_connection():
+            return JobLog.objects.with_id(job_id)
+
+    def get_empty_job_log(self):
+        jl = JobLog()
+        jl.stored_line_count = 0
+        jl.original_line_count = 0
+        return jl
+
     @contextmanager
-    def mongo_engine_connection(self, mongo_collection):
-        self.mongo_collection = mongo_collection
+    def mongo_engine_connection(self):
         mongoengine_client = connect(
             db=self.mongo_database,
             host=self.mongo_host,
@@ -180,7 +193,10 @@ class MongoUtil:
         """
         logging.info("start inserting document")
 
-        with self.me_collection(self.mongo_collection) as (pymongo_client, mongoengine_client):
+        with self.me_collection(self.mongo_collection) as (
+            pymongo_client,
+            mongoengine_client,
+        ):
             try:
                 rec = pymongo_client[self.mongo_database][
                     self.mongo_collection
@@ -201,7 +217,10 @@ class MongoUtil:
         """
         logging.info("start updating document")
 
-        with self.me_collection(self.mongo_collection) as (pymongo_client, mongoengine_client):
+        with self.me_collection(self.mongo_collection) as (
+            pymongo_client,
+            mongoengine_client,
+        ):
             job_col = pymongo_client[self.mongo_database][self.mongo_collection]
             try:
                 update_filter = {"_id": ObjectId(job_id)}
@@ -221,7 +240,10 @@ class MongoUtil:
         delete a doc by _id
         """
         logging.info("start deleting document")
-        with self.me_collection(self.mongo_collection) as (pymongo_client, mongoengine_client):
+        with self.me_collection(self.mongo_collection) as (
+            pymongo_client,
+            mongoengine_client,
+        ):
             job_col = pymongo_client[self.mongo_database][self.mongo_collection]
             try:
                 delete_filter = {"_id": ObjectId(job_id)}
@@ -241,7 +263,10 @@ class MongoUtil:
         """
         logging.info("start querying MongoDB")
 
-        with self.me_collection(self.mongo_collection) as (pymongo_client, mongoengine_client):
+        with self.me_collection(self.mongo_collection) as (
+            pymongo_client,
+            mongoengine_client,
+        ):
             job_col = pymongo_client[self.mongo_database][self.mongo_collection]
             try:
                 result = job_col.find(

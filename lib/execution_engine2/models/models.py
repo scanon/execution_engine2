@@ -30,10 +30,11 @@ class LogLines(EmbeddedDocument):
     line = StringField()
     linepos = IntField()
     error = BooleanField()
+    ts = DateTimeField(default=datetime.datetime.utcnow())
 
 
 class JobLog(Document):
-    primary_key = ObjectIdField(primary_key=True)
+    primary_key = ObjectIdField(primary_key=True, required=True)
     updated = DateTimeField(default=datetime.datetime.utcnow)
     original_line_count = IntField()
     stored_line_count = IntField()
@@ -104,7 +105,9 @@ def valid_authstrat(strat):
 
 class Job(Document):
     user = StringField(required=True)
-    authstrat = StringField(required=True, default="kbaseworkspace", validation=valid_authstrat)
+    authstrat = StringField(
+        required=True, default="kbaseworkspace", validation=valid_authstrat
+    )
     wsid = IntField(required=True)
     status = StringField(required=True, validation=valid_status)
     updated = DateTimeField(default=datetime.datetime.utcnow)
