@@ -168,6 +168,13 @@ class SDKMethodRunner:
         return log_obj
 
     def view_job_logs(self, job_id, skip_lines, ctx):
+        """
+        Authorization Required: Ability to read from the workspace
+        :param job_id:
+        :param skip_lines:
+        :param ctx:
+        :return:
+        """
         logging.debug(f"About to view logs for {job_id}")
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
         logging.debug("Success, you have permission to view logs for " + job_id)
@@ -180,6 +187,13 @@ class SDKMethodRunner:
         return 1
 
     def add_job_logs(self, job_id, lines, ctx):
+        """
+        Authorization Required : Ability to read and write to the workspace
+        :param job_id:
+        :param lines:
+        :param ctx:
+        :return:
+        """
         logging.debug(f"About to add logs for {job_id}")
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
         logging.debug("Success, you have permission to view logs for " + job_id)
@@ -216,6 +230,12 @@ class SDKMethodRunner:
         return {"servertime": f"{time()}"}
 
     def cancel_job(self, job_id, ctx):
+        """
+        Authorization Required: Ability to Read and Write to the Workspace
+        :param job_id:
+        :param ctx:
+        :return:
+        """
         # Is it inefficient to get the job twice? Is it cached?
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
 
@@ -227,6 +247,7 @@ class SDKMethodRunner:
 
     def check_job_canceled(self, job_id, ctx):
         """
+        Authorization Required: None
         Check to see if job is terminated by the user
         :return: job_id, whether or not job is canceled, and whether or not job is finished
         """
