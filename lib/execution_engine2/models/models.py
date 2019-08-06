@@ -74,8 +74,9 @@ class Status(Enum):
     estimating = "estimating"
     queued = "queued"
     running = "running"
-    finished = "finished"
-    error = "error"
+    finished = "finished"  # Successful termination
+    error = "error"  # Something went wrong
+    terminated = "terminated"  # Canceled by user
 
 
 class AuthStrat(Enum):

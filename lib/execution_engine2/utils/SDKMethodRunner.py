@@ -6,9 +6,8 @@ from enum import Enum
 from time import time
 
 from mongoengine import connect
-import datetime
 
-from execution_engine2.models.models import Job, JobInput, Meta, JobLog
+from execution_engine2.models.models import Job, JobInput, Meta, Status
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
@@ -102,7 +101,7 @@ class SDKMethodRunner:
 
         job.job_input = inputs
 
-        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
+        with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
         return str(job.id)
@@ -114,10 +113,12 @@ class SDKMethodRunner:
 
     def get_condor(self):
         if self.condor is None:
-            self.condor = Condor(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+            self.condor = Condor(self.deployment_config_fp)
         return self.condor
 
-    def get_workspace(self, ctx):
+    def get_workspace(self, ctx=None):
+        if ctx is None:
+            ctx = self.ctx
         if ctx is None:
             raise Exception("Need to provide credentials for the workspace")
         if self.workspace is None:
@@ -182,19 +183,22 @@ class SDKMethodRunner:
         logging.debug(f"About to add logs for {job_id}")
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
         logging.debug("Success, you have permission to view logs for " + job_id)
-        try:
-            log = self.get_mongo_util().get_job_log(job_id)
+
+        log = self.get_mongo_util().get_job_log(job_id)
+        if log is not None:
             logging.debug(f"Found job log for {job_id}")
             line_count = self._append_log_lines(log, lines)
             logging.debug(f"Added log lines to {job_id}")
-        except Exception:
+        else:
             line_count = self._create_new_log(lines)
             logging.debug(f"Created new log for {job_id}")
 
         logging.debug(f"Line count is now {line_count}")
         return line_count
 
-    def __init__(self, config):
+    def __init__(self, config, ctx=None):
+        self.ctx = ctx
+        self.deployment_config_fp = os.environ.get("KB_DEPLOYMENT_CONFIG")
         self.config = config
         self.mongo_util = None
         self.condor = None
@@ -211,6 +215,33 @@ class SDKMethodRunner:
     def status(self):
         return {"servertime": f"{time()}"}
 
+    def cancel_job(self, job_id, ctx):
+        # Is it inefficient to get the job twice? Is it cached?
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
+
+        # Maybe cancel in condor first?
+        self.get_mongo_util().update_job_status(job_id=job_id, status=Status.terminated.value)
+
+        # Maybe if this call fails, then don't actually cancel the job?
+        self.get_condor().cancel_job(job_id=job_id)
+
+    def check_job_canceled(self, job_id, ctx):
+        """
+        Check to see if job is terminated by the user
+        :return: job_id, whether or not job is canceled, and whether or not job is finished
+        """
+        job_status = self.get_mongo_util().get_job(job_id=job_id).status
+        rv = {"job_id": job_id, "canceled": False, "finished": False}
+
+        if Status(job_status) is Status.terminated:
+            rv["canceled"] = True
+            rv["finished"] = True
+
+        if Status(job_status) in [Status.finished, Status.error, Status.terminated]:
+            rv["finished"] = True
+
+        return rv
+
     def run_job(self, params, ctx):
         """
 
@@ -218,6 +249,8 @@ class SDKMethodRunner:
         :param ctx: User_Id and Token from the request
         :return: The condor job id
         """
+        # if 'wsid' not in params:
+        #     raise Exception("Please provide wsid")
 
         if not self._can_write_ws(
             self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)

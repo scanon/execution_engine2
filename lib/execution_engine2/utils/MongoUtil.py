@@ -148,6 +148,24 @@ class MongoUtil:
         with self.mongo_engine_connection():
             return JobLog.objects.with_id(job_id)
 
+    def get_job(self, job_id=None) -> Job:
+        if job_id is None:
+            raise ValueError("Please provide a job id")
+        with self.mongo_engine_connection():
+            return Job.objects.with_id(job_id)
+
+    def update_job_status(self, job_id, status):
+        """
+        Update one job record with an approriate Status
+        :param job_id: The job id to update
+        :param status: The status to update with
+        :return: Void
+        """
+        with self.mongo_engine_connection():
+            j = Job.objects.with_id(job_id)  # type: Job
+            j.status = status
+            j.save()
+
     def get_empty_job_log(self):
         jl = JobLog()
         jl.stored_line_count = 0

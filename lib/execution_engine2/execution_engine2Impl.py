@@ -527,6 +527,8 @@ class execution_engine2:
         """
         # ctx is the context object
         #BEGIN cancel_job
+        mr = SDKMethodRunner(self.config)
+        mr.cancel_job(job_id=params['job_id'], ctx=ctx)
         #END cancel_job
         pass
 
@@ -548,7 +550,7 @@ class execution_engine2:
         # return variables are: result
         #BEGIN check_job_canceled
         mr = SDKMethodRunner(self.config)
-        result = mr.check_job_cancelled(job_id=params['job_id'],ctx=ctx)
+        result = mr.check_job_canceled(job_id=params['job_id'],ctx=ctx)
         #END check_job_canceled
 
         # At some point might do deeper type checking...
