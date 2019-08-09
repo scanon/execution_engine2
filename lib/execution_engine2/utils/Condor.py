@@ -13,18 +13,19 @@ from execution_engine2.utils.Scheduler import Scheduler
 import os, pwd
 import pathlib
 
+job_info = namedtuple("job_info", "info error")
+submission_info = namedtuple("submission_info", "clusterid submit error")
+job_resource = namedtuple("job_resource", "amount unit")
+resource_requirements = namedtuple(
+    "resource_requirements",
+    "request_cpus request_disk request_memory requirements_statement",
+)
+condor_resources = namedtuple(
+    "condor_resources", "request_cpus request_memory request_disk client_group"
+)
 
 class Condor(Scheduler):
-    job_info = namedtuple("job_info", "info error")
-    submission_info = namedtuple("submission_info", "clusterid submit error")
-    job_resource = namedtuple("job_resource", "amount unit")
-    resource_requirements = namedtuple(
-        "resource_requirements",
-        "request_cpus request_disk request_memory requirements_statement",
-    )
-    condor_resources = namedtuple(
-        "condor_resources", "request_cpus request_memory request_disk client_group"
-    )
+
 
     # TODO: Should these be outside of the class?
     REQUEST_CPUS = "request_cpus"
@@ -203,7 +204,7 @@ class Condor(Scheduler):
             if key not in cgrr or cgrr[key] in ["", None]:
                 cgrr[key] = self.config.get(section=client_group, option=key)
 
-        cr = self.condor_resources(
+        cr = condor_resources(
             request_cpus=cgrr.get(self.REQUEST_CPUS),
             request_disk=cgrr.get(self.REQUEST_DISK),
             request_memory=cgrr.get(self.REQUEST_MEMORY),
@@ -304,15 +305,15 @@ class Condor(Scheduler):
             logging.info(pwd.getpwuid(os.getuid()).pw_name)
             logging.info(submit)
             with schedd.transaction() as txn:
-                return self.submission_info(
+                return submission_info(
                     clusterid=str(sub.queue(txn, 1)), submit=sub, error=None
                 )
         except Exception as e:
-            return self.submission_info(clusterid=None, submit=sub, error=e)
+            return submission_info(clusterid=None, submit=sub, error=e)
 
     def get_job_info(self, job_id=None, cluster_id=None):
         if job_id is not None and cluster_id is not None:
-            return self.job_info(
+            return job_info(
                 info={},
                 error=Exception(
                     "Please use only batch name (job_id) or cluster_id, not both"
@@ -327,9 +328,9 @@ class Condor(Scheduler):
 
         try:
             job = htcondor.Schedd().query(constraint=constraint, limit=1)[0]
-            return self.job_info(info=job, error=None)
+            return job_info(info=job, error=None)
         except Exception as e:
-            return self.job_info(info={}, error=e)
+            return job_info(info={}, error=e)
 
     def get_user_info(self, user_id, projection=None):
         pass

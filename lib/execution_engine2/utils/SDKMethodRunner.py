@@ -104,7 +104,7 @@ class SDKMethodRunner:
         inputs.narrative_cell_info = Meta()
 
         job.job_input = inputs
-
+        logging.info(job.job_input.to_mongo().to_dict())
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
@@ -154,8 +154,11 @@ class SDKMethodRunner:
         return {}
 
     def _get_job_log(self, job_id, skip_lines):
+        # TODO Do I have to query this another way so I don't load all lines into memory?
+        # Does mongoengine lazy-load it?
         log = self.get_mongo_util().get_job_log(job_id)
         # if skip_lines #TODO
+        # TODO IMPLEMENT SKIP LINES
         """
             :returns: instance of type "GetJobLogsResults" (last_line_number -
            common number of lines (including those in skip_lines parameter),
@@ -167,8 +170,13 @@ class SDKMethodRunner:
         """
 
         # TODO Filter the lines in the mongo query?
+        lines = []
+        for line in  log.lines: # type: LogLines
+            lines.append(line.to_mongo().to_dict())
 
-        log_obj = {"lines": {log.lines}, "last_line_number": 123}
+        # TODO AVOID LOADING ENTIRE THING INTO MEMORY
+
+        log_obj = {"lines": lines, "last_line_number": log.stored_line_count}
         return log_obj
 
     def view_job_logs(self, job_id, skip_lines, ctx):
@@ -187,16 +195,21 @@ class SDKMethodRunner:
     def _append_log_lines(self, log, lines):
         return 1
 
-    def _create_new_log(self, lines_length):
-        l = JobLog
+    def _create_new_log(self, pk):
+        l = JobLog()
+        l.primary_key = pk
         l.original_line_count = 0
         l.stored_line_count = 0
+        l.lines = []
         return l
 
 
     def add_job_logs(self, job_id, lines, ctx):
         """
         #TODO Prevent too many logs in memory
+        #TODO Max size of log lines = 1000
+        #TODO  // Error with out of space happened previously. So we just update line count.
+		#TODO	db.updateExecLogOriginalLineCount(ujsJobId, dbLog.getOriginalLineCount() + lines.size());
 
         Authorization Required : Ability to read and write to the workspace
         :param job_id:
@@ -210,10 +223,10 @@ class SDKMethodRunner:
 
         log = self.get_mongo_util().get_job_log(job_id)
         if log is None:
-            log = self._create_new_log(len(lines))
+            log = self._create_new_log(pk=job_id)
 
         olc = log.original_line_count
-        slc = log.stored_line_count
+
 
         #TODO Limit amount of lines per request?
         #TODO Maybe Prevent Some lines with TS and some without
@@ -223,17 +236,22 @@ class SDKMethodRunner:
 
         for line in lines:
             olc+=1
-            j = LogLines
-            j.error = line.get('error',False)
-            j.linepos = olc
-            j.ts = line.get('timestamp', now)
-            j.line = line('line')
-        
+            ll = LogLines()
+            ll.error = line.get('error',False)
+            ll.linepos = olc
+            ll.ts = line.get('ts', now)
+            ll.line = line.get('line')
+            ll.validate()
+            log.lines.append(ll)
 
-        #TODO APPEND
-        #TODO UPDATE OLC/SLC
+        log.original_line_count = olc
+        log.stored_line_count = olc
 
+        with self.get_mongo_util().mongo_engine_connection():
+            print(type(log))
+            log.save()
 
+        return log.stored_line_count
 
 
     def __init__(self, config, ctx=None):
@@ -338,15 +356,21 @@ class SDKMethodRunner:
             ## delete job from database? Or mark it to a state it will never run?
             logging.error(e)
             raise e
+        print("error is")
+        print(type(submission_info))
+        print(submission_info.error, type(submission_info.error))
 
-        if submission_info.error is not None or condor_job_id is None:
-            raise (submission_info.error)
+        if submission_info.error is not None:
+            raise submission_info.error
+        if condor_job_id is None:
+            raise Exception("Condor job not ran, and error not found. Something went wrong")
+
 
         logging.debug("Submission info is")
         logging.debug(submission_info)
         logging.debug(condor_job_id)
         logging.debug(type(condor_job_id))
-        return condor_job_id
+        return job_id
 
     def get_permissions_for_workspace(self, wsid, ctx):
 

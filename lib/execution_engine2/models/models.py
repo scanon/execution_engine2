@@ -35,7 +35,7 @@ class LogLines(EmbeddedDocument):
 
 class JobLog(Document):
     primary_key = ObjectIdField(primary_key=True, required=True)
-    updated = DateTimeField(default=datetime.datetime.utcnow)
+    updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     original_line_count = IntField()
     stored_line_count = IntField()
     lines = EmbeddedDocumentListField(LogLines)
@@ -111,8 +111,11 @@ class Job(Document):
     )
     wsid = IntField(required=True)
     status = StringField(required=True, validation=valid_status)
-    updated = DateTimeField(default=datetime.datetime.utcnow)
+    updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     started = DateTimeField(default=None)
+    estimating = DateTimeField(default=None)
+    running = DateTimeField(default=None)
+    finished = DateTimeField(default=None)
     errormsg = StringField()
     scheduler_type = StringField()
     scheduler_id = StringField()

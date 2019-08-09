@@ -17,7 +17,7 @@ def get_example_job():
     job_input.requested_release = "requested_release"
     job_input.params = {}
     job_input.service_ver = "dev"
-    job_input.app_id = "apple"
+    job_input.app_id = "super_module.super_function"
 
     m = Meta()
     m.cell_id = "ApplePie"
