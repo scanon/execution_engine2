@@ -4,9 +4,9 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from execution_engine2.models.models import JobInput, Job, Meta, LogLines, JobLog
-from execution_engine2.utils.MongoUtil import MongoUtil
-from test.test_utils import read_config_into_dict, bootstrap, get_example_job
+from lib.execution_engine2.models.models import LogLines, JobLog
+from lib.execution_engine2.utils.MongoUtil import MongoUtil
+from test.test_utils import read_config_into_dict, bootstrap
 
 bootstrap()
 from bson import ObjectId
@@ -30,8 +30,6 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         cls.config = config
         cls.ctx = {"job_id": "test", "user_id": "test", "token": "test"}
         cls.mongo_util = MongoUtil(cls.config)
-
-
 
     def test_insert_job(self):
         logging.info("Testing insert job")

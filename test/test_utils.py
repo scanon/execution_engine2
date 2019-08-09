@@ -3,7 +3,8 @@ import os
 from dotenv import load_dotenv
 import pathlib
 from shutil import copyfile
-from execution_engine2.models.models import Job,JobInput,Meta
+from execution_engine2.models.models import Job, JobInput, Meta
+
 
 def get_example_job():
     j = Job()

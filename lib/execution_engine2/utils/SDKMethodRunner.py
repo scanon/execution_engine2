@@ -240,7 +240,9 @@ class SDKMethodRunner:
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
 
         # Maybe cancel in condor first?
-        self.get_mongo_util().update_job_status(job_id=job_id, status=Status.terminated.value)
+        self.get_mongo_util().update_job_status(
+            job_id=job_id, status=Status.terminated.value
+        )
 
         # Maybe if this call fails, then don't actually cancel the job?
         self.get_condor().cancel_job(job_id=job_id)

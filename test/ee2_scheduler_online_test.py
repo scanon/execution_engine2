@@ -5,7 +5,7 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from execution_engine2.utils.Condor import Condor
+from lib.execution_engine2.utils.Condor import Condor
 from lib.installed_clients.execution_engine2Client import execution_engine2
 from lib.installed_clients.WorkspaceClient import Workspace
 import os, sys

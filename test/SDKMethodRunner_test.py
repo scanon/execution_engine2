@@ -10,7 +10,7 @@ from execution_engine2.models.models import Job, Status
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
-from test.test_utils import bootstrap,get_example_job
+from test.test_utils import bootstrap, get_example_job
 from mock import MagicMock
 from unittest.mock import patch
 
@@ -178,14 +178,18 @@ class SDKMethodRunner_test(unittest.TestCase):
             job.wsid = self.ws_id
             job_id = job.save().id
 
-        logging.info(f"Created job {job_id} in {job.wsid} status {job.status}. About to cancel")
+        logging.info(
+            f"Created job {job_id} in {job.wsid} status {job.status}. About to cancel"
+        )
 
         sdk.check_permission_for_job = MagicMock(return_value=[])
 
-        sdk.cancel_job(job_id=job_id, ctx={'user_id' : self.user_id})
+        sdk.cancel_job(job_id=job_id, ctx={"user_id": self.user_id})
 
-        self.assertEqual(Status(sdk.get_mongo_util().get_job(job_id=job_id).status), Status.terminated)
-
+        self.assertEqual(
+            Status(sdk.get_mongo_util().get_job(job_id=job_id).status),
+            Status.terminated,
+        )
 
     def test_check_ws_permissions(self):
         logging.info("\n\nTESTING PERMISSIONS\n\n")
