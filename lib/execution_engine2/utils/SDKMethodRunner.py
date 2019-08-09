@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import traceback
 from datetime import datetime
 from enum import Enum
 from time import time
@@ -139,18 +140,6 @@ class SDKMethodRunner:
         READ = "r"
         NONE = "n"
 
-    def connect_to_mongoengine(self):
-        mu = self.get_mongo_util()
-        connect(
-            db=mu.mongo_database,
-            host=mu.mongo_host,
-            port=mu.mongo_port,
-            authentication_source=mu.mongo_database,
-            username=mu.mongo_user,
-            password=mu.mongo_pass,
-            alias="ee2",
-        )
-
     def get_job_status(self, job_id, ctx):
         logging.debug(f"About to view logs for {job_id}")
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
@@ -158,20 +147,28 @@ class SDKMethodRunner:
         return {}
 
     def _get_job_log(self, job_id, skip_lines):
+        """
         # TODO Do I have to query this another way so I don't load all lines into memory?
         # Does mongoengine lazy-load it?
-        log = self.get_mongo_util().get_job_log(job_id)
-        # if skip_lines #TODO
+
         # TODO IMPLEMENT SKIP LINES
-        """
-            :returns: instance of type "GetJobLogsResults" (last_line_number -
+
+           :returns: instance of type "GetJobLogsResults" (last_line_number -
            common number of lines (including those in skip_lines parameter),
            this number can be used as next skip_lines value to skip already
            loaded lines next time.) -> structure: parameter "lines" of list
            of type "LogLine" -> structure: parameter "line" of String,
            parameter "is_error" of type "boolean" (@range [0,1]), parameter
            "last_line_number" of Long
+
+
+        :param job_id:
+        :param skip_lines:
+        :return:
         """
+
+        log = self.get_mongo_util().get_job_log(job_id)
+        # if skip_lines #TODO
 
         # TODO Filter the lines in the mongo query?
         lines = []
@@ -196,10 +193,8 @@ class SDKMethodRunner:
         logging.debug("Success, you have permission to view logs for " + job_id)
         return self._get_job_log(job_id, skip_lines)
 
-    def _append_log_lines(self, log, lines):
-        return 1
-
-    def _create_new_log(self, pk):
+    @staticmethod
+    def _create_new_log(pk):
         jl = JobLog()
         jl.primary_key = pk
         jl.original_line_count = 0
@@ -271,7 +266,8 @@ class SDKMethodRunner:
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
         )
 
-    def status(self):
+    @staticmethod
+    def status():
         return {"servertime": f"{time()}"}
 
     def cancel_job(self, job_id, ctx):
@@ -428,11 +424,6 @@ class SDKMethodRunner:
                 raise PermissionError(
                     f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
                 )
-        logging.info("Submission info is")
-        logging.info(submission_info)
-        logging.info(condor_job_id)
-        logging.info(type(condor_job_id))
-        return condor_job_id
 
     def get_job_params(self, job_id):
         job_params = dict()
@@ -442,7 +433,9 @@ class SDKMethodRunner:
             try:
                 job = Job.objects(id=job_id)[0]
             except Exception:
-                raise ValueError("Unable to find job:\nError:\n{}".format(traceback.format_exc()))
+                raise ValueError(
+                    "Unable to find job:\nError:\n{}".format(traceback.format_exc())
+                )
 
             job_input = job.job_input
 
@@ -466,10 +459,11 @@ class SDKMethodRunner:
             try:
                 job = Job.objects(id=job_id)[0]
             except Exception:
-                raise ValueError("Unable to find job:\nError:\n{}".format(traceback.format_exc()))
+                raise ValueError(
+                    "Unable to find job:\nError:\n{}".format(traceback.format_exc())
+                )
 
             job.status = status
             job.save()
 
         return str(job.id)
-
