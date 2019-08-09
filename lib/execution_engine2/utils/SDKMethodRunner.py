@@ -6,8 +6,6 @@ from datetime import datetime
 from enum import Enum
 from time import time
 
-from mongoengine import connect
-
 from execution_engine2.models.models import (
     Job,
     JobInput,
@@ -103,6 +101,8 @@ class SDKMethodRunner:
         inputs.params = params.get("params")
         inputs.service_ver = params.get("service_ver")
         inputs.app_id = params.get("app_id")
+        inputs.source_ws_objects = params.get("source_ws_objects")
+        inputs.parent_job_id = str(params.get("parent_job_id"))
 
         # TODO Add Meta Fields From Params
         inputs.narrative_cell_info = Meta()
@@ -409,7 +409,6 @@ class SDKMethodRunner:
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
         Check for permissions to modify or read this record, based on WSID associated with the record
-
         :param job_id: The job id to look up to get it's WSID
         :param ctx: The REQUEST
         :param write: Whether or not to check for Read Permissions or Write Permissions
@@ -429,3 +428,48 @@ class SDKMethodRunner:
                 raise PermissionError(
                     f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
                 )
+        logging.info("Submission info is")
+        logging.info(submission_info)
+        logging.info(condor_job_id)
+        logging.info(type(condor_job_id))
+        return condor_job_id
+
+    def get_job_params(self, job_id):
+        job_params = dict()
+
+        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
+
+            try:
+                job = Job.objects(id=job_id)[0]
+            except Exception:
+                raise ValueError("Unable to find job:\nError:\n{}".format(traceback.format_exc()))
+
+            job_input = job.job_input
+
+            job_params["method"] = job_input.method
+            job_params["params"] = job_input.params
+            job_params["service_ver"] = job_input.service_ver
+            job_params["app_id"] = job_input.app_id
+            job_params["wsid"] = job_input.wsid
+            job_params["parent_job_id"] = job_input.parent_job_id
+            job_params["source_ws_objects"] = job_input.source_ws_objects
+
+        return job_params
+
+    def update_job_status(self, job_id, status):
+
+        if not (job_id and status):
+            raise ValueError("Please provide both job_id and status")
+
+        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
+
+            try:
+                job = Job.objects(id=job_id)[0]
+            except Exception:
+                raise ValueError("Unable to find job:\nError:\n{}".format(traceback.format_exc()))
+
+            job.status = status
+            job.save()
+
+        return str(job.id)
+

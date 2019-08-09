@@ -42,6 +42,10 @@ class JobLog(Document):
     # meta = {"db_alias": "logs"}
     meta = {"collection": "ee2_logs"}
 
+    def save(self, *args, **kwargs):
+        self.updated = datetime.datetime.utcnow()
+        return super(JobLog, self).save(*args, **kwargs)
+
 
 class Meta(EmbeddedDocument):
     run_id = StringField()
@@ -59,6 +63,8 @@ class JobInput(EmbeddedDocument):
     params = DynamicField()
     service_ver = StringField(required=True)
     app_id = StringField(required=True)
+    source_ws_objects = ListField()
+    parent_job_id = StringField()
 
     narrative_cell_info = EmbeddedDocumentField(Meta, required=True)
 
@@ -123,6 +129,10 @@ class Job(Document):
     job_output = EmbeddedDocumentField(JobOutput)
     # meta = {"db_alias": "ee2"}
     meta = {"collection": "ee2_jobs"}
+
+    def save(self, *args, **kwargs):
+        self.updated = datetime.datetime.utcnow()
+        return super(Job, self).save(*args, **kwargs)
 
 
 ###
