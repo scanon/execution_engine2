@@ -4,10 +4,14 @@ import os
 import re
 from enum import Enum
 from time import time
+from datetime import  datetime
+
 
 from mongoengine import connect
 
-from execution_engine2.models.models import Job, JobInput, Meta, Status
+
+
+from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog, LogLines
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
@@ -183,11 +187,17 @@ class SDKMethodRunner:
     def _append_log_lines(self, log, lines):
         return 1
 
-    def _create_new_log(self, lines):
-        return 1
+    def _create_new_log(self, lines_length):
+        l = JobLog
+        l.original_line_count = 0
+        l.stored_line_count = 0
+        return l
+
 
     def add_job_logs(self, job_id, lines, ctx):
         """
+        #TODO Prevent too many logs in memory
+
         Authorization Required : Ability to read and write to the workspace
         :param job_id:
         :param lines:
@@ -199,16 +209,32 @@ class SDKMethodRunner:
         logging.debug("Success, you have permission to view logs for " + job_id)
 
         log = self.get_mongo_util().get_job_log(job_id)
-        if log is not None:
-            logging.debug(f"Found job log for {job_id}")
-            line_count = self._append_log_lines(log, lines)
-            logging.debug(f"Added log lines to {job_id}")
-        else:
-            line_count = self._create_new_log(lines)
-            logging.debug(f"Created new log for {job_id}")
+        if log is None:
+            log = self._create_new_log(len(lines))
 
-        logging.debug(f"Line count is now {line_count}")
-        return line_count
+        olc = log.original_line_count
+        slc = log.stored_line_count
+
+        #TODO Limit amount of lines per request?
+        #TODO Maybe Prevent Some lines with TS and some without
+        #TODO # Handle malformed requests?
+
+        now = datetime.utcnow()
+
+        for line in lines:
+            olc+=1
+            j = LogLines
+            j.error = line.get('error',False)
+            j.linepos = olc
+            j.ts = line.get('timestamp', now)
+            j.line = line('line')
+        
+
+        #TODO APPEND
+        #TODO UPDATE OLC/SLC
+
+
+
 
     def __init__(self, config, ctx=None):
         self.ctx = ctx
