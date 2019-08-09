@@ -1,16 +1,18 @@
 import enum
 import json
+import logging
 from collections import namedtuple
 from configparser import ConfigParser
 
 import htcondor
-import logging
+
+from execution_engine2.exceptions import MissingRunJobParamsException
+from execution_engine2.utils.Scheduler import Scheduler
 
 logging.basicConfig(level=logging.INFO)
 
-from execution_engine2.exceptions import *
-from execution_engine2.utils.Scheduler import Scheduler
-import os, pwd
+import os
+import pwd
 import pathlib
 
 job_info = namedtuple("job_info", "info error")
@@ -24,9 +26,8 @@ condor_resources = namedtuple(
     "condor_resources", "request_cpus request_memory request_disk client_group"
 )
 
+
 class Condor(Scheduler):
-
-
     # TODO: Should these be outside of the class?
     REQUEST_CPUS = "request_cpus"
     REQUEST_MEMORY = "request_memory"
@@ -158,7 +159,7 @@ class Condor(Scheduler):
             raise TypeError(str(type(resources_request)))
 
         # No clientgroup provided
-        if resources_request is "":
+        if resources_request == "":
             return {}
         # JSON
         if "{" in resources_request:
@@ -191,7 +192,7 @@ class Condor(Scheduler):
         :return:
         """
         client_group = cgrr.get("client_group", None)
-        if client_group is None or client_group is "":
+        if client_group is None or client_group == "":
             client_group = self.config.get(
                 section="DEFAULT", option=self.DEFAULT_CLIENT_GROUP
             )
@@ -322,7 +323,7 @@ class Condor(Scheduler):
 
         constraint = None
         if job_id:
-            constraint = f"JobBatchName=?={batch_name}"
+            constraint = f"JobBatchName=?={job_id}"
         if cluster_id:
             constraint = f"ClusterID=?={cluster_id}"
 

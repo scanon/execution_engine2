@@ -1,9 +1,12 @@
 test_local
+deploy.cfg
+cover
 test/cover
 test/deploy.cfg
 test/env/test.env
 test.env
 sdk.cfg
+*.swp
 *.pyc
 .idea
 .coverage

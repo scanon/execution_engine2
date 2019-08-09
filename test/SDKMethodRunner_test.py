@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
+import copy
 import logging
 import os
 import unittest
 from configparser import ConfigParser
+from unittest.mock import patch
 
-from bson.objectid import ObjectId
+from mock import MagicMock
 
 from execution_engine2.models.models import Job, Status
+from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from execution_engine2.utils.Condor import submission_info
-
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
-from mock import MagicMock
-from unittest.mock import patch
-import copy
+
 logging.basicConfig(level=logging.INFO)
 bootstrap()
 
@@ -45,7 +44,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         cls.user_id = "fake_test_user"
         cls.ws_id = 9999
-        cls.token = 'token'
+        cls.token = "token"
 
     def getRunner(self) -> SDKMethodRunner:
         return copy.deepcopy(self.__class__.method_runner)
@@ -270,58 +269,63 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(call_count, runner.get_mongo_util.call_count)
 
     @patch("lib.installed_clients.WorkspaceClient.Workspace", autospec=True)
-    def todo_test_permissions(self,ws):
+    def todo_test_permissions(self, ws):
         runner = self.getRunner()
         runner.get_workspace = MagicMock()
         runner.get_workspace = MagicMock(return_value=ws)
 
         ws.get_permissions_mass = MagicMock(
-            return_value={'perms': [runner.WorkspacePermissions.ADMINISTRATOR]}, )
+            return_value={"perms": [runner.WorkspacePermissions.ADMINISTRATOR]}
+        )
 
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
-    def test_run_job(self,condor_mock):
+    def test_run_job(self, condor_mock):
         runner = self.getRunner()
         runner.get_permissions_for_workspace = MagicMock(return_value=True)
-        runner._get_module_git_commit = MagicMock(return_value='git_commit_goes_here')
+        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
         runner.get_condor = MagicMock(return_value=condor_mock)
-        ctx = {'user_id' : self.user_id, 'wsid' : self.ws_id, 'token' : self.token}
+        ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
         job = get_example_job().to_mongo().to_dict()
-        job['method'] = job['job_input']['app_id']
-        job['app_id'] = job['job_input']['app_id']
+        job["method"] = job["job_input"]["app_id"]
+        job["app_id"] = job["job_input"]["app_id"]
 
-        si = submission_info(clusterid='test',submit=job,error=None)
+        si = submission_info(clusterid="test", submit=job, error=None)
         condor_mock.run_job = MagicMock(return_value=si)
 
         job_id = runner.run_job(params=job, ctx=ctx)
         print(f"Job id is {job_id} ")
 
-
-
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
-    def test_run_job_and_add_log(self,condor_mock):
+    def test_run_job_and_add_log(self, condor_mock):
+        """
+        This test runs a job and then adds logs
+
+        :param condor_mock:
+        :return:
+        """
         runner = self.getRunner()
         runner.get_permissions_for_workspace = MagicMock(return_value=True)
         runner.check_permission_for_job = MagicMock(return_value=True)
 
-        runner._get_module_git_commit = MagicMock(return_value='git_commit_goes_here')
+        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
         runner.get_condor = MagicMock(return_value=condor_mock)
-        ctx = {'user_id' : self.user_id, 'wsid' : self.ws_id, 'token' : self.token}
+        ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
         job = get_example_job().to_mongo().to_dict()
-        job['method'] = job['job_input']['app_id']
-        job['app_id'] = job['job_input']['app_id']
+        job["method"] = job["job_input"]["app_id"]
+        job["app_id"] = job["job_input"]["app_id"]
 
-        si = submission_info(clusterid='test',submit=job,error=None)
+        si = submission_info(clusterid="test", submit=job, error=None)
         condor_mock.run_job = MagicMock(return_value=si)
 
         job_id = runner.run_job(params=job, ctx=ctx)
         logging.info(f"Job id is {job_id} ")
 
-        l = []
-        for item in ['this','is','a','line']:
-            line = {'error' : False, 'line' : item}
-            l.append(line)
+        lines = []
+        for item in ["this", "is", "a", "line"]:
+            line = {"error": False, "line": item}
+            lines.append(line)
 
         logging.info("About to insert")
-        lp = runner.add_job_logs(ctx=ctx, job_id=job_id,lines=l)
+        lp = runner.add_job_logs(ctx=ctx, job_id=job_id, lines=lines)
         logging.info(f"Log position is now {lp}")
-        logging.info(  runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx))
+        logging.info(runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx))

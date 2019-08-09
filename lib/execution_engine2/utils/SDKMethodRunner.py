@@ -2,16 +2,20 @@ import json
 import logging
 import os
 import re
+from datetime import datetime
 from enum import Enum
 from time import time
-from datetime import  datetime
-
 
 from mongoengine import connect
 
-
-
-from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog, LogLines
+from execution_engine2.models.models import (
+    Job,
+    JobInput,
+    Meta,
+    Status,
+    JobLog,
+    LogLines,
+)
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
@@ -33,7 +37,7 @@ class SDKMethodRunner:
         if method is None:
             raise ValueError("Please input module_name.function_name")
 
-        pattern = re.compile(".*\..*")
+        pattern = re.compile(r".*\..*")
         if method is not None and not pattern.match(method):
             raise ValueError(
                 "unrecognized method: {}. Please input module_name.function_name".format(
@@ -171,7 +175,7 @@ class SDKMethodRunner:
 
         # TODO Filter the lines in the mongo query?
         lines = []
-        for line in  log.lines: # type: LogLines
+        for line in log.lines:  # type: LogLines
             lines.append(line.to_mongo().to_dict())
 
         # TODO AVOID LOADING ENTIRE THING INTO MEMORY
@@ -196,22 +200,21 @@ class SDKMethodRunner:
         return 1
 
     def _create_new_log(self, pk):
-        l = JobLog()
-        l.primary_key = pk
-        l.original_line_count = 0
-        l.stored_line_count = 0
-        l.lines = []
-        return l
-
+        jl = JobLog()
+        jl.primary_key = pk
+        jl.original_line_count = 0
+        jl.stored_line_count = 0
+        jl.lines = []
+        return jl
 
     def add_job_logs(self, job_id, lines, ctx):
         """
         #TODO Prevent too many logs in memory
         #TODO Max size of log lines = 1000
-        #TODO  // Error with out of space happened previously. So we just update line count.
-		#TODO	db.updateExecLogOriginalLineCount(ujsJobId, dbLog.getOriginalLineCount() + lines.size());
+        #TODO Error with out of space happened previously. So we just update line count.
+        #TODO db.updateExecLogOriginalLineCount(ujsJobId, dbLog.getOriginalLineCount() + lines.size());
 
-        Authorization Required : Ability to read and write to the workspace
+        #Authorization Required : Ability to read and write to the workspace
         :param job_id:
         :param lines:
         :param ctx:
@@ -227,20 +230,19 @@ class SDKMethodRunner:
 
         olc = log.original_line_count
 
-
-        #TODO Limit amount of lines per request?
-        #TODO Maybe Prevent Some lines with TS and some without
-        #TODO # Handle malformed requests?
+        # TODO Limit amount of lines per request?
+        # TODO Maybe Prevent Some lines with TS and some without
+        # TODO # Handle malformed requests?
 
         now = datetime.utcnow()
 
         for line in lines:
-            olc+=1
+            olc += 1
             ll = LogLines()
-            ll.error = line.get('error',False)
+            ll.error = line.get("error", False)
             ll.linepos = olc
-            ll.ts = line.get('ts', now)
-            ll.line = line.get('line')
+            ll.ts = line.get("ts", now)
+            ll.line = line.get("line")
             ll.validate()
             log.lines.append(ll)
 
@@ -252,7 +254,6 @@ class SDKMethodRunner:
             log.save()
 
         return log.stored_line_count
-
 
     def __init__(self, config, ctx=None):
         self.ctx = ctx
@@ -363,8 +364,9 @@ class SDKMethodRunner:
         if submission_info.error is not None:
             raise submission_info.error
         if condor_job_id is None:
-            raise Exception("Condor job not ran, and error not found. Something went wrong")
-
+            raise Exception(
+                "Condor job not ran, and error not found. Something went wrong"
+            )
 
         logging.debug("Submission info is")
         logging.debug(submission_info)
