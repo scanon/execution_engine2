@@ -4,9 +4,9 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from lib.execution_engine2.models.models import LogLines, JobLog
-from lib.execution_engine2.utils.MongoUtil import MongoUtil
-from test.test_utils import read_config_into_dict, bootstrap
+from execution_engine2.models.models import LogLines, JobLog
+from execution_engine2.utils.MongoUtil import MongoUtil
+from test.test_utils import read_config_into_dict, bootstrap, get_example_job
 
 bootstrap()
 from bson import ObjectId
@@ -36,7 +36,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         with self.mongo_util.mongo_engine_connection(), self.mongo_util.pymongo_client(
             self.config["mongo-jobs-collection"]
         ) as pc:
-            job = self.get_example_job()
+            job = get_example_job()
             job.save()
 
             logging.info(f"Inserted {job.id}")
@@ -62,7 +62,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         :return:
         """
         with self.mongo_util.mongo_engine_connection():
-            job = self.get_example_job()
+            job = get_example_job()
             job.save()
 
             j = JobLog()

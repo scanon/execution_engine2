@@ -1,12 +1,12 @@
 FROM centos:latest
 ENV container docker
 
-RUN yum update -y && yum install -y which gcc bzip2 wget \
+RUN yum update -y && yum install -y which gcc bzip2 wget openssh-server \
 && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh \
-&& bash ~/miniconda.sh -b -p $HOME/miniconda \
-&& export PATH="$HOME/miniconda/bin:$PATH"
+&& bash ~/miniconda.sh -u -b -p /miniconda \
+&& export PATH="/miniconda/bin:$PATH"
 
-ENV PATH /root/miniconda/bin:$PATH
+ENV PATH /miniconda/bin:$PATH
 
 
 RUN wget https://research.cs.wisc.edu/htcondor/yum/RPM-GPG-KEY-HTCondor; rpm --import RPM-GPG-KEY-HTCondor;
@@ -25,6 +25,14 @@ COPY start_condor_dummy.sh /start_condor_dummy.sh
 RUN pip install -r requirements.txt
 RUN echo "root:root" | chpasswd
 RUN useradd kbase && echo "kbase:kbase" | chpasswd
+
+
+RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N '' \
+&& ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N '' \
+&& ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' \
+&& ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+
+RUN echo root:welcome1 | chpasswd
 
 ENTRYPOINT ["/start_condor.sh"]
 

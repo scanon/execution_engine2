@@ -5,4 +5,5 @@
 if [ "${POOL_PASSWORD}" ] ; then
     /usr/sbin/condor_store_cred -p "${POOL_PASSWORD}" -f $(condor_config_val SEC_PASSWORD_FILE)
 fi
-sleep 99999999999
+
+/usr/sbin/sshd -D

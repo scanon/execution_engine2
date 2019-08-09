@@ -8,7 +8,7 @@ from bson.objectid import ObjectId
 from mongoengine import connect, connection
 
 from contextlib import contextmanager
-from execution_engine2.models.models import *
+from lib.execution_engine2.models.models import *
 
 
 class MongoUtil:
