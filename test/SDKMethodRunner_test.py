@@ -9,7 +9,6 @@ from mongoengine import ValidationError
 from mock import MagicMock
 from bson import ObjectId
 
-
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
@@ -89,7 +88,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         job.job_input = inputs
 
-        with self.mongo_util.me_collection(self.cfg["mongo-jobs-collection"]):
+        with self.mongo_util.mongo_engine_connection():
             job.save()
 
         return str(job.id)
@@ -150,69 +149,50 @@ class SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(len(git_commit_1), len(git_commit_2))
         self.assertNotEqual(git_commit_1, git_commit_2)
 
-    # TODO FIX WITH A DEFAULT CONNECTION
-    # def test_init_job_rec(self):
-    #
-    #     runner = self.getRunner()
-    #
-    #     self.assertEqual(self.test_collection.count_documents({}), 0)
-    #
-    #     job_params = {
-    #         "wsid": self.ws_id,
-    #         "method": "MEGAHIT.run_megahit",
-    #         "app_id": "MEGAHIT/run_megahit",
-    #         "service_ver": "2.2.1",
-    #         "params": [
-    #             {
-    #                 "k_list": [],
-    #                 "k_max": None,
-    #                 "output_contigset_name": "MEGAHIT.contigs",
-    #             }
-    #         ],
-    #     }
-    #
-    #     job_id = runner._init_job_rec(self.user_id, job_params)
-    #
-    #     self.assertEqual(self.test_collection.count_documents({}), 1)
-    #
-    #     result = list(self.test_collection.find({"_id": ObjectId(job_id)}))[0]
-    #
-    #     expected_keys = [
-    #         "_id",
-    #         "user",
-    #         "authstrat",
-    #         "wsid",
-    #         "status",
-    #         "updated",
-    #         "job_input",
-    #     ]
-    #
-    #     self.assertCountEqual(result.keys(), expected_keys)
-    #     self.assertEqual(result["user"], self.user_id)
-    #     self.assertEqual(result["authstrat"], "kbaseworkspace")
-    #     self.assertEqual(result["wsid"], self.ws_id)
-    #
-    #     job_input = result["job_input"]
-    #     expected_ji_keys = [
-    #         "wsid",
-    #         "method",
-    #         "params",
-    #         "service_ver",
-    #         "app_id",
-    #         "narrative_cell_info",
-    #     ]
-    #     self.assertCountEqual(job_input.keys(), expected_ji_keys)
-    #     self.assertEqual(job_input["wsid"], self.ws_id)
-    #     self.assertEqual(job_input["method"], "MEGAHIT.run_megahit")
-    #     self.assertEqual(job_input["app_id"], "MEGAHIT/run_megahit")
-    #     self.assertEqual(job_input["service_ver"], "2.2.1")
-    #
-    #     self.assertFalse(result.get("job_output"))
-    #
-    #     self.test_collection.delete_one({"_id": ObjectId(job_id)})
-    #     self.assertEqual(self.test_collection.count_documents({}), 0)
+    def test_init_job_rec(self):
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            runner = self.getRunner()
 
-    # Can we use hypotehsis here? https://github.com/kbase/staging_service/blob/develop/tests/test_app.py#L112
+            job_params = {
+                "wsid": self.ws_id,
+                "method": "MEGAHIT.run_megahit",
+                "app_id": "MEGAHIT/run_megahit",
+                "service_ver": "2.2.1",
+                "params": [
+                    {
+                        "k_list": [],
+                        "k_max": None,
+                        "output_contigset_name": "MEGAHIT.contigs",
+                    }
+                ],
+                "source_ws_objects": ["a/b/c", "e/d"],
+                "parent_job_id": "9998"
+            }
+
+            job_id = runner._init_job_rec(self.user_id, job_params)
+
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = Job.objects.get(id=job_id)
+
+            self.assertEqual(job.user, self.user_id)
+            self.assertEqual(job.authstrat, "kbaseworkspace")
+            self.assertEqual(job.wsid, self.ws_id)
+
+            job_input = job.job_input
+
+            self.assertEqual(job_input.wsid, self.ws_id)
+            self.assertEqual(job_input.method, "MEGAHIT.run_megahit")
+            self.assertEqual(job_input.app_id, "MEGAHIT/run_megahit")
+            self.assertEqual(job_input.service_ver, "2.2.1")
+            self.assertCountEqual(job_input.source_ws_objects, ["a/b/c", "e/d"])
+            self.assertEqual(job_input.parent_job_id, "9998")
+
+            self.assertFalse(job.job_output)
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
 
     @patch("execution_engine2.utils.SDKMethodRunner.SDKMethodRunner", autospec=True)
     def test_cancel_job(self, runner):
@@ -378,65 +358,185 @@ class SDKMethodRunner_test(unittest.TestCase):
         # self.assertEqual(self.test_collection.count_documents({}), 0)
 
     def test_get_job_params(self):
-        count = self.test_collection.count_documents({})
-        self.assertEqual(self.test_collection.count_documents({}), count)
-        job_id = self.create_job_rec()
-        self.assertEqual(self.test_collection.count_documents({}), count + 1)
 
-        runner = self.getRunner()
-        params = runner.get_job_params(job_id)
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
-        expected_params_keys = [
-            "wsid",
-            "method",
-            "params",
-            "service_ver",
-            "app_id",
-            "source_ws_objects",
-            "parent_job_id",
-        ]
-        self.assertCountEqual(params.keys(), expected_params_keys)
-        self.assertEqual(params["wsid"], self.ws_id)
-        self.assertEqual(params["method"], "MEGAHIT.run_megahit")
-        self.assertEqual(params["app_id"], "MEGAHIT/run_megahit")
-        self.assertEqual(params["service_ver"], "2.2.1")
-        self.assertCountEqual(params["source_ws_objects"], ["a/b/c", "e/d"])
-        self.assertEqual(params["parent_job_id"], "9998")
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
+            params = runner.get_job_params(job_id, ctx)
 
-        self.test_collection.delete_one({"_id": ObjectId(job_id)})
-        self.assertEqual(self.test_collection.count_documents({}), count)
+            expected_params_keys = ["wsid", "method", "params", "service_ver", "app_id",
+                                    "source_ws_objects", "parent_job_id"]
+            self.assertCountEqual(params.keys(), expected_params_keys)
+            self.assertEqual(params["wsid"], self.ws_id)
+            self.assertEqual(params["method"], "MEGAHIT.run_megahit")
+            self.assertEqual(params["app_id"], "MEGAHIT/run_megahit")
+            self.assertEqual(params["service_ver"], "2.2.1")
+            self.assertCountEqual(params["source_ws_objects"], ["a/b/c", "e/d"])
+            self.assertEqual(params["parent_job_id"], "9998")
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
 
     def test_update_job_status(self):
-        original_count = self.test_collection.count_documents({})
-        self.assertEqual(self.test_collection.count_documents({}), original_count)
-        job_id = self.create_job_rec()
-        self.assertEqual(self.test_collection.count_documents({}), original_count + 1)
 
-        runner = self.getRunner()
+        with self.mongo_util.mongo_engine_connection():
 
-        # test missing status
-        with self.assertRaises(ValueError) as context:
-            runner.update_job_status(None, "invalid_status")
-        self.assertEqual(
-            "Please provide both job_id and status", str(context.exception)
-        )
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
-        # test invalid status
-        with self.assertRaises(ValidationError) as context:
-            runner.update_job_status(job_id, "invalid_status")
-        self.assertIn("is not a valid status", str(context.exception))
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
 
-        with self.mongo_util.me_collection(self.cfg["mongo-jobs-collection"]):
+            # test missing status
+            with self.assertRaises(ValueError) as context:
+                runner.update_job_status(None, "invalid_status", ctx)
+            self.assertEqual("Please provide both job_id and status", str(context.exception))
+
+            # test invalid status
+            with self.assertRaises(ValidationError) as context:
+                runner.update_job_status(job_id, "invalid_status", ctx)
+            self.assertIn("is not a valid status", str(context.exception))
+
             ori_job = Job.objects(id=job_id)[0]
             ori_updated_time = ori_job.updated
 
             # test update job status
-            job_id = runner.update_job_status(job_id, "estimating")
+            job_id = runner.update_job_status(job_id, "estimating", ctx)
             updated_job = Job.objects(id=job_id)[0]
             self.assertEqual(updated_job.status, "estimating")
             updated_time = updated_job.updated
 
             self.assertTrue(ori_updated_time < updated_time)
 
-        self.test_collection.delete_one({"_id": ObjectId(job_id)})
-        self.assertEqual(self.test_collection.count_documents({}), original_count)
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
+
+    def test_get_job_status(self):
+
+        with self.mongo_util.mongo_engine_connection():
+
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
+
+            # test missing job_id input
+            with self.assertRaises(ValueError) as context:
+                runner.get_job_status(None, ctx)
+            self.assertEqual("Please provide valid job_id", str(context.exception))
+
+            returnVal = runner.get_job_status(job_id, ctx)
+
+            self.assertTrue("status" in returnVal)
+            self.assertEqual(returnVal["status"], "created")
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
+
+    def test_finish_job(self):
+
+        with self.mongo_util.mongo_engine_connection():
+
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "created")
+            self.assertFalse(job.finished)
+
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
+
+            # test missing job_id input
+            with self.assertRaises(ValueError) as context:
+                runner.finish_job(None, ctx)
+            self.assertEqual("Please provide valid job_id", str(context.exception))
+
+            # test finish job with invalid status
+            with self.assertRaises(ValueError) as context:
+                runner.finish_job(job_id, ctx)
+            self.assertIn("Unexpected job status", str(context.exception))
+
+            # update job status to running
+            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+
+            # test finish job without error
+            runner.finish_job(job_id, ctx)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "finished")
+            self.assertFalse(job.errormsg)
+            self.assertTrue(job.finished)
+
+            # update job status to running
+            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+
+            # test finish job with error message
+            runner.finish_job(job_id, ctx, error_message="error message")
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "error")
+            self.assertEqual(job.errormsg, "error message")
+            self.assertTrue(job.finished)
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
+
+    def test_start_job(self):
+
+        with self.mongo_util.mongo_engine_connection():
+
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "created")
+            self.assertFalse(job.finished)
+            self.assertFalse(job.running)
+            self.assertFalse(job.estimating)
+
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
+
+            # test missing job_id input
+            with self.assertRaises(ValueError) as context:
+                runner.start_job(None, ctx)
+            self.assertEqual("Please provide valid job_id", str(context.exception))
+
+            # start a created job, set job to estimation status
+            runner.start_job(job_id, ctx)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "estimating")
+            self.assertFalse(job.running)
+            self.assertTrue(job.estimating)
+
+            # start a estimating job, set job to running status
+            runner.start_job(job_id, ctx)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "running")
+            self.assertTrue(job.running)
+            self.assertTrue(job.estimating)
+
+            # test start a job with invalid status
+            with self.assertRaises(ValueError) as context:
+                runner.start_job(job_id, ctx)
+            self.assertIn("Unexpected job status", str(context.exception))
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())

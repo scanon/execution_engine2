@@ -17,6 +17,7 @@ from execution_engine2.models.models import (
 )
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.exceptions import RecordNotFoundException
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 
@@ -140,12 +141,6 @@ class SDKMethodRunner:
         READ = "r"
         NONE = "n"
 
-    def get_job_status(self, job_id, ctx):
-        logging.debug(f"About to view logs for {job_id}")
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
-        logging.debug("Success, you have permission to view job status for " + job_id)
-        return {}
-
     def _get_job_log(self, job_id, skip_lines):
         """
         # TODO Do I have to query this another way so I don't load all lines into memory?
@@ -219,8 +214,9 @@ class SDKMethodRunner:
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
         logging.debug("Success, you have permission to view logs for " + job_id)
 
-        log = self.get_mongo_util().get_job_log(job_id)
-        if log is None:
+        try:
+            log = self.get_mongo_util().get_job_log(job_id=job_id)
+        except RecordNotFoundException:
             log = self._create_new_log(pk=job_id)
 
         olc = log.original_line_count
@@ -294,7 +290,11 @@ class SDKMethodRunner:
         Check to see if job is terminated by the user
         :return: job_id, whether or not job is canceled, and whether or not job is finished
         """
-        job_status = self.get_mongo_util().get_job(job_id=job_id).status
+
+        job = self.get_mongo_util().get_job(job_id=job_id)
+
+        job_status = job.status
+
         rv = {"job_id": job_id, "canceled": False, "finished": False}
 
         if Status(job_status) is Status.terminated:
@@ -425,45 +425,148 @@ class SDKMethodRunner:
                     f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
                 )
 
-    def get_job_params(self, job_id):
+    def get_job_params(self, job_id, ctx):
+        """
+        get_job_params: fetch SDK method params passed to job runner
+
+        Parameters:
+        job_id: id of job
+
+        Returns:
+        job_params:
+        """
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
+
         job_params = dict()
 
-        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
+        job = self.get_mongo_util().get_job(job_id=job_id)
 
-            try:
-                job = Job.objects(id=job_id)[0]
-            except Exception:
-                raise ValueError(
-                    "Unable to find job:\nError:\n{}".format(traceback.format_exc())
-                )
+        job_input = job.job_input
 
-            job_input = job.job_input
-
-            job_params["method"] = job_input.method
-            job_params["params"] = job_input.params
-            job_params["service_ver"] = job_input.service_ver
-            job_params["app_id"] = job_input.app_id
-            job_params["wsid"] = job_input.wsid
-            job_params["parent_job_id"] = job_input.parent_job_id
-            job_params["source_ws_objects"] = job_input.source_ws_objects
+        job_params["method"] = job_input.method
+        job_params["params"] = job_input.params
+        job_params["service_ver"] = job_input.service_ver
+        job_params["app_id"] = job_input.app_id
+        job_params["wsid"] = job_input.wsid
+        job_params["parent_job_id"] = job_input.parent_job_id
+        job_params["source_ws_objects"] = job_input.source_ws_objects
 
         return job_params
 
-    def update_job_status(self, job_id, status):
+    def update_job_status(self, job_id, status, ctx):
+        """
+        update_job_status: update status of a job runner record.
+                           raise error if job is not found or status is not listed in models.Status
+
+        Parameters:
+        job_id: id of job
+        """
 
         if not (job_id and status):
             raise ValueError("Please provide both job_id and status")
 
-        with self.get_mongo_util().me_collection(self.config["mongo-jobs-collection"]):
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
 
-            try:
-                job = Job.objects(id=job_id)[0]
-            except Exception:
-                raise ValueError(
-                    "Unable to find job:\nError:\n{}".format(traceback.format_exc())
-                )
+        job = self.get_mongo_util().get_job(job_id=job_id)
 
-            job.status = status
+        job.status = status
+
+        with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
         return str(job.id)
+
+    def get_job_status(self, job_id, ctx):
+        """
+        get_job_status: fetch status of a job runner record.
+                        raise error if job is not found
+
+        Parameters:
+        job_id: id of job
+
+        Returns:
+        returnVal: returnVal['status'] status of job
+        """
+
+        returnVal = dict()
+
+        if not job_id:
+            raise ValueError("Please provide valid job_id")
+
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
+
+        job = self.get_mongo_util().get_job(job_id=job_id)
+
+        returnVal['status'] = job.status
+
+        return returnVal
+
+    def finish_job(self, job_id, ctx, error_message=None):
+        """
+        finish_job: set job record to finish status and update finished timestamp
+                    (set job status to "finished" by default. If error_message is given, set job to "error" status)
+                    raise error if job is not found or current job status is not "running"
+                    (general work flow for job status created -> queued -> estimating -> running -> finished/error/terminated)
+
+        Parameters:
+        job_id: id of job
+        error_message: default None, if given set job to error status
+        """
+
+        if not job_id:
+            raise ValueError("Please provide valid job_id")
+
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
+
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        job_status = job.status
+
+        if job_status not in [Status.running.value]:
+            raise ValueError("Unexpected job status: {}".format(job_status))
+
+        if error_message:
+            job.errormsg = error_message
+            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.error.value)
+        else:
+            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
+
+        job.finished = datetime.utcnow()
+
+        with self.get_mongo_util().mongo_engine_connection():
+            job.save()
+
+    def start_job(self, job_id, ctx, skip_estimation=False):
+        """
+        start_job: set job record to start status ("estimating" or "running") and update timestamp
+                   (set job status to "estimating" by default, if job status currently is "created" or "queued".
+                    set job status to "running", if job status currently is "estimating")
+                   raise error if job is not found or current job status is not "created", "queued" or "estimating"
+                   (general work flow for job status created -> queued -> estimating -> running -> finished/error/terminated)
+
+        Parameters:
+        job_id: id of job
+        skip_estimation: skip estimation step and set job to running directly
+        """
+
+        if not job_id:
+            raise ValueError("Please provide valid job_id")
+
+        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
+
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        job_status = job.status
+
+        if job_status not in [Status.created.value, Status.queued.value, Status.estimating.value]:
+            raise ValueError("Unexpected job status: {}".format(job_status))
+
+        if job_status == Status.estimating.value or skip_estimation:
+            # set job to running status
+            job.running = datetime.utcnow()
+            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.running.value)
+        else:
+            # set job to estimating status
+            job.estimating = datetime.utcnow()
+            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.estimating.value)
+
+        with self.get_mongo_util().mongo_engine_connection():
+            job.save()
