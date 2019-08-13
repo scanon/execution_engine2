@@ -8,7 +8,8 @@ logging.basicConfig(level=logging.INFO)
 from lib.execution_engine2.utils.Condor import Condor
 from lib.installed_clients.execution_engine2Client import execution_engine2
 from lib.installed_clients.WorkspaceClient import Workspace
-import os, sys
+import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -78,12 +79,33 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
             "app_id": "simpleapp",
         }
 
-        # print(self.ee2.run_job(runjob_params))
+        job_id = self.ee2.run_job(runjob_params)
+        print(f"Submitted job {job_id}")
 
-    def test_get_logs(self):
-        job_log_params = {"job_id": "5d48821bfc8e83248c0d2cff"}
-        print("About to get logs for", job_log_params)
-        print(self.ee2.get_job_logs(job_log_params))
+        import datetime
+
+        now = datetime.datetime.now()
+        line1 = {"line": "1", "error": False, "ts": now}
+        line2 = {"line": "1", "error": False}
+        lines = [line1, line2]
+
+        self.ee2.add_job_logs(job_id, lines=lines)
+
+    # def test_add_job_log(self):
+    #     import datetime
+    #     job_id="5d51aa0517554f4cfd7b8a2b"
+    #     now = datetime.datetime.now()
+    #     line1 = {'line' : "1", 'error' : False, 'ts' : now}
+    #     line2 = {'line' : "1", 'error' : False}
+    #     lines = [line1,line2]
+    #
+    #     self.ee2.add_job_logs(job_id,lines=lines)
+
+    # def test_get_logs(self):
+    # job_id="5d51aa0517554f4cfd7b8a2b"
+    # job_log_params = {"job_id": job_id}
+    # print("About to get logs for", job_log_params)
+    # print(self.ee2.get_job_logs(job_log_params))
 
     # def test_get_permissions(self):
     #     username = 'bsadkhin'

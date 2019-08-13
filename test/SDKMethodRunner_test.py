@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 import copy
+import datetime
 import logging
 import os
 import unittest
 from configparser import ConfigParser
 from unittest.mock import patch
-from mongoengine import ValidationError
+from datetime import timedelta
 from mock import MagicMock
-from bson import ObjectId
+from mongoengine import ValidationError
 
+from execution_engine2.models.models import Job, JobInput, Meta, Status
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from execution_engine2.models.models import Job, JobInput, Meta, Status
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
 
@@ -167,7 +168,7 @@ class SDKMethodRunner_test(unittest.TestCase):
                     }
                 ],
                 "source_ws_objects": ["a/b/c", "e/d"],
-                "parent_job_id": "9998"
+                "parent_job_id": "9998",
             }
 
             job_id = runner._init_job_rec(self.user_id, job_params)
@@ -344,18 +345,66 @@ class SDKMethodRunner_test(unittest.TestCase):
         logging.info(f"Job id is {job_id} ")
 
         lines = []
-        for item in ["this", "is", "a", "line"]:
+        for item in ["this", "is", "a", "test"]:
             line = {"error": False, "line": item}
             lines.append(line)
 
-        logging.info("About to insert")
-        lp = runner.add_job_logs(ctx=ctx, job_id=job_id, lines=lines)
-        logging.info(f"Log position is now {lp}")
-        logging.info(runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx))
+        log_pos_1 = runner.add_job_logs(ctx=ctx, job_id=job_id, input_lines=lines)
+        logging.info(f"After insert log position is now {log_pos_1}")
+        log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
+        log_lines = log["lines"]
+        for i, inserted_line in enumerate(log_lines):
+            self.assertEqual(inserted_line["line"], lines[i]["line"])
 
-        self.test_collection.delete_one({"_id": ObjectId(job_id)})
-        # TODO FIX THIS ASSERT AS DOCUMENT COUNT IS TOO FLAKY
-        # self.assertEqual(self.test_collection.count_documents({}), 0)
+        line1 = {
+            "error": False,
+            "line": "This is the read deal",
+            "ts": datetime.datetime.now(),
+        }
+        line2 = {
+            "error": False,
+            "line": "This is the read deal2",
+            "ts": datetime.datetime.now(),
+        }
+        line3 = {
+            "error": False,
+            "line": "This is the read deal3",
+            "ts": datetime.datetime.now(),
+        }
+        line4 = {
+            "error": False,
+            "line": "This is the read deal4",
+            "ts": datetime.datetime.now(),
+        }
+        input_lines2 = [line1, line2, line3, line4]
+
+        for line in input_lines2:
+            print(line)
+
+        log_pos2 = runner.add_job_logs(ctx=ctx, job_id=job_id, input_lines=input_lines2)
+        logging.info(
+            f"After inserting timestamped logs,  log position is now {log_pos2}"
+        )
+
+        log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
+        log_lines = log["lines"]
+        for i, inserted_line in enumerate(log_lines):
+            if i < log_pos_1:
+                continue
+
+            self.assertEqual(inserted_line["line"], input_lines2[i - log_pos_1]["line"])
+            # TODO FIX THIS WHY AREN"T THEY EQUAL?!
+            # self.assertEqual(inserted_line['ts'], input_lines2[i - log_pos_1]['ts'])
+            self.assertAlmostEqual(
+                first=inserted_line["ts"],
+                second=input_lines2[i - log_pos_1]["ts"],
+                delta=timedelta(seconds=1),
+            )
+            self.assertEqual(
+                inserted_line["error"], input_lines2[i - log_pos_1]["error"]
+            )
+
+        # TODO IMPLEMENT SKIPLINES AND TEST
 
     def test_get_job_params(self):
 
@@ -369,8 +418,15 @@ class SDKMethodRunner_test(unittest.TestCase):
             ctx = {"foo": "bar"}
             params = runner.get_job_params(job_id, ctx)
 
-            expected_params_keys = ["wsid", "method", "params", "service_ver", "app_id",
-                                    "source_ws_objects", "parent_job_id"]
+            expected_params_keys = [
+                "wsid",
+                "method",
+                "params",
+                "service_ver",
+                "app_id",
+                "source_ws_objects",
+                "parent_job_id",
+            ]
             self.assertCountEqual(params.keys(), expected_params_keys)
             self.assertEqual(params["wsid"], self.ws_id)
             self.assertEqual(params["method"], "MEGAHIT.run_megahit")
@@ -385,7 +441,6 @@ class SDKMethodRunner_test(unittest.TestCase):
     def test_update_job_status(self):
 
         with self.mongo_util.mongo_engine_connection():
-
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
@@ -397,7 +452,9 @@ class SDKMethodRunner_test(unittest.TestCase):
             # test missing status
             with self.assertRaises(ValueError) as context:
                 runner.update_job_status(None, "invalid_status", ctx)
-            self.assertEqual("Please provide both job_id and status", str(context.exception))
+            self.assertEqual(
+                "Please provide both job_id and status", str(context.exception)
+            )
 
             # test invalid status
             with self.assertRaises(ValidationError) as context:
@@ -421,7 +478,6 @@ class SDKMethodRunner_test(unittest.TestCase):
     def test_get_job_status(self):
 
         with self.mongo_util.mongo_engine_connection():
-
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
@@ -446,7 +502,6 @@ class SDKMethodRunner_test(unittest.TestCase):
     def test_finish_job(self):
 
         with self.mongo_util.mongo_engine_connection():
-
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
@@ -470,7 +525,9 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertIn("Unexpected job status", str(context.exception))
 
             # update job status to running
-            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            self.mongo_util.update_job_status(
+                job_id=job_id, status=Status.running.value
+            )
 
             # test finish job without error
             runner.finish_job(job_id, ctx)
@@ -481,7 +538,9 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertTrue(job.finished)
 
             # update job status to running
-            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            self.mongo_util.update_job_status(
+                job_id=job_id, status=Status.running.value
+            )
 
             # test finish job with error message
             runner.finish_job(job_id, ctx, error_message="error message")
@@ -497,7 +556,6 @@ class SDKMethodRunner_test(unittest.TestCase):
     def test_start_job(self):
 
         with self.mongo_util.mongo_engine_connection():
-
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
             self.assertEqual(ori_job_count, Job.objects.count() - 1)

@@ -2,11 +2,11 @@ import json
 import logging
 import os
 import re
-import traceback
 from datetime import datetime
 from enum import Enum
 from time import time
 
+from execution_engine2.exceptions import RecordNotFoundException
 from execution_engine2.models.models import (
     Job,
     JobInput,
@@ -17,7 +17,6 @@ from execution_engine2.models.models import (
 )
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
-from execution_engine2.exceptions import RecordNotFoundException
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 
@@ -197,16 +196,21 @@ class SDKMethodRunner:
         jl.lines = []
         return jl
 
-    def add_job_logs(self, job_id, lines, ctx):
+    def add_job_logs(self, job_id, input_lines, ctx):
         """
         #TODO Prevent too many logs in memory
         #TODO Max size of log lines = 1000
         #TODO Error with out of space happened previously. So we just update line count.
         #TODO db.updateExecLogOriginalLineCount(ujsJobId, dbLog.getOriginalLineCount() + lines.size());
 
+
+        # TODO Limit amount of lines per request?
+        # TODO Maybe Prevent Some lines with TS and some without
+        # TODO # Handle malformed requests?
+
         #Authorization Required : Ability to read and write to the workspace
         :param job_id:
-        :param lines:
+        :param input_lines:
         :param ctx:
         :return:
         """
@@ -221,27 +225,20 @@ class SDKMethodRunner:
 
         olc = log.original_line_count
 
-        # TODO Limit amount of lines per request?
-        # TODO Maybe Prevent Some lines with TS and some without
-        # TODO # Handle malformed requests?
-
-        now = datetime.utcnow()
-
-        for line in lines:
+        for input_line in input_lines:
             olc += 1
             ll = LogLines()
-            ll.error = line.get("error", False)
+            ll.error = input_line.get("error", False)
             ll.linepos = olc
-            ll.ts = line.get("ts", now)
-            ll.line = line.get("line")
-            ll.validate()
+            ll.ts = input_line.get("ts")
+            ll.line = input_line.get("line")
             log.lines.append(ll)
+            ll.validate()
 
         log.original_line_count = olc
         log.stored_line_count = olc
 
         with self.get_mongo_util().mongo_engine_connection():
-            print(type(log))
             log.save()
 
         return log.stored_line_count
@@ -497,7 +494,7 @@ class SDKMethodRunner:
 
         job = self.get_mongo_util().get_job(job_id=job_id)
 
-        returnVal['status'] = job.status
+        returnVal["status"] = job.status
 
         return returnVal
 
@@ -526,9 +523,13 @@ class SDKMethodRunner:
 
         if error_message:
             job.errormsg = error_message
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.error.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.error.value
+            )
         else:
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.finished.value
+            )
 
         job.finished = datetime.utcnow()
 
@@ -556,17 +557,25 @@ class SDKMethodRunner:
         job = self.get_mongo_util().get_job(job_id=job_id)
         job_status = job.status
 
-        if job_status not in [Status.created.value, Status.queued.value, Status.estimating.value]:
+        if job_status not in [
+            Status.created.value,
+            Status.queued.value,
+            Status.estimating.value,
+        ]:
             raise ValueError("Unexpected job status: {}".format(job_status))
 
         if job_status == Status.estimating.value or skip_estimation:
             # set job to running status
             job.running = datetime.utcnow()
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.running.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.running.value
+            )
         else:
             # set job to estimating status
             job.estimating = datetime.utcnow()
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.estimating.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.estimating.value
+            )
 
         with self.get_mongo_util().mongo_engine_connection():
             job.save()

@@ -8,7 +8,8 @@ from bson.objectid import ObjectId
 from mongoengine import connect, connection
 
 from contextlib import contextmanager
-from lib.execution_engine2.models.models import *
+
+from lib.execution_engine2.models.models import JobLog, Job
 from execution_engine2.exceptions import RecordNotFoundException
 
 
@@ -155,7 +156,9 @@ class MongoUtil:
                 )
 
             if not job_log:
-                raise RecordNotFoundException("Cannot find job log with id: {}".format(job_id))
+                raise RecordNotFoundException(
+                    "Cannot find job log with id: {}".format(job_id)
+                )
 
         return job_log
 
@@ -171,7 +174,9 @@ class MongoUtil:
                 )
 
             if not job:
-                raise RecordNotFoundException("Cannot find job with id: {}".format(job_id))
+                raise RecordNotFoundException(
+                    "Cannot find job with id: {}".format(job_id)
+                )
 
         return job
 
