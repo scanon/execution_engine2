@@ -5,11 +5,13 @@ import logging
 import os
 import unittest
 from configparser import ConfigParser
-from unittest.mock import patch
 from datetime import timedelta
+from unittest.mock import patch
+
 from mock import MagicMock
 from mongoengine import ValidationError
 
+from execution_engine2.exceptions import InvalidStatusTransitionException
 from execution_engine2.models.models import Job, JobInput, Meta, Status
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
@@ -537,21 +539,36 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
 
-            # update job status to running
-            self.mongo_util.update_job_status(
-                job_id=job_id, status=Status.running.value
-            )
+            # update finished status to running
+            with self.assertRaises(InvalidStatusTransitionException):
+                self.mongo_util.update_job_status(
+                    job_id=job_id, status=Status.running.value
+                )
 
-            # test finish job with error message
+    def test_finish_job_with_error_message(self):
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            job = self.mongo_util.get_job(job_id=job_id)
+            print(job.status)
+
+        runner = self.getRunner()
+        runner.check_permission_for_job = MagicMock(return_value=True)
+        ctx = {"foo": "bar"}
+
+        with self.assertRaises(InvalidStatusTransitionException):
             runner.finish_job(job_id, ctx, error_message="error message")
 
-            job = self.mongo_util.get_job(job_id=job_id)
-            self.assertEqual(job.status, "error")
-            self.assertEqual(job.errormsg, "error message")
-            self.assertTrue(job.finished)
+        runner.start_job(job_id=job_id, ctx=ctx, skip_estimation=True)
+        runner.finish_job(job_id, ctx, error_message="error message")
 
-            self.mongo_util.get_job(job_id=job_id).delete()
-            self.assertEqual(ori_job_count, Job.objects.count())
+        job = self.mongo_util.get_job(job_id=job_id)
+        self.assertEqual(job.status, "error")
+        self.assertEqual(job.errormsg, "error message")
+        self.assertTrue(job.finished)
+
+        self.mongo_util.get_job(job_id=job_id).delete()
+        self.assertEqual(ori_job_count, Job.objects.count())
 
     def test_start_job(self):
 
@@ -573,10 +590,10 @@ class SDKMethodRunner_test(unittest.TestCase):
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
                 runner.start_job(None, ctx)
-            self.assertEqual("Please provide valid job_id", str(context.exception))
+                self.assertEqual("Please provide valid job_id", str(context.exception))
 
             # start a created job, set job to estimation status
-            runner.start_job(job_id, ctx)
+            runner.start_job(job_id, ctx, skip_estimation=False)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "estimating")

@@ -42,6 +42,7 @@ class Condor(Scheduler):
     INITIAL_DIR = "initial_dir"
     LEAVE_JOB_IN_QUEUE = "leavejobinqueue"
     TRANSFER_INPUT_FILES = "transfer_input_files"
+    PYTHON_PATH = "python_path"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
 
@@ -70,6 +71,10 @@ class Condor(Scheduler):
         self.config = ConfigParser()
         self.config.read(config_filepath)
         self.ee_endpoint = self.config.get(section=self.EE2, option=self.ENDPOINT)
+
+        self.python_path = self.config.get(
+            section=self.EE2, option=self.PYTHON_PATH, fallback="/root/miniconda/bin"
+        )
 
         self.initial_dir = self.config.get(
             section=self.EE2, option=self.INITIAL_DIR, fallback="/condor_shared"
@@ -133,6 +138,7 @@ class Condor(Scheduler):
             "JOB_ID": params.get("job_id"),
             # "WORKDIR": f"{config.get('WORKDIR')}/{params.get('USER')}/{params.get('JOB_ID')}",
             "CONDOR_ID": "$(Cluster).$(Process)",
+            "PTYHON_PATH": self.python_path,
         }
 
         environment = ""

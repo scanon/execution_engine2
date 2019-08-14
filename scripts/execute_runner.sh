@@ -6,8 +6,7 @@ trap "{ kill $pid }" SIGTERM
 
 JOB_ID=$1
 KBASE_ENDPOINT=$2
-tar -xvf JobRunner.tgz && cd JobRunner && . ./venv/bin/activate && chmod +x jobrunner.py
-
+tar -xvf JobRunner.tgz && cd JobRunner && cp scripts/jobrunner.py . && chmod +x jobrunner.py
 ./jobrunner.py ${JOB_ID} ${KBASE_ENDPOINT} > jobrunner.out 2> jobrunner.error &
 pid=$!
 wait ${pid}

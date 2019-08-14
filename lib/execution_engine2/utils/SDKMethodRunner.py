@@ -9,7 +9,10 @@ from time import time
 import dateutil
 import requests
 
-from execution_engine2.exceptions import RecordNotFoundException
+from execution_engine2.exceptions import (
+    RecordNotFoundException,
+    InvalidStatusTransitionException,
+)
 from execution_engine2.models.models import (
     Job,
     JobInput,
@@ -596,7 +599,9 @@ class SDKMethodRunner:
         job_status = job.status
 
         if job_status not in [Status.running.value]:
-            raise ValueError("Unexpected job status: {}".format(job_status))
+            raise InvalidStatusTransitionException(
+                "Unexpected job status: {}".format(job_status)
+            )
 
         if error_message:
             job.errormsg = error_message
@@ -613,7 +618,7 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
-    def start_job(self, job_id, ctx, skip_estimation=False):
+    def start_job(self, job_id, ctx, skip_estimation=True):
         """
         start_job: set job record to start status ("estimating" or "running") and update timestamp
                    (set job status to "estimating" by default, if job status currently is "created" or "queued".
