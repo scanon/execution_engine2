@@ -138,7 +138,7 @@ class Condor(Scheduler):
             "JOB_ID": params.get("job_id"),
             # "WORKDIR": f"{config.get('WORKDIR')}/{params.get('USER')}/{params.get('JOB_ID')}",
             "CONDOR_ID": "$(Cluster).$(Process)",
-            "PTYHON_PATH": self.python_path,
+            "PYTHON_PATH": self.python_path,
         }
 
         environment = ""
