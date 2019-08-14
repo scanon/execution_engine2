@@ -6,6 +6,9 @@ from datetime import datetime
 from enum import Enum
 from time import time
 
+import dateutil
+import requests
+
 from execution_engine2.exceptions import RecordNotFoundException
 from execution_engine2.models.models import (
     Job,
@@ -19,6 +22,7 @@ from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.authclient import KBaseAuth
 
 debug = json.loads(os.environ.get("debug", "False").lower())
 
@@ -134,6 +138,15 @@ class SDKMethodRunner:
             self.workspace = Workspace(token=ctx["token"], url=self.workspace_url)
         return self.workspace
 
+    def get_auth(self, ctx=None):
+        if ctx is None:
+            ctx = self.ctx
+        if ctx is None:
+            raise Exception("Need to provide credentials for the auth client")
+        if self.auth is None:
+            self.auth = KBaseAuth(token=ctx["token"], auth_url=self.auth_url)
+        return self.auth
+
     class WorkspacePermissions(Enum):
         ADMINISTRATOR = "a"
         READ_WRITE = "w"
@@ -230,7 +243,13 @@ class SDKMethodRunner:
             ll = LogLines()
             ll.error = input_line.get("error", False)
             ll.linepos = olc
-            ll.ts = input_line.get("ts")
+            ts = input_line.get("ts")
+            # TODO Maybe use strpos for efficiency?
+            if ts is not None:
+                if type(ts) == str:
+                    ts = dateutil.parser.parse(ts)
+            ll.ts = ts
+
             ll.line = input_line.get("line")
             log.lines.append(ll)
             ll.validate()
@@ -250,10 +269,15 @@ class SDKMethodRunner:
         self.mongo_util = None
         self.condor = None
         self.workspace = None
+        self.auth = None
+        self.is_admin = None
+        self.admin_roles = config.get("admin_roles", ["EE2_ADMIN"])
+
         catalog_url = config["catalog-url"]
         self.catalog = Catalog(catalog_url)
 
         self.workspace_url = config["workspace-url"]
+        self.auth_url = config["auth-url"]
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -399,8 +423,61 @@ class SDKMethodRunner:
         ]
         return p in write_permissions
 
+    def _run_admin_command(self, command, params):
+        available_commands = ["cancel_job", "view_job_logs"]
+        if command not in available_commands:
+            raise Exception(
+                f"{command} not an admin command. See {available_commands} "
+            )
+        commands = {"cancel_job": self.cancel_job, "view_job_logs": self.view_job_logs}
+        p = {
+            "cancel_job": {"job_id": params.get("job_id")},
+            "view_job_logs": {"job_id": params.get("job_id")},
+        }
+        return commands[command](**p[command])
+
+    def _is_admin(self, token):
+        """
+        Cache whether or not you are an ee2 admin based on your token / custom_roles
+        :param token:
+        :return:
+        """
+        if self.is_admin is None:
+            logging.info("URL:" + self.auth_url + "/api/V2/me")
+            r = requests.get(
+                self.auth_url + "/api/V2/me", headers={"Authorization": token}
+            )
+            logging.info(r.json())
+            roles = r.json().get("customroles", [])
+            if any(r in self.admin_roles for r in roles):
+                self.is_admin = True
+            else:
+                self.is_admin = False
+
+        return self.is_admin
+
+    def administer(self, command, params, token):
+        """
+        Run commands as an admin
+        See https://github.com/kbase/workspace_deluxe/blob/dev-candidate/src/us/kbase/workspace/kbase/admin/WorkspaceAdministration.java#L174
+        :param command: The command to run (See specfile)
+        :param params: The parameters for that command that will be expanded (See specfile)
+        :param token: The auth token (Will be checked for the correct auth role)
+        :return:
+        """
+        if self._is_admin(token):
+            self._run_admin_command(command, params)
+        else:
+            raise Exception(
+                f"You are not authorized. Please request a role from {self.admin_roles}"
+            )
+
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
+        #TODO Check if administrator flag is passed
+        #TODO Make it a decorator that just checks params
+        #If administrator flag is passed, try to check custom role for NJS_ADMIN
+
         Check for permissions to modify or read this record, based on WSID associated with the record
         :param job_id: The job id to look up to get it's WSID
         :param ctx: The REQUEST

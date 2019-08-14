@@ -84,8 +84,8 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 
         import datetime
 
-        now = datetime.datetime.now()
-        line1 = {"line": "1", "error": False, "ts": now}
+        now = datetime.datetime.utcnow()
+        line1 = {"line": "1", "error": False, "ts": now.isoformat()}
         line2 = {"line": "1", "error": False}
         lines = [line1, line2]
 
