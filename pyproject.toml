@@ -13,6 +13,7 @@ exclude = '''
   | buck-out
   | build
   | dist
+  | *Impl\.py
  )/
   | execution_engine2Impl.py # also separately exclude a file named impl.py in root
   | lib/execution_engine2/execution_engine2Impl.py # also separately exclude a file named impl.py in lib
