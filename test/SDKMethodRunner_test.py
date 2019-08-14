@@ -8,6 +8,7 @@ from unittest.mock import patch
 from mongoengine import ValidationError
 from mock import MagicMock
 from bson import ObjectId
+from datetime import datetime
 
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
@@ -527,6 +528,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
+            runner.catalog.log_exec_stats = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
 
             # test missing job_id input
@@ -541,6 +543,8 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             # update job status to running
             self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            job.running = datetime.utcnow()
+            job.save()
 
             # test finish job without error
             runner.finish_job(job_id, ctx)

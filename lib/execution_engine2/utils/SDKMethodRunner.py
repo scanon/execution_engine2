@@ -188,6 +188,35 @@ class SDKMethodRunner:
         logging.debug("Success, you have permission to view logs for " + job_id)
         return self._get_job_log(job_id, skip_lines)
 
+    def _send_exec_stats_to_catalog(self, job_id):
+        job = self.get_mongo_util().get_job(job_id)
+
+        job_input = job.job_input
+
+        log_exec_stats_params = dict()
+
+        log_exec_stats_params["user_id"] = job.user
+
+        app_id = job_input.app_id
+        log_exec_stats_params["app_module_name"] = app_id.split("/")[0]
+        log_exec_stats_params["app_id"] = app_id
+
+        method = job_input.method
+
+        log_exec_stats_params["func_module_name"] = method.split(".")[0]
+        log_exec_stats_params["func_name"] = method.split(".")[-1]
+
+        log_exec_stats_params["git_commit_hash"] = job_input.service_ver
+
+        log_exec_stats_params["creation_time"] = job.running.timestamp()
+        log_exec_stats_params["exec_start_time"] = job.running.timestamp()
+        log_exec_stats_params["finish_time"] = job.finished.timestamp()
+        log_exec_stats_params["is_error"] = int(job.status == Status.error.value)
+
+        log_exec_stats_params["job_id"] = job_id
+
+        self.catalog.log_exec_stats(log_exec_stats_params)
+
     @staticmethod
     def _create_new_log(pk):
         jl = JobLog()
@@ -534,6 +563,8 @@ class SDKMethodRunner:
 
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
+
+        self._send_exec_stats_to_catalog(job_id)
 
     def start_job(self, job_id, ctx, skip_estimation=False):
         """
