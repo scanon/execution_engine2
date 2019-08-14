@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
 #BEGIN_HEADER
 
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
@@ -7,31 +7,31 @@ from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 
 
 class execution_engine2:
-    '''
+    """
     Module Name:
     execution_engine2
 
     Module Description:
+    
+    """
 
-    '''
-
-    ######## WARNING FOR GEVENT USERS ####### noqa
-    # Since asynchronous IO can lead to methods - even the same method -
-    # interrupting each other, you must be *very* careful when using global
-    # state. A method could easily clobber the state set by another while
-    # the latter method is running.
-    ######################################### noqa
+    ########WARNING FOR GEVENT USERS #######noqa
+    #Since asynchronous IO can lead to methods - even the same method -
+    #interrupting each other, you must be *very* careful when using global
+    #state. A method could easily clobber the state set by another while
+    #the latter method is running.
+    #########################################noqa
     VERSION = "0.0.1"
-    GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
-    GIT_COMMIT_HASH = "7c23dd2e9196e3afb9f15f044ec5522991860dc4"
+    GIT_URL = "https://bio-boris@github.com/kbase/execution_engine2"
+    GIT_COMMIT_HASH = "fc3d4cf2e4cc027af6d1a6f39dfa1fbbe8207679"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
     MONGO_AUTHMECHANISM = "DEFAULT"
     #END_CLASS_HEADER
 
-    # config contains contents of config file in a hash or None if it couldn't
-    # be found
+    #config contains contents of config file in a hash or None if it couldn't
+    #be found
     def __init__(self, config):
         #BEGIN_CONSTRUCTOR
         self.config = config
@@ -41,22 +41,23 @@ class execution_engine2:
         #END_CONSTRUCTOR
         pass
 
-
     def list_config(self, ctx):
         """
         :returns: instance of mapping from String to String
         """
-        # ctx is the context object
-        # return variables are: returnVal
+        #ctx is the context object
+        #return variables are: returnVal
         #BEGIN list_config
         returnVal = self.config
         #END list_config
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
-            raise ValueError('Method list_config return value ' +
-                             'returnVal is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method list_config return value "
+                + "returnVal is not type dict as required."
+            )
+        #return the results
         return [returnVal]
 
     def ver(self, ctx):
@@ -64,17 +65,18 @@ class execution_engine2:
         Returns the current running version of the NarrativeJobService.
         :returns: instance of String
         """
-        # ctx is the context object
-        # return variables are: returnVal
+        #ctx is the context object
+        #return variables are: returnVal
         #BEGIN ver
         returnVal = self.VERSION
         #END ver
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(returnVal, str):
-            raise ValueError('Method ver return value ' +
-                             'returnVal is not type str as required.')
-        # return the results
+            raise ValueError(
+                "Method ver return value " + "returnVal is not type str as required."
+            )
+        #return the results
         return [returnVal]
 
     def status(self, ctx):
@@ -88,18 +90,20 @@ class execution_engine2:
            Long, parameter "config" of mapping from String to String,
            parameter "git_commit" of String
         """
-        # ctx is the context object
-        # return variables are: returnVal
+        #ctx is the context object
+        #return variables are: returnVal
         #BEGIN status
         mr = SDKMethodRunner(self.config)
         returnVal = mr.status()
         #END status
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
-            raise ValueError('Method status return value ' +
-                             'returnVal is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method status return value "
+                + "returnVal is not type dict as required."
+            )
+        #return the results
         return [returnVal]
 
     def run_job(self, ctx, params):
@@ -154,18 +158,19 @@ class execution_engine2:
            "parent_job_id" of String
         :returns: instance of type "job_id" (A job id.)
         """
-        # ctx is the context object
-        # return variables are: job_id
+        #ctx is the context object
+        #return variables are: job_id
         #BEGIN run_job
         mr = SDKMethodRunner(self.config)
         job_id = mr.run_job(params, ctx)
         #END run_job
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(job_id, str):
-            raise ValueError('Method run_job return value ' +
-                             'job_id is not type str as required.')
-        # return the results
+            raise ValueError(
+                "Method run_job return value " + "job_id is not type str as required."
+            )
+        #return the results
         return [job_id]
 
     def get_job_params(self, ctx, job_id):
@@ -219,18 +224,20 @@ class execution_engine2:
            String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String
         """
-        # ctx is the context object
-        # return variables are: params
+        #ctx is the context object
+        #return variables are: params
         #BEGIN get_job_params
         mr = SDKMethodRunner(self.config)
         params = mr.get_job_params(job_id, ctx)
         #END get_job_params
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(params, dict):
-            raise ValueError('Method get_job_params return value ' +
-                             'params is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method get_job_params return value "
+                + "params is not type dict as required."
+            )
+        #return the results
         return [params]
 
     def update_job_status(self, ctx, params):
@@ -244,18 +251,20 @@ class execution_engine2:
            "status" of String
         :returns: instance of type "job_id" (A job id.)
         """
-        # ctx is the context object
-        # return variables are: job_id
+        #ctx is the context object
+        #return variables are: job_id
         #BEGIN update_job_status
         mr = SDKMethodRunner(self.config)
-        job_id = mr.update_job_status(params.get('job_id'), params.get('status'), ctx)
+        job_id = mr.update_job_status(params.get("job_id"), params.get("status"), ctx)
         #END update_job_status
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(job_id, str):
-            raise ValueError('Method update_job_status return value ' +
-                             'job_id is not type str as required.')
-        # return the results
+            raise ValueError(
+                "Method update_job_status return value "
+                + "job_id is not type str as required."
+            )
+        #return the results
         return [job_id]
 
     def add_job_logs(self, ctx, job_id, lines):
@@ -266,18 +275,20 @@ class execution_engine2:
            (@range [0,1]), parameter "ts" of String
         :returns: instance of Long
         """
-        # ctx is the context object
-        # return variables are: line_number
+        #ctx is the context object
+        #return variables are: line_number
         #BEGIN add_job_logs
         mr = SDKMethodRunner(self.config)
-        line_number = mr.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+        line_number = mr.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
         #END add_job_logs
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(line_number, int):
-            raise ValueError('Method add_job_logs return value ' +
-                             'line_number is not type int as required.')
-        # return the results
+            raise ValueError(
+                "Method add_job_logs return value "
+                + "line_number is not type int as required."
+            )
+        #return the results
         return [line_number]
 
     def get_job_logs(self, ctx, params):
@@ -294,8 +305,8 @@ class execution_engine2:
            parameter "is_error" of type "boolean" (@range [0,1]), parameter
            "ts" of String, parameter "last_line_number" of Long
         """
-        # ctx is the context object
-        # return variables are: returnVal
+        #ctx is the context object
+        #return variables are: returnVal
         #BEGIN get_job_logs
         mr = SDKMethodRunner(self.config)
         returnVal = mr.view_job_logs(
@@ -303,11 +314,13 @@ class execution_engine2:
         )
         #END get_job_logs
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
-            raise ValueError('Method get_job_logs return value ' +
-                             'returnVal is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method get_job_logs return value "
+                + "returnVal is not type dict as required."
+            )
+        #return the results
         return [returnVal]
 
     def finish_job(self, ctx, params):
@@ -318,10 +331,12 @@ class execution_engine2:
            "job_id" of type "job_id" (A job id.), parameter "error_message"
            of String
         """
-        # ctx is the context object
+        #ctx is the context object
         #BEGIN finish_job
         mr = SDKMethodRunner(self.config)
-        mr.finish_job(params.get('job_id'), ctx, error_message=params.get('error_message'))
+        mr.finish_job(
+            params.get("job_id"), ctx, error_message=params.get("error_message")
+        )
         #END finish_job
         pass
 
@@ -333,10 +348,14 @@ class execution_engine2:
            "job_id" (A job id.), parameter "skip_estimation" of type
            "boolean" (@range [0,1])
         """
-        # ctx is the context object
+        #ctx is the context object
         #BEGIN start_job
         mr = SDKMethodRunner(self.config)
-        mr.start_job(params.get('job_id'), ctx, skip_estimation=params.get('skip_estimation', False))
+        mr.start_job(
+            params.get("job_id"),
+            ctx,
+            skip_estimation=params.get("skip_estimation", False),
+        )
         #END start_job
         pass
 
@@ -371,16 +390,18 @@ class execution_engine2:
            of Long, parameter "cancelled" of type "boolean" (@range [0,1]),
            parameter "canceled" of type "boolean" (@range [0,1])
         """
-        # ctx is the context object
-        # return variables are: job_state
+        #ctx is the context object
+        #return variables are: job_state
         #BEGIN check_job
         #END check_job
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(job_state, dict):
-            raise ValueError('Method check_job return value ' +
-                             'job_state is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method check_job return value "
+                + "job_state is not type dict as required."
+            )
+        #return the results
         return [job_state]
 
     def list_job_statuses(self, ctx, workspace_id):
@@ -414,16 +435,18 @@ class execution_engine2:
            of Long, parameter "cancelled" of type "boolean" (@range [0,1]),
            parameter "canceled" of type "boolean" (@range [0,1])
         """
-        # ctx is the context object
-        # return variables are: job_states
+        #ctx is the context object
+        #return variables are: job_states
         #BEGIN list_job_statuses
         #END list_job_statuses
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(job_states, list):
-            raise ValueError('Method list_job_statuses return value ' +
-                             'job_states is not type list as required.')
-        # return the results
+            raise ValueError(
+                "Method list_job_statuses return value "
+                + "job_states is not type list as required."
+            )
+        #return the results
         return [job_states]
 
     def check_jobs(self, ctx, params):
@@ -512,16 +535,18 @@ class execution_engine2:
            parameter "code" of Long, parameter "message" of String, parameter
            "error" of String
         """
-        # ctx is the context object
-        # return variables are: returnVal
+        #ctx is the context object
+        #return variables are: returnVal
         #BEGIN check_jobs
         #END check_jobs
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
-            raise ValueError('Method check_jobs return value ' +
-                             'returnVal is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method check_jobs return value "
+                + "returnVal is not type dict as required."
+            )
+        #return the results
         return [returnVal]
 
     def cancel_job(self, ctx, params):
@@ -529,7 +554,7 @@ class execution_engine2:
         :param params: instance of type "CancelJobParams" -> structure:
            parameter "job_id" of type "job_id" (A job id.)
         """
-        # ctx is the context object
+        #ctx is the context object
         #BEGIN cancel_job
         mr = SDKMethodRunner(self.config)
         mr.cancel_job(job_id=params["job_id"], ctx=ctx)
@@ -550,18 +575,20 @@ class execution_engine2:
            [0,1]), parameter "canceled" of type "boolean" (@range [0,1]),
            parameter "ujs_url" of String
         """
-        # ctx is the context object
-        # return variables are: result
+        #ctx is the context object
+        #return variables are: result
         #BEGIN check_job_canceled
         mr = SDKMethodRunner(self.config)
         result = mr.check_job_canceled(job_id=params["job_id"], ctx=ctx)
         #END check_job_canceled
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(result, dict):
-            raise ValueError('Method check_job_canceled return value ' +
-                             'result is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method check_job_canceled return value "
+                + "result is not type dict as required."
+            )
+        #return the results
         return [result]
 
     def get_job_status(self, ctx, job_id):
@@ -570,16 +597,18 @@ class execution_engine2:
         :returns: instance of type "GetJobStatusResult" -> structure:
            parameter "status" of String
         """
-        # ctx is the context object
-        # return variables are: result
+        #ctx is the context object
+        #return variables are: result
         #BEGIN get_job_status
         mr = SDKMethodRunner(self.config)
         result = mr.get_job_status(job_id, ctx)
         #END get_job_status
 
-        # At some point might do deeper type checking...
+        #At some point might do deeper type checking...
         if not isinstance(result, dict):
-            raise ValueError('Method get_job_status return value ' +
-                             'result is not type dict as required.')
-        # return the results
+            raise ValueError(
+                "Method get_job_status return value "
+                + "result is not type dict as required."
+            )
+        #return the results
         return [result]

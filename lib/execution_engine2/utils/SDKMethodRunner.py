@@ -209,7 +209,7 @@ class SDKMethodRunner:
         jl.lines = []
         return jl
 
-    def add_job_logs(self, job_id, input_lines, ctx):
+    def add_job_logs(self, job_id, log_lines, ctx):
         """
         #TODO Prevent too many logs in memory
         #TODO Max size of log lines = 1000
@@ -223,7 +223,7 @@ class SDKMethodRunner:
 
         #Authorization Required : Ability to read and write to the workspace
         :param job_id:
-        :param input_lines:
+        :param log_lines:
         :param ctx:
         :return:
         """
@@ -238,7 +238,7 @@ class SDKMethodRunner:
 
         olc = log.original_line_count
 
-        for input_line in input_lines:
+        for input_line in log_lines:
             olc += 1
             ll = LogLines()
             ll.error = input_line.get("error", False)
@@ -273,11 +273,11 @@ class SDKMethodRunner:
         self.is_admin = None
         self.admin_roles = config.get("admin_roles", ["EE2_ADMIN"])
 
-        catalog_url = config["catalog-url"]
+        catalog_url = config.get("catalog-url")
         self.catalog = Catalog(catalog_url)
 
-        self.workspace_url = config["workspace-url"]
-        self.auth_url = config["auth-url"]
+        self.workspace_url = config.get("workspace-url")
+        self.auth_url = config.get("auth-url")
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug

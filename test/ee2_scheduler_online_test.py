@@ -85,8 +85,12 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         import datetime
 
         now = datetime.datetime.utcnow()
-        line1 = {"line": "1", "error": False, "ts": now.isoformat()}
-        line2 = {"line": "1", "error": False}
+        line1 = {
+            "line": "Tell me the first line, the whole line, and nothing but the line",
+            "error": False,
+            "ts": now.isoformat(),
+        }
+        line2 = {"line": "This really crosses the line", "error": True}
         lines = [line1, line2]
 
         self.ee2.add_job_logs(job_id, lines=lines)

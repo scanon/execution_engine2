@@ -1,21 +1,14 @@
 [tool.black]
 include = '\.pyi?$'
+target_version = ['py37']
 
 exclude = '''
 (
- /(
     \.git
   | \.hg
   | \.mypy_cache
   | \.tox
   | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | *Impl\.py
- )/
-  | execution_engine2Impl.py # also separately exclude a file named impl.py in root
-  | lib/execution_engine2/execution_engine2Impl.py # also separately exclude a file named impl.py in lib
+  | __pycache__
 )
 '''

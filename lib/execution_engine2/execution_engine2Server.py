@@ -396,11 +396,13 @@ class Application(object):
             "execution_engine2.get_job_params"
         ] = "required"  # noqa
         self.rpc_service.add(
-            impl_execution_engine2.update_job,
-            name="execution_engine2.update_job",
+            impl_execution_engine2.update_job_status,
+            name="execution_engine2.update_job_status",
             types=[dict],
         )
-        self.method_authentication["execution_engine2.update_job"] = "required"  # noqa
+        self.method_authentication[
+            "execution_engine2.update_job_status"
+        ] = "required"  # noqa
         self.rpc_service.add(
             impl_execution_engine2.add_job_logs,
             name="execution_engine2.add_job_logs",
@@ -420,9 +422,15 @@ class Application(object):
         self.rpc_service.add(
             impl_execution_engine2.finish_job,
             name="execution_engine2.finish_job",
-            types=[str, dict],
+            types=[dict],
         )
         self.method_authentication["execution_engine2.finish_job"] = "required"  # noqa
+        self.rpc_service.add(
+            impl_execution_engine2.start_job,
+            name="execution_engine2.start_job",
+            types=[dict],
+        )
+        self.method_authentication["execution_engine2.start_job"] = "required"  # noqa
         self.rpc_service.add(
             impl_execution_engine2.check_job,
             name="execution_engine2.check_job",
@@ -456,6 +464,14 @@ class Application(object):
         )
         self.method_authentication[
             "execution_engine2.check_job_canceled"
+        ] = "required"  # noqa
+        self.rpc_service.add(
+            impl_execution_engine2.get_job_status,
+            name="execution_engine2.get_job_status",
+            types=[str],
+        )
+        self.method_authentication[
+            "execution_engine2.get_job_status"
         ] = "required"  # noqa
         authurl = config.get(AUTH) if config else None
         self.auth_client = _KBaseAuth(authurl)

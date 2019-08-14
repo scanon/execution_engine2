@@ -112,7 +112,6 @@ class JobInput(EmbeddedDocument):
 
     wsid = IntField(required=True)
     method = StringField(required=True)
-
     requested_release = StringField()
     params = DynamicField()
     service_ver = StringField(required=True)
@@ -120,7 +119,6 @@ class JobInput(EmbeddedDocument):
     source_ws_objects = ListField()
     parent_job_id = StringField()
     requirements = EmbeddedDocumentField(JobRequirements)
-
     narrative_cell_info = EmbeddedDocumentField(Meta, required=True)
 
 
@@ -184,6 +182,7 @@ class Job(Document):
     the job and the portal process for the rest of the time
     """
 
+    # id.generation_time = created
     user = StringField(required=True)
     authstrat = StringField(
         required=True, default="kbaseworkspace", validation=valid_authstrat
@@ -192,9 +191,12 @@ class Job(Document):
     status = StringField(required=True, validation=valid_status)
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     started = DateTimeField(default=None)
-    estimating = DateTimeField(default=None)
-    running = DateTimeField(default=None)
-    finished = DateTimeField(default=None)
+    # id.generation_time = created
+    estimating = DateTimeField(default=None)  # Time when job began estimating
+    running = DateTimeField(default=None)  # Time when job started
+    finished = DateTimeField(
+        default=None
+    )  # Time when job finished, errored out, or was terminated by the user/admin
     errormsg = StringField()
     scheduler_type = StringField()
     scheduler_id = StringField()

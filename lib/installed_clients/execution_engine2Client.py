@@ -136,10 +136,10 @@ class execution_engine2(object):
         """
         Get job params necessary for job execution
         :param job_id: instance of type "job_id" (A job id.)
-        :returns: multiple set - (1) parameter "params" of type
-           "RunJobParams" (method - service defined in standard JSON RPC way,
-           typically it's module name from spec-file followed by '.' and name
-           of funcdef from spec-file corresponding to running method (e.g.
+        :returns: instance of type "RunJobParams" (method - service defined
+           in standard JSON RPC way, typically it's module name from
+           spec-file followed by '.' and name of funcdef from spec-file
+           corresponding to running method (e.g.
            'KBaseTrees.construct_species_tree' from trees service); params -
            the parameters of the method that performed this call; Optional
            parameters: service_ver - specific version of deployed service,
@@ -181,25 +181,25 @@ class execution_engine2(object):
            Y is the object name or id, Z is the version, which is optional.),
            parameter "app_id" of String, parameter "meta" of mapping from
            String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, (2) parameter "config" of mapping from
-           String to String
+           "parent_job_id" of String
         """
         return self._client.call_method(
             "execution_engine2.get_job_params", [job_id], self._service_ver, context
         )
 
-    def update_job(self, params, context=None):
+    def update_job_status(self, params, context=None):
         """
-        :param params: instance of type "UpdateJobParams" (is_started -
-           optional flag marking job as started (and triggering
-           exec_start_time statistics to be stored).) -> structure: parameter
-           "job_id" of type "job_id" (A job id.), parameter "is_started" of
-           type "boolean" (@range [0,1])
-        :returns: instance of type "UpdateJobResults" -> structure: parameter
-           "messages" of list of String
+        :param params: instance of type "UpdateJobStatusParams" (typedef
+           structure { job_id job_id; boolean is_started; } UpdateJobParams;
+           typedef structure { list<string> messages; } UpdateJobResults;
+           funcdef update_job(UpdateJobParams params) returns
+           (UpdateJobResults) authentication required;) -> structure:
+           parameter "job_id" of type "job_id" (A job id.), parameter
+           "status" of String
+        :returns: instance of type "job_id" (A job id.)
         """
         return self._client.call_method(
-            "execution_engine2.update_job", [params], self._service_ver, context
+            "execution_engine2.update_job_status", [params], self._service_ver, context
         )
 
     def add_job_logs(self, job_id, lines, context=None):
@@ -207,7 +207,7 @@ class execution_engine2(object):
         :param job_id: instance of type "job_id" (A job id.)
         :param lines: instance of list of type "LogLine" -> structure:
            parameter "line" of String, parameter "is_error" of type "boolean"
-           (@range [0,1])
+           (@range [0,1]), parameter "ts" of String
         :returns: instance of Long
         """
         return self._client.call_method(
@@ -229,32 +229,34 @@ class execution_engine2(object):
            loaded lines next time.) -> structure: parameter "lines" of list
            of type "LogLine" -> structure: parameter "line" of String,
            parameter "is_error" of type "boolean" (@range [0,1]), parameter
-           "last_line_number" of Long
+           "ts" of String, parameter "last_line_number" of Long
         """
         return self._client.call_method(
             "execution_engine2.get_job_logs", [params], self._service_ver, context
         )
 
-    def finish_job(self, job_id, params, context=None):
+    def finish_job(self, params, context=None):
         """
         Register results of already started job
-        :param job_id: instance of type "job_id" (A job id.)
-        :param params: instance of type "FinishJobParams" (Either 'result',
-           'error' or 'is_canceled' field should be defined; result - keeps
-           exact copy of what original server method puts in result block of
-           JSON RPC response; error - keeps exact copy of what original
-           server method puts in error block of JSON RPC response;
-           is_cancelled - Deprecated (field is kept for backward
-           compatibility), please use 'is_canceled' instead.) -> structure:
-           parameter "result" of unspecified object, parameter "error" of
-           type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "is_cancelled" of type "boolean" (@range [0,1]),
-           parameter "is_canceled" of type "boolean" (@range [0,1])
+        :param params: instance of type "FinishJobParams" (error_message:
+           optional if job is finished with error) -> structure: parameter
+           "job_id" of type "job_id" (A job id.), parameter "error_message"
+           of String
         """
         return self._client.call_method(
-            "execution_engine2.finish_job", [job_id, params], self._service_ver, context
+            "execution_engine2.finish_job", [params], self._service_ver, context
+        )
+
+    def start_job(self, params, context=None):
+        """
+        :param params: instance of type "StartJobParams" (skip_estimation:
+           default false. If set true, job will set to running status
+           skipping estimation step) -> structure: parameter "job_id" of type
+           "job_id" (A job id.), parameter "skip_estimation" of type
+           "boolean" (@range [0,1])
+        """
+        return self._client.call_method(
+            "execution_engine2.start_job", [params], self._service_ver, context
         )
 
     def check_job(self, job_id, context=None):
@@ -445,4 +447,14 @@ class execution_engine2(object):
         """
         return self._client.call_method(
             "execution_engine2.check_job_canceled", [params], self._service_ver, context
+        )
+
+    def get_job_status(self, job_id, context=None):
+        """
+        :param job_id: instance of type "job_id" (A job id.)
+        :returns: instance of type "GetJobStatusResult" -> structure:
+           parameter "status" of String
+        """
+        return self._client.call_method(
+            "execution_engine2.get_job_status", [job_id], self._service_ver, context
         )
