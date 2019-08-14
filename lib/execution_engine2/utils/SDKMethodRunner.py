@@ -209,7 +209,7 @@ class SDKMethodRunner:
 
         log_exec_stats_params["git_commit_hash"] = job_input.service_ver
 
-        log_exec_stats_params["creation_time"] = job.running.timestamp()
+        log_exec_stats_params["creation_time"] = job.id.generation_time.timestamp()
         log_exec_stats_params["exec_start_time"] = job.running.timestamp()
         log_exec_stats_params["finish_time"] = job.finished.timestamp()
         log_exec_stats_params["is_error"] = int(job.status == Status.error.value)
