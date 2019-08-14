@@ -349,7 +349,7 @@ class SDKMethodRunner_test(unittest.TestCase):
             line = {"error": False, "line": item}
             lines.append(line)
 
-        log_pos_1 = runner.add_job_logs(ctx=ctx, job_id=job_id, input_lines=lines)
+        log_pos_1 = runner.add_job_logs(ctx=ctx, job_id=job_id, log_lines=lines)
         logging.info(f"After insert log position is now {log_pos_1}")
         log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
         log_lines = log["lines"]
@@ -381,7 +381,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         for line in input_lines2:
             print(line)
 
-        log_pos2 = runner.add_job_logs(ctx=ctx, job_id=job_id, input_lines=input_lines2)
+        log_pos2 = runner.add_job_logs(ctx=ctx, job_id=job_id, log_lines=input_lines2)
         logging.info(
             f"After inserting timestamped logs,  log position is now {log_pos2}"
         )
