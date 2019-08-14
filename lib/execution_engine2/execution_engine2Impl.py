@@ -23,7 +23,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
-    GIT_COMMIT_HASH = "7c23dd2e9196e3afb9f15f044ec5522991860dc4"
+    GIT_COMMIT_HASH = "e8d5a7b9c26bea9dbcfb5f30dd79b43335f43143"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -314,14 +314,18 @@ class execution_engine2:
         """
         Register results of already started job
         :param params: instance of type "FinishJobParams" (error_message:
-           optional if job is finished with error) -> structure: parameter
-           "job_id" of type "job_id" (A job id.), parameter "error_message"
-           of String
+           optional if job is finished with error job_output: job output if
+           job completed successfully) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "error_message" of String,
+           parameter "job_output" of unspecified object
         """
         # ctx is the context object
         #BEGIN finish_job
         mr = SDKMethodRunner(self.config)
-        mr.finish_job(params.get('job_id'), ctx, error_message=params.get('error_message'))
+        mr.finish_job(params.get('job_id'),
+                      ctx,
+                      error_message=params.get('error_message'),
+                      job_output=params.get('job_output'))
         #END finish_job
         pass
 

@@ -10,6 +10,7 @@ from time import time
 from execution_engine2.models.models import (
     Job,
     JobInput,
+    JobOutput,
     Meta,
     Status,
     JobLog,
@@ -526,11 +527,11 @@ class SDKMethodRunner:
 
         job = self.get_mongo_util().get_job(job_id=job_id)
 
-        returnVal['status'] = job.status
+        returnVal["status"] = job.status
 
         return returnVal
 
-    def finish_job(self, job_id, ctx, error_message=None):
+    def finish_job(self, job_id, ctx, error_message=None, job_output=None):
         """
         finish_job: set job record to finish status and update finished timestamp
                     (set job status to "finished" by default. If error_message is given, set job to "error" status)
@@ -557,6 +558,16 @@ class SDKMethodRunner:
             job.errormsg = error_message
             self.get_mongo_util().update_job_status(job_id=job_id, status=Status.error.value)
         else:
+            if not job_output:
+                raise ValueError("Missing job output for finished job")
+
+            output = JobOutput()
+            output.version = job_output.get("version")
+            output.id = job_output.get("id")
+            output.result = job_output.get("result")
+            output.validate()
+            job.job_output = output
+
             self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
 
         job.finished = datetime.utcnow()

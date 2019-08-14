@@ -88,6 +88,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         inputs.narrative_cell_info = Meta()
 
         job.job_input = inputs
+        job.job_output = None
 
         with self.mongo_util.mongo_engine_connection():
             job.save()
@@ -547,12 +548,19 @@ class SDKMethodRunner_test(unittest.TestCase):
             job.save()
 
             # test finish job without error
-            runner.finish_job(job_id, ctx)
+            job_output = dict()
+            job_output["version"] = "1"
+            job_output["id"] = 1234
+            job_output["result"] = {"output": "output"}
+            runner.finish_job(job_id, ctx, job_output=job_output)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
+            job_output = job.job_output.to_mongo().to_dict()
+            self.assertEqual(job_output["version"], "1")
+            self.assertEqual(job_output["id"], 1234)
 
             # update job status to running
             self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
