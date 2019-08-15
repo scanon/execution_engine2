@@ -606,7 +606,7 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.mongo_util.update_job_status(
                 job_id=job_id, status=Status.running.value
             )
-            job.running = datetime.utcnow()
+            job.running = datetime.datetime.utcnow()
             job.save()
 
             # test finish job without error
