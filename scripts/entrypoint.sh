@@ -15,6 +15,7 @@ if [ $# -eq 0 ] ; then
   fi
   chown kbase /etc/condor/password
   cp -rf /runner/JobRunner.tgz /condor_shared
+  cp -rf ./scripts/execute_runner.sh /condor_shared
   sh ./scripts/start_server.sh
 
 

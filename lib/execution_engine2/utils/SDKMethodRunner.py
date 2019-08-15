@@ -639,12 +639,15 @@ class SDKMethodRunner:
         job = self.get_mongo_util().get_job(job_id=job_id)
         job_status = job.status
 
-        if job_status not in [
+        allowed_states = [
             Status.created.value,
             Status.queued.value,
             Status.estimating.value,
-        ]:
-            raise ValueError("Unexpected job status: {}".format(job_status))
+        ]
+        if job_status not in allowed_states:
+            raise ValueError(
+                f"Unexpected job status for {job_id}: {job_status}.  You cannot start a job that is not in {allowed_states}"
+            )
 
         if job_status == Status.estimating.value or skip_estimation:
             # set job to running status

@@ -3,6 +3,7 @@
 
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 
+
 #END_HEADER
 
 
@@ -28,6 +29,7 @@ class execution_engine2:
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
     MONGO_AUTHMECHANISM = "DEFAULT"
+
     #END_CLASS_HEADER
 
     #config contains contents of config file in a hash or None if it couldn't
@@ -37,18 +39,25 @@ class execution_engine2:
         self.config = config
         self.config["mongo-collection"] = self.MONGO_COLLECTION
         self.config.setdefault("mongo-authmechanism", self.MONGO_AUTHMECHANISM)
-
         #END_CONSTRUCTOR
         pass
 
     def list_config(self, ctx):
         """
+        Don't leak anything you're not supposed to
         :returns: instance of mapping from String to String
         """
         #ctx is the context object
         #return variables are: returnVal
         #BEGIN list_config
-        returnVal = self.config
+        public_keys = ['external-url', 'kbase-endpoint', 'workspace-url', 'catalog-url',
+                       'shock-url', 'handle-url', 'auth-service-url', 'auth-service-url-v2',
+                       'auth-service-url-allow-insecure',
+                       'scratch', 'executable', 'docker_timeout',
+                       'intialdir', 'transfer_input_files']
+
+        returnVal = {key: self.config.get(key) for key in public_keys}
+
         #END list_config
 
         #At some point might do deeper type checking...
@@ -354,7 +363,7 @@ class execution_engine2:
         mr.start_job(
             params.get("job_id"),
             ctx,
-            skip_estimation=params.get("skip_estimation", False),
+            skip_estimation=params.get("skip_estimation", True),
         )
         #END start_job
         pass

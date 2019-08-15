@@ -177,7 +177,7 @@ module execution_engine2 {
     funcdef finish_job(FinishJobParams params) returns () authentication required;
 
     /*
-        skip_estimation: default false. If set true, job will set to running status skipping estimation step
+        skip_estimation: default true. If set true, job will set to running status skipping estimation step
     */
     typedef structure {
         job_id job_id;

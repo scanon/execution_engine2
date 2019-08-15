@@ -5,7 +5,6 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from lib.execution_engine2.utils.Condor import Condor
 from lib.installed_clients.execution_engine2Client import execution_engine2
 from lib.installed_clients.WorkspaceClient import Workspace
 import os
@@ -51,6 +50,11 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         logging.info("Checking server time")
         self.assertIn("servertime", self.ee2.status())
 
+    def test_config(self):
+        conf = self.ee2.list_config({})
+        for item in conf:
+            print(item, conf[item])
+
     def test_run_job(self):
         """
         Test a simple job based on runjob params from the spec file
@@ -73,7 +77,7 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         params = {"base_number": "105"}
         runjob_params = {
             "method": "simpleapp.simple_add",
-            "params": params,
+            "params": [params],
             "service_ver": "dev",
             "wsid": "42896",
             "app_id": "simpleapp",

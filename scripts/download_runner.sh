@@ -5,5 +5,4 @@ set -x
 runner_dir=/runner
 mkdir -p ${runner_dir} && cd ${runner_dir} && rm -rf JobRunner
 git clone --single-branch --branch ee2 https://github.com/kbase/JobRunner.git
-cd JobRunner
-tar -czvf ${runner_dir}/JobRunner.tgz $runner_dir/JobRunner
+tar -czvf ${runner_dir}/JobRunner.tgz JobRunner

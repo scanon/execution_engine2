@@ -35,6 +35,7 @@ class Condor(Scheduler):
     CG = "+CLIENTGROUP"
     EE2 = "execution_engine2"
     ENDPOINT = "kbase-endpoint"
+    EXTERNAL_URL = "external-url"
     EXECUTABLE = "executable"
     AUTH_TOKEN = "KB_ADMIN_AUTH_TOKEN"
     DOCKER_TIMEOUT = "docker_timeout"
@@ -42,7 +43,7 @@ class Condor(Scheduler):
     INITIAL_DIR = "initial_dir"
     LEAVE_JOB_IN_QUEUE = "leavejobinqueue"
     TRANSFER_INPUT_FILES = "transfer_input_files"
-    PYTHON_PATH = "python_path"
+    PYTHON_BIN_PATH = "python_bin_path"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
 
@@ -70,10 +71,10 @@ class Condor(Scheduler):
     def __init__(self, config_filepath):
         self.config = ConfigParser()
         self.config.read(config_filepath)
-        self.ee_endpoint = self.config.get(section=self.EE2, option=self.ENDPOINT)
+        self.ee_endpoint = self.config.get(section=self.EE2, option=self.EXTERNAL_URL)
 
-        self.python_path = self.config.get(
-            section=self.EE2, option=self.PYTHON_PATH, fallback="/root/miniconda/bin"
+        self.python_bin_path = self.config.get(
+            section=self.EE2, option=self.PYTHON_BIN_PATH, fallback="/miniconda/bin"
         )
 
         self.initial_dir = self.config.get(
@@ -138,14 +139,14 @@ class Condor(Scheduler):
             "JOB_ID": params.get("job_id"),
             # "WORKDIR": f"{config.get('WORKDIR')}/{params.get('USER')}/{params.get('JOB_ID')}",
             "CONDOR_ID": "$(Cluster).$(Process)",
-            "PYTHON_PATH": self.python_path,
+            "PYTHON_BIN_PATH": self.python_bin_path,
         }
 
         environment = ""
         for key, val in environment_vars.items():
             environment += f"{key}={val} "
 
-        return environment
+        return f'"{environment}"'
 
     @staticmethod
     def check_for_missing_runjob_params(params):
@@ -264,7 +265,7 @@ class Condor(Scheduler):
         sub["arguments"] = " ".join([params.get("job_id"), self.ee_endpoint])
         sub["environment"] = self.setup_environment_vars(params)
         sub["universe"] = "vanilla"
-        sub["+AccountingGroup"] = params.get("user_id")
+        sub["+AccountingGroup"] = f'{params.get("user_id")}'
         sub["Concurrency_Limits"] = params.get("user_id")
         sub["+Owner"] = f'"{self.pool_user}"'  # Must be quoted
         sub["ShouldTransferFiles"] = "YES"
