@@ -594,11 +594,13 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
+                logging.info("Finish Job Case 0 Raises Error")
                 runner.finish_job(None, ctx)
             self.assertEqual("Please provide valid job_id", str(context.exception))
 
             # test finish job with invalid status
             with self.assertRaises(ValueError) as context:
+                logging.info("Finish Job Case 1 Raises Error")
                 runner.finish_job(job_id, ctx)
             self.assertIn("Unexpected job status", str(context.exception))
 
@@ -612,17 +614,18 @@ class SDKMethodRunner_test(unittest.TestCase):
             # test finish job without error
             job_output = dict()
             job_output["version"] = "1"
-            job_output["id"] = 1234
+            job_output["id"] = "5d54bdcb9b402d15271b3208"  # A valid objectid
             job_output["result"] = {"output": "output"}
+            logging.info("Finish Job Case 2 Should Be finished")
             runner.finish_job(job_id, ctx, job_output=job_output)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
-            job_output = job.job_output.to_mongo().to_dict()
-            self.assertEqual(job_output["version"], "1")
-            self.assertEqual(job_output["id"], 1234)
+            job_output2 = job.job_output.to_mongo().to_dict()
+            self.assertEqual(job_output2["version"], "1")
+            self.assertEqual(str(job_output2["id"]), job_output["id"])
 
             # update finished status to running
             with self.assertRaises(InvalidStatusTransitionException):
@@ -639,6 +642,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         runner = self.getRunner()
         runner.check_permission_for_job = MagicMock(return_value=True)
+        runner._send_exec_stats_to_catalog = MagicMock(return_value=True)
         ctx = {"foo": "bar"}
 
         with self.assertRaises(InvalidStatusTransitionException):

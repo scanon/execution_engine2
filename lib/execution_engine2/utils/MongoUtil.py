@@ -213,7 +213,7 @@ class MongoUtil:
         with self.mongo_engine_connection():
             j = Job.objects.with_id(job_id)  # type: Job
             #  A job in status finished/terminated/error cannot be changed
-            logging.info("job status is {j.status}")
+            logging.info(f"job status is {j.status}. going to update to {status}")
 
             if j.status in [
                 Status.error.value,

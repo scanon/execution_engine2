@@ -635,25 +635,31 @@ class SDKMethodRunner:
             )
 
         if error_message:
+            logging.info("About to save a failed job")
             job.errormsg = error_message
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.error.value
             )
         else:
+            logging.info("About to save a successful job")
             if not job_output:
                 raise ValueError("Missing job output for finished job")
 
             output = JobOutput()
             output.version = job_output.get("version")
-            output.id = job_output.get("id")
+            output.id = ObjectId(job_output.get("id"))
             output.result = job_output.get("result")
             try:
+                logging.info(
+                    f"Validating output and setting to finished (current status {job.status})"
+                )
                 output.validate()
                 job.job_output = output
                 self.get_mongo_util().update_job_status(
                     job_id=job_id, status=Status.finished.value
                 )
             except Exception as e:
+                logging.info(e)
                 job.output = None
                 job.errormsg = f"Something was wrong with the output we got  + {str(e)}"
                 self.get_mongo_util().update_job_status(
@@ -661,9 +667,12 @@ class SDKMethodRunner:
                 )
 
         job.finished = datetime.utcnow()
-
+        logging.info("About to finish job with status (should be finished)")
+        logging.info(job.status)
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
+        logging.info("Status now")
+        logging.info(job.status)
 
         self._send_exec_stats_to_catalog(job_id)
 
