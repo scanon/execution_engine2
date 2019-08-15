@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from time import time
-
+from bson import ObjectId
 import dateutil
 import requests
 
@@ -610,11 +610,12 @@ class SDKMethodRunner:
 
     def finish_job(self, job_id, ctx, error_message=None, job_output=None):
         """
+        #TODO Fix too many open connections to mongoengine
+
         finish_job: set job record to finish status and update finished timestamp
                     (set job status to "finished" by default. If error_message is given, set job to "error" status)
                     raise error if job is not found or current job status is not "running"
                     (general work flow for job status created -> queued -> estimating -> running -> finished/error/terminated)
-
         Parameters:
         job_id: id of job
         error_message: default None, if given set job to error status
@@ -639,7 +640,6 @@ class SDKMethodRunner:
                 job_id=job_id, status=Status.error.value
             )
         else:
-
             if not job_output:
                 raise ValueError("Missing job output for finished job")
 
@@ -647,10 +647,18 @@ class SDKMethodRunner:
             output.version = job_output.get("version")
             output.id = job_output.get("id")
             output.result = job_output.get("result")
-            output.validate()
-            job.job_output = output
-
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
+            try:
+                output.validate()
+                job.job_output = output
+                self.get_mongo_util().update_job_status(
+                    job_id=job_id, status=Status.finished.value
+                )
+            except Exception as e:
+                job.output = None
+                job.errormsg = f"Something was wrong with the output we got  + {str(e)}"
+                self.get_mongo_util().update_job_status(
+                    job_id=job_id, status=Status.error.value
+                )
 
         job.finished = datetime.utcnow()
 

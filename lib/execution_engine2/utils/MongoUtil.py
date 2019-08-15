@@ -164,6 +164,20 @@ class MongoUtil:
 
         return job_log
 
+    # def finish_job(self, job_id, msg=None, error_msg=None):
+    #     with self.mongo_engine_connection():
+    #         try:
+    #             job = Job.objects.with_id(job_id)
+    #         except Exception:
+    #             raise ValueError(
+    #                 "Unable to find job:\nError:\n{}".format(traceback.format_exc())
+    #             )
+    #
+    #         if not job:
+    #             raise RecordNotFoundException(
+    #                 "Cannot find job with id: {}".format(job_id)
+    #             )
+
     def get_job(self, job_id=None) -> Job:
         if job_id is None:
             raise ValueError("Please provide a job id")
@@ -182,7 +196,7 @@ class MongoUtil:
 
         return job
 
-    def update_job_status(self, job_id, status):
+    def update_job_status(self, job_id, status, msg=None, error_message=None):
         """
         A job in status created can be estimating/running/error/terminated
         A job in status created cannot be created
@@ -195,11 +209,6 @@ class MongoUtil:
 
         A job in status finished/terminated/error cannot be changed
 
-
-        Update one job record with an approriate Status
-        :param job_id: The job id to update
-        :param status: The status to update with
-        :return: Void
         """
         with self.mongo_engine_connection():
             j = Job.objects.with_id(job_id)  # type: Job
@@ -238,6 +247,16 @@ class MongoUtil:
                 raise InvalidStatusTransitionException(
                     f"Cannot change from {j.status} to itself {status}"
                 )
+
+            if error_message and msg:
+                raise Exception(
+                    "You can't set both error and msg at the same time because of.. Reasons?"
+                )
+
+            if error_message:
+                j.errormsg = error_message
+            elif msg:
+                j.msg = msg
 
             j.status = status
             j.save()

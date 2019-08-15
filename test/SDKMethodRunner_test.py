@@ -5,20 +5,18 @@ import logging
 import os
 import unittest
 from configparser import ConfigParser
+
 from datetime import timedelta
 from unittest.mock import patch
 
 from mock import MagicMock
-from bson import ObjectId
-from datetime import datetime
 from mongoengine import ValidationError
 
 from execution_engine2.exceptions import InvalidStatusTransitionException
+from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
-
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
 
@@ -425,7 +423,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             # create new log
             lines = [{"line": "Hello world"}]
-            runner.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+            runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
 
             updated_job_log_count = JobLog.objects.count()
             self.assertEqual(ori_job_log_count, updated_job_log_count - 1)
@@ -445,8 +443,11 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(test_line.error)
 
             # add job log
-            lines = [{"error": True, "line": "Hello Kbase"}, {"line": "Hello Wrold Kbase"}]
-            runner.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+            lines = [
+                {"error": True, "line": "Hello Kbase"},
+                {"line": "Hello Wrold Kbase"},
+            ]
+            runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
 
             log = self.mongo_util.get_job_log(job_id=job_id)
             self.assertTrue(log.updated)
@@ -602,7 +603,9 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertIn("Unexpected job status", str(context.exception))
 
             # update job status to running
-            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            self.mongo_util.update_job_status(
+                job_id=job_id, status=Status.running.value
+            )
             job.running = datetime.utcnow()
             job.save()
 

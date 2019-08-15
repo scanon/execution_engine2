@@ -128,7 +128,7 @@ class JobOutput(EmbeddedDocument):
     """
 
     version = StringField(required=True)
-    id = LongField(required=True)
+    id = ObjectIdField(required=True)
     result = DynamicField(required=True)
 
 
@@ -198,6 +198,7 @@ class Job(Document):
         default=None
     )  # Time when job finished, errored out, or was terminated by the user/admin
     errormsg = StringField()
+    msg = StringField()
     scheduler_type = StringField()
     scheduler_id = StringField()
     scheduler_estimator_id = StringField()
