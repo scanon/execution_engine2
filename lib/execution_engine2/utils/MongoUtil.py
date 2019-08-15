@@ -1,15 +1,18 @@
 import logging
+import subprocess
+import traceback
+from contextlib import contextmanager
+
+from bson.objectid import ObjectId
+from mongoengine import connect, connection
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
-import subprocess
-import traceback
-from bson.objectid import ObjectId
-from mongoengine import connect, connection
-
-from contextlib import contextmanager
-from lib.execution_engine2.models.models import *
-from execution_engine2.exceptions import RecordNotFoundException
+from execution_engine2.exceptions import (
+    RecordNotFoundException,
+    InvalidStatusTransitionException,
+)
+from lib.execution_engine2.models.models import JobLog, Job, Status
 
 
 class MongoUtil:
@@ -155,7 +158,9 @@ class MongoUtil:
                 )
 
             if not job_log:
-                raise RecordNotFoundException("Cannot find job log with id: {}".format(job_id))
+                raise RecordNotFoundException(
+                    "Cannot find job log with id: {}".format(job_id)
+                )
 
         return job_log
 
@@ -171,12 +176,26 @@ class MongoUtil:
                 )
 
             if not job:
-                raise RecordNotFoundException("Cannot find job with id: {}".format(job_id))
+                raise RecordNotFoundException(
+                    "Cannot find job with id: {}".format(job_id)
+                )
 
         return job
 
     def update_job_status(self, job_id, status):
         """
+        A job in status created can be estimating/running/error/terminated
+        A job in status created cannot be created
+
+        A job in status estimating can be running/finished/error/terminated
+        A job in status estimating cannot be created or estimating
+
+        A job in status running can be terminated/error/finished
+        A job in status running cannot be created/estimating
+
+        A job in status finished/terminated/error cannot be changed
+
+
         Update one job record with an approriate Status
         :param job_id: The job id to update
         :param status: The status to update with
@@ -184,6 +203,42 @@ class MongoUtil:
         """
         with self.mongo_engine_connection():
             j = Job.objects.with_id(job_id)  # type: Job
+            #  A job in status finished/terminated/error cannot be changed
+            logging.info("job status is {j.status}")
+
+            if j.status in [
+                Status.error.value,
+                Status.finished.value,
+                Status.terminated.value,
+            ]:
+                raise InvalidStatusTransitionException(
+                    f"A job with status {j.status} cannot be changed"
+                )
+
+            #  A job in status running can only be terminated/error/finished
+            if j.status == Status.running.value:
+                if status not in [
+                    Status.finished.value,
+                    Status.terminated.value,
+                    Status.error.value,
+                ]:
+                    raise InvalidStatusTransitionException(
+                        f"Cannot change from {j.status} to {status}"
+                    )
+
+            # A job in status estimating cannot be created
+            if j.status == Status.estimating.value:
+                if status == Status.created.value:
+                    raise InvalidStatusTransitionException(
+                        f"Cannot change from {j.status} to {status}"
+                    )
+
+            # A job in status X cannot become status X
+            if j.status == status:
+                raise InvalidStatusTransitionException(
+                    f"Cannot change from {j.status} to itself {status}"
+                )
+
             j.status = status
             j.save()
 

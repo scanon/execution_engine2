@@ -5,10 +5,10 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from lib.execution_engine2.utils.Condor import Condor
 from lib.installed_clients.execution_engine2Client import execution_engine2
 from lib.installed_clients.WorkspaceClient import Workspace
-import os, sys
+import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -50,6 +50,11 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         logging.info("Checking server time")
         self.assertIn("servertime", self.ee2.status())
 
+    def test_config(self):
+        conf = self.ee2.list_config({})
+        for item in conf:
+            print(item, conf[item])
+
     def test_run_job(self):
         """
         Test a simple job based on runjob params from the spec file
@@ -72,18 +77,43 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         params = {"base_number": "105"}
         runjob_params = {
             "method": "simpleapp.simple_add",
-            "params": params,
+            "params": [params],
             "service_ver": "dev",
             "wsid": "42896",
             "app_id": "simpleapp",
         }
 
-        # print(self.ee2.run_job(runjob_params))
+        job_id = self.ee2.run_job(runjob_params)
+        print(f"Submitted job {job_id}")
 
-    def test_get_logs(self):
-        job_log_params = {"job_id": "5d48821bfc8e83248c0d2cff"}
-        print("About to get logs for", job_log_params)
-        print(self.ee2.get_job_logs(job_log_params))
+        import datetime
+
+        now = datetime.datetime.utcnow()
+        line1 = {
+            "line": "Tell me the first line, the whole line, and nothing but the line",
+            "error": False,
+            "ts": now.isoformat(),
+        }
+        line2 = {"line": "This really crosses the line", "error": True}
+        lines = [line1, line2]
+
+        self.ee2.add_job_logs(job_id, lines=lines)
+
+    # def test_add_job_log(self):
+    #     import datetime
+    #     job_id="5d51aa0517554f4cfd7b8a2b"
+    #     now = datetime.datetime.now()
+    #     line1 = {'line' : "1", 'error' : False, 'ts' : now}
+    #     line2 = {'line' : "1", 'error' : False}
+    #     lines = [line1,line2]
+    #
+    #     self.ee2.add_job_logs(job_id,lines=lines)
+
+    # def test_get_logs(self):
+    # job_id="5d51aa0517554f4cfd7b8a2b"
+    # job_log_params = {"job_id": job_id}
+    # print("About to get logs for", job_log_params)
+    # print(self.ee2.get_job_logs(job_log_params))
 
     # def test_get_permissions(self):
     #     username = 'bsadkhin'

@@ -29,17 +29,13 @@ RUN echo "mongodb-org hold" | dpkg --set-selections \
     && echo "mongodb-org-mongos hold" | dpkg --set-selections \
     && echo "mongodb-org-tools hold" | dpkg --set-selections
 
-
-
 COPY ./requirements.txt /kb/module/requirements.txt
 RUN pip install -r /kb/module/requirements.txt
 RUN useradd kbase
-
 # -----------------------------------------
 
 COPY ./ /kb/module
 RUN mkdir -p /kb/module/work && chmod -R a+rw /kb/module && mkdir -p /etc/condor/
-
 
 WORKDIR /kb/module
 RUN make all

@@ -2,11 +2,17 @@ import json
 import logging
 import os
 import re
-import traceback
 from datetime import datetime
 from enum import Enum
 from time import time
 
+import dateutil
+import requests
+
+from execution_engine2.exceptions import (
+    RecordNotFoundException,
+    InvalidStatusTransitionException,
+)
 from execution_engine2.models.models import (
     Job,
     JobInput,
@@ -18,9 +24,9 @@ from execution_engine2.models.models import (
 )
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
-from execution_engine2.exceptions import RecordNotFoundException
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.authclient import KBaseAuth
 
 debug = json.loads(os.environ.get("debug", "False").lower())
 
@@ -136,6 +142,15 @@ class SDKMethodRunner:
             self.workspace = Workspace(token=ctx["token"], url=self.workspace_url)
         return self.workspace
 
+    def get_auth(self, ctx=None):
+        if ctx is None:
+            ctx = self.ctx
+        if ctx is None:
+            raise Exception("Need to provide credentials for the auth client")
+        if self.auth is None:
+            self.auth = KBaseAuth(token=ctx["token"], auth_url=self.auth_url)
+        return self.auth
+
     class WorkspacePermissions(Enum):
         ADMINISTRATOR = "a"
         READ_WRITE = "w"
@@ -227,16 +242,21 @@ class SDKMethodRunner:
         jl.lines = []
         return jl
 
-    def add_job_logs(self, job_id, lines, ctx):
+    def add_job_logs(self, job_id, log_lines, ctx):
         """
         #TODO Prevent too many logs in memory
         #TODO Max size of log lines = 1000
         #TODO Error with out of space happened previously. So we just update line count.
         #TODO db.updateExecLogOriginalLineCount(ujsJobId, dbLog.getOriginalLineCount() + lines.size());
 
+
+        # TODO Limit amount of lines per request?
+        # TODO Maybe Prevent Some lines with TS and some without
+        # TODO # Handle malformed requests?
+
         #Authorization Required : Ability to read and write to the workspace
         :param job_id:
-        :param lines:
+        :param log_lines:
         :param ctx:
         :return:
         """
@@ -251,27 +271,26 @@ class SDKMethodRunner:
 
         olc = log.original_line_count
 
-        # TODO Limit amount of lines per request?
-        # TODO Maybe Prevent Some lines with TS and some without
-        # TODO # Handle malformed requests?
-
-        now = datetime.utcnow()
-
-        for line in lines:
+        for input_line in log_lines:
             olc += 1
             ll = LogLines()
-            ll.error = line.get("error", False)
+            ll.error = input_line.get("error", False)
             ll.linepos = olc
-            ll.ts = line.get("ts", now)
-            ll.line = line.get("line")
-            ll.validate()
+            ts = input_line.get("ts")
+            # TODO Maybe use strpos for efficiency?
+            if ts is not None:
+                if type(ts) == str:
+                    ts = dateutil.parser.parse(ts)
+            ll.ts = ts
+
+            ll.line = input_line.get("line")
             log.lines.append(ll)
+            ll.validate()
 
         log.original_line_count = olc
         log.stored_line_count = olc
 
         with self.get_mongo_util().mongo_engine_connection():
-            print(type(log))
             log.save()
 
         return log.stored_line_count
@@ -283,10 +302,15 @@ class SDKMethodRunner:
         self.mongo_util = None
         self.condor = None
         self.workspace = None
-        catalog_url = config["catalog-url"]
+        self.auth = None
+        self.is_admin = None
+        self.admin_roles = config.get("admin_roles", ["EE2_ADMIN"])
+
+        catalog_url = config.get("catalog-url")
         self.catalog = Catalog(catalog_url)
 
-        self.workspace_url = config["workspace-url"]
+        self.workspace_url = config.get("workspace-url")
+        self.auth_url = config.get("auth-url")
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -432,8 +456,61 @@ class SDKMethodRunner:
         ]
         return p in write_permissions
 
+    def _run_admin_command(self, command, params):
+        available_commands = ["cancel_job", "view_job_logs"]
+        if command not in available_commands:
+            raise Exception(
+                f"{command} not an admin command. See {available_commands} "
+            )
+        commands = {"cancel_job": self.cancel_job, "view_job_logs": self.view_job_logs}
+        p = {
+            "cancel_job": {"job_id": params.get("job_id")},
+            "view_job_logs": {"job_id": params.get("job_id")},
+        }
+        return commands[command](**p[command])
+
+    def _is_admin(self, token):
+        """
+        Cache whether or not you are an ee2 admin based on your token / custom_roles
+        :param token:
+        :return:
+        """
+        if self.is_admin is None:
+            logging.info("URL:" + self.auth_url + "/api/V2/me")
+            r = requests.get(
+                self.auth_url + "/api/V2/me", headers={"Authorization": token}
+            )
+            logging.info(r.json())
+            roles = r.json().get("customroles", [])
+            if any(r in self.admin_roles for r in roles):
+                self.is_admin = True
+            else:
+                self.is_admin = False
+
+        return self.is_admin
+
+    def administer(self, command, params, token):
+        """
+        Run commands as an admin
+        See https://github.com/kbase/workspace_deluxe/blob/dev-candidate/src/us/kbase/workspace/kbase/admin/WorkspaceAdministration.java#L174
+        :param command: The command to run (See specfile)
+        :param params: The parameters for that command that will be expanded (See specfile)
+        :param token: The auth token (Will be checked for the correct auth role)
+        :return:
+        """
+        if self._is_admin(token):
+            self._run_admin_command(command, params)
+        else:
+            raise Exception(
+                f"You are not authorized. Please request a role from {self.admin_roles}"
+            )
+
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
+        #TODO Check if administrator flag is passed
+        #TODO Make it a decorator that just checks params
+        #If administrator flag is passed, try to check custom role for NJS_ADMIN
+
         Check for permissions to modify or read this record, based on WSID associated with the record
         :param job_id: The job id to look up to get it's WSID
         :param ctx: The REQUEST
@@ -552,12 +629,17 @@ class SDKMethodRunner:
         job_status = job.status
 
         if job_status not in [Status.running.value]:
-            raise ValueError("Unexpected job status: {}".format(job_status))
+            raise InvalidStatusTransitionException(
+                "Unexpected job status: {}".format(job_status)
+            )
 
         if error_message:
             job.errormsg = error_message
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.error.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.error.value
+            )
         else:
+
             if not job_output:
                 raise ValueError("Missing job output for finished job")
 
@@ -577,7 +659,8 @@ class SDKMethodRunner:
 
         self._send_exec_stats_to_catalog(job_id)
 
-    def start_job(self, job_id, ctx, skip_estimation=False):
+    def start_job(self, job_id, ctx, skip_estimation=True):
+
         """
         start_job: set job record to start status ("estimating" or "running") and update timestamp
                    (set job status to "estimating" by default, if job status currently is "created" or "queued".
@@ -598,17 +681,28 @@ class SDKMethodRunner:
         job = self.get_mongo_util().get_job(job_id=job_id)
         job_status = job.status
 
-        if job_status not in [Status.created.value, Status.queued.value, Status.estimating.value]:
-            raise ValueError("Unexpected job status: {}".format(job_status))
+        allowed_states = [
+            Status.created.value,
+            Status.queued.value,
+            Status.estimating.value,
+        ]
+        if job_status not in allowed_states:
+            raise ValueError(
+                f"Unexpected job status for {job_id}: {job_status}.  You cannot start a job that is not in {allowed_states}"
+            )
 
         if job_status == Status.estimating.value or skip_estimation:
             # set job to running status
             job.running = datetime.utcnow()
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.running.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.running.value
+            )
         else:
             # set job to estimating status
             job.estimating = datetime.utcnow()
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.estimating.value)
+            self.get_mongo_util().update_job_status(
+                job_id=job_id, status=Status.estimating.value
+            )
 
         with self.get_mongo_util().mongo_engine_connection():
             job.save()

@@ -1,5 +1,6 @@
 import datetime
 from enum import Enum
+import mongoengine
 
 from mongoengine import (
     StringField,
@@ -27,13 +28,23 @@ from mongoengine import (
 
 
 class LogLines(EmbeddedDocument):
-    line = StringField()
-    linepos = IntField()
-    error = BooleanField()
-    ts = DateTimeField(default=datetime.datetime.utcnow)
+    """
+    Log lines contain the content, whether or not to display the content as an error message,
+    the position of the line, and the timestamp
+    """
+
+    line = StringField(required=True)
+    linepos = IntField(required=True)
+    error = BooleanField(default=False)
+    ts = DateTimeField(default=datetime.datetime.utcnow())
 
 
 class JobLog(Document):
+    """
+    As a job runs, it saves its STDOUT and STDERR here
+
+    """
+
     primary_key = ObjectIdField(primary_key=True, required=True)
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     original_line_count = IntField()
@@ -48,6 +59,10 @@ class JobLog(Document):
 
 
 class Meta(EmbeddedDocument):
+    """
+    Information about from the cell where this job was run
+    """
+
     run_id = StringField()
     token_id = StringField()
     tag = StringField()
@@ -55,27 +70,73 @@ class Meta(EmbeddedDocument):
     status = StringField()
 
 
+class CondorResourceUsage(EmbeddedDocument):
+    """
+    Storing stats about a job's usage
+    """
+
+    cpu = ListField()
+    memory = ListField()
+    timestamp = ListField()
+
+    # Maybe remove this if we always want to make timestamp required
+    def save(self, *args, **kwargs):
+        self.timestamp.append(datetime.datetime.utcnow())
+        return super(CondorResourceUsage, self).save(*args, **kwargs)
+
+
+class Estimate(EmbeddedDocument):
+    """
+    Estimator function output goes here
+    """
+
+    cpu = IntField()
+    memory = StringField()
+
+
+class JobRequirements(EmbeddedDocument):
+    """
+    To be populated at runtime during start_job, probably from the Catalog
+    """
+
+    clientgroup = StringField()
+    cpu = IntField()
+    memory = StringField()
+    estimate = EmbeddedDocumentField(Estimate)
+
+
 class JobInput(EmbeddedDocument):
+    """
+    To be created from the Narrative
+    """
+
     wsid = IntField(required=True)
     method = StringField(required=True)
-
     requested_release = StringField()
     params = DynamicField()
     service_ver = StringField(required=True)
     app_id = StringField(required=True)
     source_ws_objects = ListField()
     parent_job_id = StringField()
-
+    requirements = EmbeddedDocumentField(JobRequirements)
     narrative_cell_info = EmbeddedDocumentField(Meta, required=True)
 
 
 class JobOutput(EmbeddedDocument):
+    """
+    To be created from the successful and possibly also failure run of a job
+    """
+
     version = StringField(required=True)
     id = LongField(required=True)
     result = DynamicField(required=True)
 
 
 class Status(Enum):
+    """
+    A job begins at created, then can either be estimating
+    """
+
     created = "created"
     estimating = "estimating"
     queued = "queued"
@@ -86,6 +147,11 @@ class Status(Enum):
 
 
 class AuthStrat(Enum):
+    """
+    The strings to be passed to the auth service when checking to see if a given token
+    has access to the workspace
+    """
+
     kbaseworkspace = "kbaseworkspace"
     execution_engine = "execution_engine"
 
@@ -93,7 +159,7 @@ class AuthStrat(Enum):
 def valid_status(status):
     try:
         Status(status)
-    except Exception as e:
+    except Exception:
         raise ValidationError(
             f"{status} is not a valid status {vars(Status)['_member_names_']}"
         )
@@ -104,13 +170,19 @@ def valid_authstrat(strat):
         pass
     try:
         AuthStrat(strat)
-    except Exception as e:
+    except Exception:
         raise ValidationError(
             f"{strat} is not a valid Authentication strategy {vars(AuthStrat)['_member_names_']}"
         )
 
 
 class Job(Document):
+    """
+    A job is created the execution engine service and it's updated from
+    the job and the portal process for the rest of the time
+    """
+
+    # id.generation_time = created
     user = StringField(required=True)
     authstrat = StringField(
         required=True, default="kbaseworkspace", validation=valid_authstrat
@@ -119,12 +191,16 @@ class Job(Document):
     status = StringField(required=True, validation=valid_status)
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     started = DateTimeField(default=None)
-    estimating = DateTimeField(default=None)
-    running = DateTimeField(default=None)
-    finished = DateTimeField(default=None)
+    # id.generation_time = created
+    estimating = DateTimeField(default=None)  # Time when job began estimating
+    running = DateTimeField(default=None)  # Time when job started
+    finished = DateTimeField(
+        default=None
+    )  # Time when job finished, errored out, or was terminated by the user/admin
     errormsg = StringField()
     scheduler_type = StringField()
     scheduler_id = StringField()
+    scheduler_estimator_id = StringField()
     job_input = EmbeddedDocumentField(JobInput, required=True)
     job_output = DynamicField()
 

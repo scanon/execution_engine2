@@ -5,7 +5,7 @@ max-line-length = 79
 max-complexity = 18
 select = B,C,E,F,W,T4,B9
 exclude =
- .tox
- execution_engine2Impl.py
- lib/execution_engine2/execution_engine2Impl.py
+ .tox,
+ execution_engine2Impl.py,
+ lib/execution_engine2/execution_engine2Impl.py,
  *Impl.py

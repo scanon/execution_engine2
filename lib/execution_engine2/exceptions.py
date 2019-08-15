@@ -6,6 +6,10 @@ class MissingRunJobParamsException(ValueError):
     pass
 
 
+class InvalidStatusTransitionException(ValueError):
+    pass
+
+
 class MissingCondorRequirementsException(ValueError):
     pass
 
