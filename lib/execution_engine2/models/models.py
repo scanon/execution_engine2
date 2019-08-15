@@ -202,7 +202,8 @@ class Job(Document):
     scheduler_id = StringField()
     scheduler_estimator_id = StringField()
     job_input = EmbeddedDocumentField(JobInput, required=True)
-    job_output = EmbeddedDocumentField(JobOutput)
+    job_output = DynamicField()
+
     # meta = {"db_alias": "ee2"}
     meta = {"collection": "ee2_jobs"}
 

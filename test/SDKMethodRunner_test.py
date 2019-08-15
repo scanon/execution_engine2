@@ -9,13 +9,16 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from mock import MagicMock
+from bson import ObjectId
+from datetime import datetime
 from mongoengine import ValidationError
 
 from execution_engine2.exceptions import InvalidStatusTransitionException
-from execution_engine2.models.models import Job, JobInput, Meta, Status
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
+
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
 
@@ -90,6 +93,7 @@ class SDKMethodRunner_test(unittest.TestCase):
         inputs.narrative_cell_info = Meta()
 
         job.job_input = inputs
+        job.job_output = None
 
         with self.mongo_util.mongo_engine_connection():
             job.save()
@@ -408,6 +412,76 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         # TODO IMPLEMENT SKIPLINES AND TEST
 
+    def test_add_job_logs_ok(self):
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_log_count = JobLog.objects.count()
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            ctx = {"foo": "bar"}
+
+            # create new log
+            lines = [{"line": "Hello world"}]
+            runner.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+
+            updated_job_log_count = JobLog.objects.count()
+            self.assertEqual(ori_job_log_count, updated_job_log_count - 1)
+
+            log = self.mongo_util.get_job_log(job_id=job_id)
+            ori_updated_time = log.updated
+            self.assertTrue(ori_updated_time)
+            self.assertEqual(log.original_line_count, 1)
+            self.assertEqual(log.stored_line_count, 1)
+            ori_lines = log.lines
+            self.assertEqual(len(ori_lines), 1)
+
+            test_line = ori_lines[0]
+
+            self.assertEqual(test_line.line, "Hello world")
+            self.assertEqual(test_line.linepos, 1)
+            self.assertFalse(test_line.error)
+
+            # add job log
+            lines = [{"error": True, "line": "Hello Kbase"}, {"line": "Hello Wrold Kbase"}]
+            runner.add_job_logs(job_id=job_id, lines=lines, ctx=ctx)
+
+            log = self.mongo_util.get_job_log(job_id=job_id)
+            self.assertTrue(log.updated)
+            self.assertTrue(ori_updated_time < log.updated)
+            self.assertEqual(log.original_line_count, 3)
+            self.assertEqual(log.stored_line_count, 3)
+            ori_lines = log.lines
+            self.assertEqual(len(ori_lines), 3)
+
+            # original line
+            test_line = ori_lines[0]
+
+            self.assertEqual(test_line.line, "Hello world")
+            self.assertEqual(test_line.linepos, 1)
+            self.assertFalse(test_line.error)
+
+            # new line
+            test_line = ori_lines[1]
+
+            self.assertEqual(test_line.line, "Hello Kbase")
+            self.assertEqual(test_line.linepos, 2)
+            self.assertTrue(test_line.error)
+
+            test_line = ori_lines[2]
+
+            self.assertEqual(test_line.line, "Hello Wrold Kbase")
+            self.assertEqual(test_line.linepos, 3)
+            self.assertFalse(test_line.error)
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
+
+            self.mongo_util.get_job_log(job_id=job_id).delete()
+            self.assertEqual(ori_job_log_count, JobLog.objects.count())
+
     def test_get_job_params(self):
 
         with self.mongo_util.mongo_engine_connection():
@@ -514,6 +588,7 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
+            runner.catalog.log_exec_stats = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
 
             # test missing job_id input
@@ -527,17 +602,24 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertIn("Unexpected job status", str(context.exception))
 
             # update job status to running
-            self.mongo_util.update_job_status(
-                job_id=job_id, status=Status.running.value
-            )
+            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            job.running = datetime.utcnow()
+            job.save()
 
             # test finish job without error
-            runner.finish_job(job_id, ctx)
+            job_output = dict()
+            job_output["version"] = "1"
+            job_output["id"] = 1234
+            job_output["result"] = {"output": "output"}
+            runner.finish_job(job_id, ctx, job_output=job_output)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
+            job_output = job.job_output.to_mongo().to_dict()
+            self.assertEqual(job_output["version"], "1")
+            self.assertEqual(job_output["id"], 1234)
 
             # update finished status to running
             with self.assertRaises(InvalidStatusTransitionException):

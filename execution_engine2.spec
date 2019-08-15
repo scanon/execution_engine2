@@ -166,10 +166,12 @@ module execution_engine2 {
     } JsonRpcError;
     /*
         error_message: optional if job is finished with error
+        job_output: job output if job completed successfully
     */
     typedef structure {
         job_id job_id;
         string error_message;
+        UnspecifiedObject job_output;
     } FinishJobParams;
     /*
         Register results of already started job

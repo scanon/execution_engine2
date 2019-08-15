@@ -16,6 +16,7 @@ from execution_engine2.exceptions import (
 from execution_engine2.models.models import (
     Job,
     JobInput,
+    JobOutput,
     Meta,
     Status,
     JobLog,
@@ -202,6 +203,35 @@ class SDKMethodRunner:
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
         logging.debug("Success, you have permission to view logs for " + job_id)
         return self._get_job_log(job_id, skip_lines)
+
+    def _send_exec_stats_to_catalog(self, job_id):
+        job = self.get_mongo_util().get_job(job_id)
+
+        job_input = job.job_input
+
+        log_exec_stats_params = dict()
+
+        log_exec_stats_params["user_id"] = job.user
+
+        app_id = job_input.app_id
+        log_exec_stats_params["app_module_name"] = app_id.split("/")[0]
+        log_exec_stats_params["app_id"] = app_id
+
+        method = job_input.method
+
+        log_exec_stats_params["func_module_name"] = method.split(".")[0]
+        log_exec_stats_params["func_name"] = method.split(".")[-1]
+
+        log_exec_stats_params["git_commit_hash"] = job_input.service_ver
+
+        log_exec_stats_params["creation_time"] = job.id.generation_time.timestamp()
+        log_exec_stats_params["exec_start_time"] = job.running.timestamp()
+        log_exec_stats_params["finish_time"] = job.finished.timestamp()
+        log_exec_stats_params["is_error"] = int(job.status == Status.error.value)
+
+        log_exec_stats_params["job_id"] = job_id
+
+        self.catalog.log_exec_stats(log_exec_stats_params)
 
     @staticmethod
     def _create_new_log(pk):
@@ -578,7 +608,7 @@ class SDKMethodRunner:
 
         return returnVal
 
-    def finish_job(self, job_id, ctx, error_message=None):
+    def finish_job(self, job_id, ctx, error_message=None, job_output=None):
         """
         finish_job: set job record to finish status and update finished timestamp
                     (set job status to "finished" by default. If error_message is given, set job to "error" status)
@@ -609,16 +639,28 @@ class SDKMethodRunner:
                 job_id=job_id, status=Status.error.value
             )
         else:
-            self.get_mongo_util().update_job_status(
-                job_id=job_id, status=Status.finished.value
-            )
+
+            if not job_output:
+                raise ValueError("Missing job output for finished job")
+
+            output = JobOutput()
+            output.version = job_output.get("version")
+            output.id = job_output.get("id")
+            output.result = job_output.get("result")
+            output.validate()
+            job.job_output = output
+
+            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
 
         job.finished = datetime.utcnow()
 
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
+        self._send_exec_stats_to_catalog(job_id)
+
     def start_job(self, job_id, ctx, skip_estimation=True):
+
         """
         start_job: set job record to start status ("estimating" or "running") and update timestamp
                    (set job status to "estimating" by default, if job status currently is "created" or "queued".
