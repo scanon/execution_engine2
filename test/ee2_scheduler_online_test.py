@@ -9,6 +9,7 @@ from lib.installed_clients.execution_engine2Client import execution_engine2
 from lib.installed_clients.WorkspaceClient import Workspace
 import os
 import sys
+import time
 
 from dotenv import load_dotenv
 
@@ -86,12 +87,15 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         job_id = self.ee2.run_job(runjob_params)
         print(f"Submitted job {job_id}")
         job_log_params = {"job_id": job_id}
-        
-        import time
-        while(True):
-            time.sleep(2)
-            print(self.ee2.get_job_logs(job_log_params)
-        
+
+        while True:
+            time.sleep(5)
+            try:
+                print(self.ee2.get_job_logs(job_log_params))
+            except Exception:
+                print("Not yet")
+
+
 #         import datetime
 
 #         now = datetime.datetime.utcnow()
@@ -103,56 +107,56 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 #         line2 = {"line": "This really crosses the line", "error": True}
 #         lines = [line1, line2]
 
-        #self.ee2.add_job_logs(job_id, lines=lines)
+# self.ee2.add_job_logs(job_id, lines=lines)
 
-    # def test_add_job_log(self):
-    #     import datetime
-    #     job_id="5d51aa0517554f4cfd7b8a2b"
-    #     now = datetime.datetime.now()
-    #     line1 = {'line' : "1", 'error' : False, 'ts' : now}
-    #     line2 = {'line' : "1", 'error' : False}
-    #     lines = [line1,line2]
-    #
-    #     self.ee2.add_job_logs(job_id,lines=lines)
+# def test_add_job_log(self):
+#     import datetime
+#     job_id="5d51aa0517554f4cfd7b8a2b"
+#     now = datetime.datetime.now()
+#     line1 = {'line' : "1", 'error' : False, 'ts' : now}
+#     line2 = {'line' : "1", 'error' : False}
+#     lines = [line1,line2]
+#
+#     self.ee2.add_job_logs(job_id,lines=lines)
 
-    # def test_get_logs(self):
-    # job_id="5d51aa0517554f4cfd7b8a2b"
-    # job_log_params = {"job_id": job_id}
-    # print("About to get logs for", job_log_params)
-    # print(self.ee2.get_job_logs(job_log_params))
+# def test_get_logs(self):
+# job_id="5d51aa0517554f4cfd7b8a2b"
+# job_log_params = {"job_id": job_id}
+# print("About to get logs for", job_log_params)
+# print(self.ee2.get_job_logs(job_log_params))
 
-    # def test_get_permissions(self):
-    #     username = 'bsadkhin'
-    #     perms = self.ws.get_permissions_mass({'workspaces': [{'id': '42896'}]})['perms']
-    #     permission = "n"
-    #     for p in perms:
-    #         if username in p:
-    #             permission = p[username]
-    #     print("Permission is")
-    #     print(permission)
-    #
-    # from enum import Enum
-    #
-    # class WorkspacePermissions(Enum):
-    #     ADMINISTRATOR = "a"
-    #     READ_WRITE = "w"
-    #     READ = "r"
-    #     NONE = "n"
+# def test_get_permissions(self):
+#     username = 'bsadkhin'
+#     perms = self.ws.get_permissions_mass({'workspaces': [{'id': '42896'}]})['perms']
+#     permission = "n"
+#     for p in perms:
+#         if username in p:
+#             permission = p[username]
+#     print("Permission is")
+#     print(permission)
+#
+# from enum import Enum
+#
+# class WorkspacePermissions(Enum):
+#     ADMINISTRATOR = "a"
+#     READ_WRITE = "w"
+#     READ = "r"
+#     NONE = "n"
 
-    # def test_get_workspace_permissions(self):
-    #     job_id='5d48821bfc8e83248c0d2cff'
-    #     wsid=42896
-    #     username="bsadkhin"
-    #     perms = self.ws.get_permissions_mass({'workspaces': [{'id': wsid}]})['perms']
-    #     permission = "n"
-    #     for p in perms:
-    #         if username in p:
-    #             permission = p[username]
-    #     print(self.WorkspacePermissions(permission))
+# def test_get_workspace_permissions(self):
+#     job_id='5d48821bfc8e83248c0d2cff'
+#     wsid=42896
+#     username="bsadkhin"
+#     perms = self.ws.get_permissions_mass({'workspaces': [{'id': wsid}]})['perms']
+#     permission = "n"
+#     for p in perms:
+#         if username in p:
+#             permission = p[username]
+#     print(self.WorkspacePermissions(permission))
 
-    # def get_workspace_permissions(self, wsid, ctx):
-    #         # Look up permissions for this workspace
-    #         logging.info(f"Checking for permissions for {wsid} of type {type(wsid)}")
-    #         gpmp = {'workspaces' : [int(wsid)]}
-    #         permission = self.get_workspace(ctx).get_permissions_mass(gpmp)[0]
-    #         return self.WorkspacePermissions(permission)
+# def get_workspace_permissions(self, wsid, ctx):
+#         # Look up permissions for this workspace
+#         logging.info(f"Checking for permissions for {wsid} of type {type(wsid)}")
+#         gpmp = {'workspaces' : [int(wsid)]}
+#         permission = self.get_workspace(ctx).get_permissions_mass(gpmp)[0]
+#         return self.WorkspacePermissions(permission)
