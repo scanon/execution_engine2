@@ -85,19 +85,25 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
 
         job_id = self.ee2.run_job(runjob_params)
         print(f"Submitted job {job_id}")
+        job_log_params = {"job_id": job_id}
+        
+        import time
+        while(True):
+            time.sleep(2)
+            print(self.ee2.get_job_logs(job_log_params)
+        
+#         import datetime
 
-        import datetime
+#         now = datetime.datetime.utcnow()
+#         line1 = {
+#             "line": "Tell me the first line, the whole line, and nothing but the line",
+#             "error": False,
+#             "ts": now.isoformat(),
+#         }
+#         line2 = {"line": "This really crosses the line", "error": True}
+#         lines = [line1, line2]
 
-        now = datetime.datetime.utcnow()
-        line1 = {
-            "line": "Tell me the first line, the whole line, and nothing but the line",
-            "error": False,
-            "ts": now.isoformat(),
-        }
-        line2 = {"line": "This really crosses the line", "error": True}
-        lines = [line1, line2]
-
-        self.ee2.add_job_logs(job_id, lines=lines)
+        #self.ee2.add_job_logs(job_id, lines=lines)
 
     # def test_add_job_log(self):
     #     import datetime
