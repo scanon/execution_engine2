@@ -132,6 +132,28 @@ class JobOutput(EmbeddedDocument):
     result = DynamicField(required=True)
 
 
+class ErrorCode(Enum):
+    """
+    Reasons why the job was marked as error
+    """
+
+    unknown_error = 0
+    job_crashed = 1
+    job_terminated_by_automation = 2
+    job_over_timelimit = 3
+    token_expired = 4
+
+
+class TerminatedCode(Enum):
+    """
+    Reasons for why the job was cancelled
+    """
+
+    terminated_by_user = 0
+    terminated_by_admin = 1
+    terminated_by_automation = 2
+
+
 class Status(Enum):
     """
     A job begins at created, then can either be estimating
@@ -142,8 +164,12 @@ class Status(Enum):
     queued = "queued"
     running = "running"
     finished = "finished"  # Successful termination
-    error = "error"  # Something went wrong
-    terminated = "terminated"  # Canceled by user
+    error = (
+        "error"
+    )  # Something went wrong and job failed # Possible Reasons are (ErrorCodes)
+    terminated = (
+        "terminated"
+    )  # Canceled by user, admin, or script # Possible Reasons are (TerminatedCodes)
 
 
 class AuthStrat(Enum):

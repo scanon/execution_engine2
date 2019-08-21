@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import copy
 import datetime
+import json
 import logging
 import os
 import unittest
 from configparser import ConfigParser
-
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -392,6 +392,9 @@ class SDKMethodRunner_test(unittest.TestCase):
 
         log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
         log_lines = log["lines"]
+
+        print("About to dump log")
+        print(json.dumps(log))
         for i, inserted_line in enumerate(log_lines):
             if i < log_pos_1:
                 continue
@@ -399,10 +402,13 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(inserted_line["line"], input_lines2[i - log_pos_1]["line"])
             # TODO FIX THIS WHY AREN"T THEY EQUAL?!
             # self.assertEqual(inserted_line['ts'], input_lines2[i - log_pos_1]['ts'])
+            time1 = inserted_line["ts"]
+            time2 = input_lines2[i - log_pos_1]["ts"]
+            print(time1, type(time1))
+            print(time2, type(time2))
+
             self.assertAlmostEqual(
-                first=inserted_line["ts"],
-                second=input_lines2[i - log_pos_1]["ts"],
-                delta=timedelta(seconds=1),
+                first=time1, second=time2, delta=timedelta(seconds=1)
             )
             self.assertEqual(
                 inserted_line["error"], input_lines2[i - log_pos_1]["error"]

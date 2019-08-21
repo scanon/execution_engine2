@@ -184,7 +184,11 @@ class SDKMethodRunner:
         # TODO Filter the lines in the mongo query?
         lines = []
         for line in log.lines:  # type: LogLines
-            lines.append(line.to_mongo().to_dict())
+            line = line.to_mongo().to_dict()
+            for key in line.keys():
+                line[key] = str(line[key])
+                logging.info(line)
+            lines.append(line)
 
         # TODO AVOID LOADING ENTIRE THING INTO MEMORY
 
@@ -330,7 +334,7 @@ class SDKMethodRunner:
         # Is it inefficient to get the job twice? Is it cached?
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
 
-        # Maybe cancel in condor first?
+        # Maybe cancel in condor first?`
         self.get_mongo_util().update_job_status(
             job_id=job_id, status=Status.terminated.value
         )

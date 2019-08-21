@@ -40,5 +40,4 @@ pid=$!
 
 wait ${pid}
 EXIT_CODE=$?
-sleep 1200
 exit ${EXIT_CODE}

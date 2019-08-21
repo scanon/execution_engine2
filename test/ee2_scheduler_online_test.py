@@ -91,9 +91,10 @@ class ExecutionEngine2SchedulerTest(unittest.TestCase):
         while True:
             time.sleep(5)
             try:
+                print(self.ee2.get_job_status(job_id=job_id))
                 print(self.ee2.get_job_logs(job_log_params))
-            except Exception:
-                print("Not yet")
+            except Exception as e:
+                print("Not yet", e)
 
 
 #         import datetime
