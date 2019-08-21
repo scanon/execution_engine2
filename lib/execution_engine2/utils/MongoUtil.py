@@ -164,23 +164,36 @@ class MongoUtil:
 
         return job_log
 
-    def get_job(self, job_id=None) -> Job:
+    def get_job(self, job_id=None, projection=None) -> Job:
         if job_id is None:
             raise ValueError("Please provide a job id")
+
+        job = self.get_jobs(job_ids=[job_id], projection=projection)[0]
+
+        return job
+
+    def get_jobs(self, job_ids=None, projection=None):
+        if not (job_ids and isinstance(job_ids, list)):
+            raise ValueError("Please provide a non empty list of job ids")
         with self.mongo_engine_connection():
             try:
-                job = Job.objects.with_id(job_id)
+                if projection:
+                    if not isinstance(projection, list):
+                        raise ValueError("Please input a list type projection")
+                    jobs = Job.objects(id__in=job_ids).exclude(*projection)
+                else:
+                    jobs = Job.objects(id__in=job_ids)
             except Exception:
                 raise ValueError(
                     "Unable to find job:\nError:\n{}".format(traceback.format_exc())
                 )
 
-            if not job:
+            if not jobs:
                 raise RecordNotFoundException(
-                    "Cannot find job with id: {}".format(job_id)
+                    "Cannot find job with ids: {}".format(job_ids)
                 )
 
-        return job
+        return jobs
 
     def update_job_status(self, job_id, status):
         """
