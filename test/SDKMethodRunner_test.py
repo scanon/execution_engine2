@@ -402,17 +402,21 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(inserted_line["line"], input_lines2[i - log_pos_1]["line"])
             # TODO FIX THIS WHY AREN"T THEY EQUAL?!
             # self.assertEqual(inserted_line['ts'], input_lines2[i - log_pos_1]['ts'])
-            time1 = inserted_line["ts"]
+            time1 = datetime.datetime.strptime(
+                inserted_line["ts"], "%Y-%m-%d %H:%M:%S.%f"
+            )
             time2 = input_lines2[i - log_pos_1]["ts"]
-            print(time1, type(time1))
-            print(time2, type(time2))
+            # print("Time 1 is:",time1, type(time1))
+            # print("Time 2 is:",time2, type(time2))
+            error1 = line["error"]
+            error2 = input_lines2[i - log_pos_1]["error"]
+            print("error1 1 is:", error1, type(error1))
+            print("error2 2 is:", error2, type(error2))
 
             self.assertAlmostEqual(
                 first=time1, second=time2, delta=timedelta(seconds=1)
             )
-            self.assertEqual(
-                inserted_line["error"], input_lines2[i - log_pos_1]["error"]
-            )
+            self.assertEqual(error1, error2)
 
         # TODO IMPLEMENT SKIPLINES AND TEST
 
