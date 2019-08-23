@@ -181,7 +181,7 @@ class SDKMethodRunner:
 
         log = self.get_mongo_util().get_job_log(job_id)
         # if skip_lines #TODO
-
+        # TODO MAKE ONLY THE TIMESTAMP A STRING, so AS TO NOT HAVING TO LOOP OVER EACH ATTRIBUTE?
         # TODO Filter the lines in the mongo query?
         lines = []
         for line in log.lines:  # type: LogLines
