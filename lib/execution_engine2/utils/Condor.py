@@ -43,7 +43,7 @@ class Condor(Scheduler):
     INITIAL_DIR = "initial_dir"
     LEAVE_JOB_IN_QUEUE = "leavejobinqueue"
     TRANSFER_INPUT_FILES = "transfer_input_files"
-    PYTHON_BIN_PATH = "python_bin_path"
+    PYTHON_EXECUTABLE = "PYTHON_EXECUTABLE"
 
     DEFAULT_CLIENT_GROUP = "default_client_group"
 
@@ -72,22 +72,20 @@ class Condor(Scheduler):
         self.config = ConfigParser()
         self.config.read(config_filepath)
         self.ee_endpoint = self.config.get(section=self.EE2, option=self.EXTERNAL_URL)
-
-        self.python_bin_path = self.config.get(
-            section=self.EE2, option=self.PYTHON_BIN_PATH, fallback="/miniconda/bin"
+        self.python_executable = self.config.get(
+            section=self.EE2,
+            option=self.PYTHON_EXECUTABLE,
+            fallback="/miniconda/bin/python",
         )
-
         self.initial_dir = self.config.get(
             section=self.EE2, option=self.INITIAL_DIR, fallback="/condor_shared"
         )
-
         executable = self.config.get(section=self.EE2, option=self.EXECUTABLE)
         if not pathlib.Path(executable).exists() and not pathlib.Path(
             self.initial_dir + "/" + executable
         ):
             raise FileNotFoundError(executable)
         self.executable = executable
-
         self.kb_auth_token = self.config.get(section=self.EE2, option=self.AUTH_TOKEN)
         self.docker_timeout = self.config.get(
             section=self.EE2, option=self.DOCKER_TIMEOUT, fallback="604801"
@@ -95,7 +93,6 @@ class Condor(Scheduler):
         self.pool_user = self.config.get(
             section=self.EE2, option=self.POOL_USER, fallback="condor_pool"
         )
-
         self.leave_job_in_queue = self.config.get(
             section=self.EE2, option=self.LEAVE_JOB_IN_QUEUE, fallback="True"
         )
@@ -139,7 +136,7 @@ class Condor(Scheduler):
             "JOB_ID": params.get("job_id"),
             # "WORKDIR": f"{config.get('WORKDIR')}/{params.get('USER')}/{params.get('JOB_ID')}",
             "CONDOR_ID": "$(Cluster).$(Process)",
-            "PYTHON_BIN_PATH": self.python_bin_path,
+            "PYTHON_EXECUTABLE": self.python_executable,
         }
 
         environment = ""
@@ -150,6 +147,10 @@ class Condor(Scheduler):
 
     @staticmethod
     def check_for_missing_runjob_params(params):
+        """
+        Check for missing runjob parameters
+        :param params: Params saved when the job was created
+        """
         for item in ("token", "user_id", "job_id", "cg_resources_requirements"):
             if item not in params:
                 raise MissingRunJobParamsException(f"{item} not found in params")
