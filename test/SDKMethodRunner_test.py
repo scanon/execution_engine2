@@ -10,13 +10,15 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from mock import MagicMock
+from bson import ObjectId
 from mongoengine import ValidationError
 
 from execution_engine2.exceptions import InvalidStatusTransitionException
-from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
+
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
 
@@ -453,10 +455,8 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(test_line.error)
 
             # add job log
-            lines = [
-                {"error": True, "line": "Hello Kbase"},
-                {"line": "Hello Wrold Kbase"},
-            ]
+            lines = [{"error": True, "line": "Hello Kbase"}, {"line": "Hello Wrold Kbase"}]
+
             runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
 
             log = self.mongo_util.get_job_log(job_id=job_id)
@@ -615,9 +615,9 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertIn("Unexpected job status", str(context.exception))
 
             # update job status to running
-            self.mongo_util.update_job_status(
-                job_id=job_id, status=Status.running.value
-            )
+
+            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+
             job.running = datetime.datetime.utcnow()
             job.save()
 
@@ -627,12 +627,14 @@ class SDKMethodRunner_test(unittest.TestCase):
             job_output["id"] = "5d54bdcb9b402d15271b3208"  # A valid objectid
             job_output["result"] = {"output": "output"}
             logging.info("Finish Job Case 2 Should Be finished")
+
             runner.finish_job(job_id, ctx, job_output=job_output)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
+
             job_output2 = job.job_output.to_mongo().to_dict()
             self.assertEqual(job_output2["version"], "1")
             self.assertEqual(str(job_output2["id"]), job_output["id"])
@@ -653,6 +655,8 @@ class SDKMethodRunner_test(unittest.TestCase):
         runner = self.getRunner()
         runner.check_permission_for_job = MagicMock(return_value=True)
         runner._send_exec_stats_to_catalog = MagicMock(return_value=True)
+        runner.catalog.log_exec_stats = MagicMock(return_value=True)
+
         ctx = {"foo": "bar"}
 
         with self.assertRaises(InvalidStatusTransitionException):
@@ -711,6 +715,69 @@ class SDKMethodRunner_test(unittest.TestCase):
             with self.assertRaises(ValueError) as context:
                 runner.start_job(job_id, ctx)
             self.assertIn("Unexpected job status", str(context.exception))
+
+            self.mongo_util.get_job(job_id=job_id).delete()
+            self.assertEqual(ori_job_count, Job.objects.count())
+
+    def test_check_job_ok(self):
+
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "created")
+            self.assertFalse(job.finished)
+            self.assertFalse(job.running)
+            self.assertFalse(job.estimating)
+
+            runner = self.getRunner()
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            runner.get_permissions_for_workspace = MagicMock(return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR)
+            ctx = {"foo": "bar"}
+
+            # test missing job_id input
+            with self.assertRaises(ValueError) as context:
+                runner.check_job(None, ctx)
+                self.assertEqual("Please provide valid job_id", str(context.exception))
+
+            # test check_job
+            job_state = runner.check_job(job_id, ctx)
+            self.assertEqual(job_state["status"], "created")
+            self.assertEqual(job_state["wsid"], 9999)
+
+            # test check_job with projection
+            job_state = runner.check_job(job_id, ctx, projection=["status"])
+            self.assertFalse("status" in job_state.keys())
+            self.assertEqual(job_state["wsid"], 9999)
+
+            # test check_jobs
+            job_states = runner.check_jobs([job_id], ctx)
+            self.assertTrue(job_id in job_states)
+            self.assertEqual(job_states[job_id]["status"], "created")
+            self.assertEqual(job_states[job_id]["wsid"], 9999)
+
+            # test check_jobs with projection
+            job_states = runner.check_jobs([job_id], ctx, projection=["wsid"])
+            self.assertTrue(job_id in job_states)
+            self.assertFalse("wsid" in job_states[job_id].keys())
+            self.assertEqual(job_states[job_id]["status"], "created")
+
+            # test check_workspace_jobs
+            job_states = runner.check_workspace_jobs(9999, ctx)
+            self.assertTrue(job_id in job_states)
+            self.assertEqual(job_states[job_id]["status"], "created")
+            self.assertEqual(job_states[job_id]["wsid"], 9999)
+
+            # test check_workspace_jobs with projection
+            job_states = runner.check_workspace_jobs(9999, ctx, projection=["wsid"])
+            self.assertTrue(job_id in job_states)
+            self.assertFalse("wsid" in job_states[job_id].keys())
+            self.assertEqual(job_states[job_id]["status"], "created")
+
+            job_states = runner.check_workspace_jobs(1234, ctx)
+            self.assertFalse(job_states)
 
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())
