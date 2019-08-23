@@ -455,7 +455,10 @@ class SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(test_line.error)
 
             # add job log
-            lines = [{"error": True, "line": "Hello Kbase"}, {"line": "Hello Wrold Kbase"}]
+            lines = [
+                {"error": True, "line": "Hello Kbase"},
+                {"line": "Hello Wrold Kbase"},
+            ]
 
             runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
 
@@ -616,19 +619,24 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             # update job status to running
 
-            self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            runner.start_job(job_id=job_id, ctx=ctx, skip_estimation=True)
 
-            job.running = datetime.datetime.utcnow()
-            job.save()
+            # self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
+            # job.running = datetime.datetime.utcnow()
+            # job.save()
 
             # test finish job without error
             job_output = dict()
             job_output["version"] = "1"
             job_output["id"] = "5d54bdcb9b402d15271b3208"  # A valid objectid
             job_output["result"] = {"output": "output"}
-            logging.info("Finish Job Case 2 Should Be finished")
+            logging.info("Case2 : Finish a running job")
+
+            print(f"About to finish job {job_id}. The job status is currently")
+            print(runner.get_job_status(job_id, ctx))
 
             runner.finish_job(job_id, ctx, job_output=job_output)
+            print(runner.get_job_status(job_id, ctx))
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
@@ -734,7 +742,9 @@ class SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
-            runner.get_permissions_for_workspace = MagicMock(return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR)
+            runner.get_permissions_for_workspace = MagicMock(
+                return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR
+            )
             ctx = {"foo": "bar"}
 
             # test missing job_id input

@@ -21,6 +21,7 @@ from execution_engine2.models.models import (
     Status,
     JobLog,
     LogLines,
+    TerminatedCode,
 )
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
@@ -324,7 +325,7 @@ class SDKMethodRunner:
     def status():
         return {"servertime": f"{time()}"}
 
-    def cancel_job(self, job_id, ctx):
+    def cancel_job(self, job_id, ctx, terminated_code=None):
         """
         Authorization Required: Ability to Read and Write to the Workspace
         :param job_id:
@@ -566,8 +567,13 @@ class SDKMethodRunner:
 
     def update_job_status(self, job_id, status, ctx):
         """
+        # DEPRECATED YOU SHOULD USE START_JOB/CANCEL_JOB/FINISH_JOB instead
+
         update_job_status: update status of a job runner record.
                            raise error if job is not found or status is not listed in models.Status
+        * Does not update TerminatedCode or ErrorCode
+        * Does not update Timestamps
+        * Allows invalid state transitions, e.g. Running -> Created
 
         Parameters:
         job_id: id of job
@@ -612,7 +618,9 @@ class SDKMethodRunner:
 
         return returnVal
 
-    def finish_job(self, job_id, ctx, error_message=None, job_output=None, finish_code=None):
+    def finish_job(
+        self, job_id, ctx, error_message=None, job_output=None, finish_code=None
+    ):
         """
         #TODO Fix too many open connections to mongoengine
 
@@ -629,7 +637,6 @@ class SDKMethodRunner:
             raise ValueError("Please provide valid job_id")
 
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-
         job = self.get_mongo_util().get_job(job_id=job_id)
         job_status = job.status
 
@@ -637,15 +644,14 @@ class SDKMethodRunner:
             raise InvalidStatusTransitionException(
                 "Unexpected job status: {}".format(job_status)
             )
-
+        # Save a failed job
         if error_message:
-            logging.info("About to save a failed job")
             job.errormsg = error_message
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.error.value
             )
+        # Save a successful job
         else:
-            logging.info("About to save a successful job")
             if not job_output:
                 raise ValueError("Missing job output for finished job")
 
@@ -654,11 +660,9 @@ class SDKMethodRunner:
             output.id = ObjectId(job_output.get("id"))
             output.result = job_output.get("result")
             try:
-                logging.info(
-                    f"Validating output and setting to finished (current status {job.status})"
-                )
                 output.validate()
                 job.job_output = output
+                job.status = Status.finished.value
                 self.get_mongo_util().update_job_status(
                     job_id=job_id, status=Status.finished.value
                 )
@@ -669,16 +673,11 @@ class SDKMethodRunner:
                 self.get_mongo_util().update_job_status(
                     job_id=job_id, status=Status.error.value
                 )
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
-
 
         job.finished = datetime.utcnow()
-        logging.info("About to finish job with status (should be finished)")
-        logging.info(job.status)
+
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
-        logging.info("Status now")
-        logging.info(job.status)
 
         self._send_exec_stats_to_catalog(job_id)
 
@@ -742,10 +741,9 @@ class SDKMethodRunner:
         if not job_id:
             raise ValueError("Please provide valid job_id")
 
-        job_state = self.check_jobs([job_id],
-                                    ctx,
-                                    check_permission=check_permission,
-                                    projection=projection).get(job_id)
+        job_state = self.check_jobs(
+            [job_id], ctx, check_permission=check_permission, projection=projection
+        ).get(job_id)
 
         return job_state
 
@@ -771,11 +769,17 @@ class SDKMethodRunner:
         """
         check_workspace_jobs: check job status for all jobs in a given workspace
         """
-        logging.info("Start fetching all jobs status in workspace: {}".format(workspace_id))
+        logging.info(
+            "Start fetching all jobs status in workspace: {}".format(workspace_id)
+        )
 
-        if not self._can_read_ws(self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)):
+        if not self._can_read_ws(
+            self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
+        ):
             raise PermissionError(
-                "User {} does not have permissions to get status for wsid: {}".format(ctx['user_id'], workspace_id)
+                "User {} does not have permissions to get status for wsid: {}".format(
+                    ctx["user_id"], workspace_id
+                )
             )
 
         job_ids = [str(job.id) for job in Job.objects(wsid=workspace_id)]
@@ -783,6 +787,8 @@ class SDKMethodRunner:
         if not job_ids:
             return {}
 
-        job_states = self.check_jobs(job_ids, ctx, check_permission=False, projection=projection)
+        job_states = self.check_jobs(
+            job_ids, ctx, check_permission=False, projection=projection
+        )
 
         return job_states
