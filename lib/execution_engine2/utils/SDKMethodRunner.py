@@ -8,6 +8,7 @@ from time import time
 
 import dateutil
 import requests
+from bson import ObjectId
 
 from execution_engine2.exceptions import (
     RecordNotFoundException,
@@ -21,6 +22,7 @@ from execution_engine2.models.models import (
     Status,
     JobLog,
     LogLines,
+    ErrorCode,
 )
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.utils.MongoUtil import MongoUtil
@@ -104,7 +106,6 @@ class SDKMethodRunner:
         job.authstrat = "kbaseworkspace"
         job.wsid = params.get("wsid")
         job.status = "created"
-
         inputs.wsid = job.wsid
         inputs.method = params.get("method")
         inputs.params = params.get("params")
@@ -180,11 +181,15 @@ class SDKMethodRunner:
 
         log = self.get_mongo_util().get_job_log(job_id)
         # if skip_lines #TODO
-
+        # TODO MAKE ONLY THE TIMESTAMP A STRING, so AS TO NOT HAVING TO LOOP OVER EACH ATTRIBUTE?
         # TODO Filter the lines in the mongo query?
         lines = []
         for line in log.lines:  # type: LogLines
-            lines.append(line.to_mongo().to_dict())
+            line = line.to_mongo().to_dict()
+            for key in line.keys():
+                line[key] = str(line[key])
+                logging.info(line)
+            lines.append(line)
 
         # TODO AVOID LOADING ENTIRE THING INTO MEMORY
 
@@ -210,25 +215,18 @@ class SDKMethodRunner:
         job_input = job.job_input
 
         log_exec_stats_params = dict()
-
         log_exec_stats_params["user_id"] = job.user
-
         app_id = job_input.app_id
         log_exec_stats_params["app_module_name"] = app_id.split("/")[0]
         log_exec_stats_params["app_id"] = app_id
-
         method = job_input.method
-
         log_exec_stats_params["func_module_name"] = method.split(".")[0]
         log_exec_stats_params["func_name"] = method.split(".")[-1]
-
         log_exec_stats_params["git_commit_hash"] = job_input.service_ver
-
         log_exec_stats_params["creation_time"] = job.id.generation_time.timestamp()
         log_exec_stats_params["exec_start_time"] = job.running.timestamp()
         log_exec_stats_params["finish_time"] = job.finished.timestamp()
         log_exec_stats_params["is_error"] = int(job.status == Status.error.value)
-
         log_exec_stats_params["job_id"] = job_id
 
         self.catalog.log_exec_stats(log_exec_stats_params)
@@ -320,22 +318,18 @@ class SDKMethodRunner:
     def status():
         return {"servertime": f"{time()}"}
 
-    def cancel_job(self, job_id, ctx):
+    def cancel_job(self, job_id, ctx, terminated_code=None):
         """
         Authorization Required: Ability to Read and Write to the Workspace
         :param job_id:
         :param ctx:
+        :param terminated_code:
         :return:
         """
         # Is it inefficient to get the job twice? Is it cached?
+        # Maybe if the call fails, we don't actually cancel the job?
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-
-        # Maybe cancel in condor first?
-        self.get_mongo_util().update_job_status(
-            job_id=job_id, status=Status.terminated.value
-        )
-
-        # Maybe if this call fails, then don't actually cancel the job?
+        self.get_mongo_util().cancel_job(job_id=job_id, terminated_code=terminated_code)
         self.get_condor().cancel_job(job_id=job_id)
 
     def check_job_canceled(self, job_id, ctx):
@@ -344,11 +338,7 @@ class SDKMethodRunner:
         Check to see if job is terminated by the user
         :return: job_id, whether or not job is canceled, and whether or not job is finished
         """
-
-        job = self.get_mongo_util().get_job(job_id=job_id)
-
-        job_status = job.status
-
+        job_status = self.get_mongo_util().get_job(job_id=job_id).status
         rv = {"job_id": job_id, "canceled": False, "finished": False}
 
         if Status(job_status) is Status.terminated:
@@ -357,7 +347,6 @@ class SDKMethodRunner:
 
         if Status(job_status) in [Status.finished, Status.error, Status.terminated]:
             rv["finished"] = True
-
         return rv
 
     def run_job(self, params, ctx):
@@ -531,6 +520,7 @@ class SDKMethodRunner:
                 raise PermissionError(
                     f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
                 )
+            return job
 
     def get_job_params(self, job_id, ctx):
         """
@@ -562,8 +552,12 @@ class SDKMethodRunner:
 
     def update_job_status(self, job_id, status, ctx):
         """
+        #TODO Deprecate this in favor of specific methods with specific checks?
         update_job_status: update status of a job runner record.
                            raise error if job is not found or status is not listed in models.Status
+        * Does not update TerminatedCode or ErrorCode
+        * Does not update Timestamps
+        * Allows invalid state transitions, e.g. Running -> Created
 
         Parameters:
         job_id: id of job
@@ -608,13 +602,58 @@ class SDKMethodRunner:
 
         return returnVal
 
-    def finish_job(self, job_id, ctx, error_message=None, job_output=None):
+    def _check_job_is_status(self, job_id, status):
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        if job.status != status:
+            raise InvalidStatusTransitionException(
+                f"Unexpected job status: {job.status} . Expected {status} "
+            )
+        return job
+
+    def _check_job_is_created(self, job_id):
+        return self._check_job_is_status(job_id, Status.created.value)
+
+    def _check_job_is_running(self, job_id):
+        return self._check_job_is_status(job_id, Status.running.value)
+
+    def _finish_job_with_error(self, job_id, error_message, error_code):
+        if error_code is None:
+            error_code = ErrorCode.unknown_error.value
+
+        self.get_mongo_util().finish_job_with_error(
+            job_id=job_id, error_message=error_message, error_code=error_code
+        )
+
+    def _finish_job_with_success(self, job_id, job_output):
+        output = JobOutput()
+        output.version = job_output.get("version")
+        output.id = ObjectId(job_output.get("id"))
+        output.result = job_output.get("result")
+        try:
+            output.validate()
+        except Exception as e:
+            logging.info(e)
+            error_message = "Something was wrong with the output object"
+            error_code = ErrorCode.job_missing_output.value
+            self.get_mongo_util().finish_job_with_error(
+                job_id=job_id, error_message=error_message, error_code=error_code
+            )
+            raise Exception(str(e) + str(error_message))
+
+        self.get_mongo_util().finish_job_with_success(
+            job_id=job_id, job_output=job_output
+        )
+
+    def finish_job(
+        self, job_id, ctx, error_message=None, error_code=None, job_output=None
+    ):
         """
+        #TODO Fix too many open connections to mongoengine
+
         finish_job: set job record to finish status and update finished timestamp
                     (set job status to "finished" by default. If error_message is given, set job to "error" status)
                     raise error if job is not found or current job status is not "running"
                     (general work flow for job status created -> queued -> estimating -> running -> finished/error/terminated)
-
         Parameters:
         job_id: id of job
         error_message: default None, if given set job to error status
@@ -624,43 +663,26 @@ class SDKMethodRunner:
             raise ValueError("Please provide valid job_id")
 
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-
-        job = self.get_mongo_util().get_job(job_id=job_id)
-        job_status = job.status
-
-        if job_status not in [Status.running.value]:
-            raise InvalidStatusTransitionException(
-                "Unexpected job status: {}".format(job_status)
-            )
+        self._check_job_is_running(job_id=job_id)
 
         if error_message:
-            job.errormsg = error_message
-            self.get_mongo_util().update_job_status(
-                job_id=job_id, status=Status.error.value
+            if error_code is None:
+                error_code = ErrorCode.job_crashed.value
+            self._finish_job_with_error(
+                job_id=job_id, error_message=error_message, error_code=error_code
             )
+        elif job_output is None:
+            if error_code is None:
+                error_code = ErrorCode.job_missing_output.value
+            msg = "Missing job output required in order to successfully finish job. Something went wrong"
+            self._finish_job_with_error(
+                job_id=job_id, error_message=msg, error_code=error_code
+            )
+            raise ValueError(msg)
         else:
-
-            if not job_output:
-                raise ValueError("Missing job output for finished job")
-
-            output = JobOutput()
-            output.version = job_output.get("version")
-            output.id = job_output.get("id")
-            output.result = job_output.get("result")
-            output.validate()
-            job.job_output = output
-
-            self.get_mongo_util().update_job_status(job_id=job_id, status=Status.finished.value)
-
-        job.finished = datetime.utcnow()
-
-        with self.get_mongo_util().mongo_engine_connection():
-            job.save()
-
-        self._send_exec_stats_to_catalog(job_id)
+            self._finish_job_with_success(job_id=job_id, job_output=job_output)
 
     def start_job(self, job_id, ctx, skip_estimation=True):
-
         """
         start_job: set job record to start status ("estimating" or "running") and update timestamp
                    (set job status to "estimating" by default, if job status currently is "created" or "queued".
@@ -719,10 +741,9 @@ class SDKMethodRunner:
         if not job_id:
             raise ValueError("Please provide valid job_id")
 
-        job_state = self.check_jobs([job_id],
-                                    ctx,
-                                    check_permission=check_permission,
-                                    projection=projection).get(job_id)
+        job_state = self.check_jobs(
+            [job_id], ctx, check_permission=check_permission, projection=projection
+        ).get(job_id)
 
         return job_state
 
@@ -740,7 +761,10 @@ class SDKMethodRunner:
 
         jobs = self.get_mongo_util().get_jobs(job_ids=job_ids, projection=projection)
 
-        job_states = {str(job.id): {k: str(v) for k, v in job.to_mongo().to_dict().items()} for job in jobs}
+        job_states = {
+            str(job.id): {k: str(v) for k, v in job.to_mongo().to_dict().items()}
+            for job in jobs
+        }
 
         return job_states
 
@@ -748,11 +772,17 @@ class SDKMethodRunner:
         """
         check_workspace_jobs: check job status for all jobs in a given workspace
         """
-        logging.info("Start fetching all jobs status in workspace: {}".format(workspace_id))
+        logging.info(
+            "Start fetching all jobs status in workspace: {}".format(workspace_id)
+        )
 
-        if not self._can_read_ws(self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)):
+        if not self._can_read_ws(
+            self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
+        ):
             raise PermissionError(
-                "User {} does not have permissions to get status for wsid: {}".format(ctx['user_id'], workspace_id)
+                "User {} does not have permissions to get status for wsid: {}".format(
+                    ctx["user_id"], workspace_id
+                )
             )
 
         with self.get_mongo_util().mongo_engine_connection():
@@ -761,6 +791,8 @@ class SDKMethodRunner:
         if not job_ids:
             return {}
 
-        job_states = self.check_jobs(job_ids, ctx, check_permission=False, projection=projection)
+        job_states = self.check_jobs(
+            job_ids, ctx, check_permission=False, projection=projection
+        )
 
         return job_states

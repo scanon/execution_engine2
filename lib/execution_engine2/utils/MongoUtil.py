@@ -1,3 +1,4 @@
+import datetime
 import logging
 import subprocess
 import traceback
@@ -12,7 +13,7 @@ from execution_engine2.exceptions import (
     RecordNotFoundException,
     InvalidStatusTransitionException,
 )
-from lib.execution_engine2.models.models import JobLog, Job, Status
+from lib.execution_engine2.models.models import JobLog, Job, Status, TerminatedCode
 
 
 class MongoUtil:
@@ -165,6 +166,7 @@ class MongoUtil:
         return job_log
 
     def get_job(self, job_id=None, projection=None) -> Job:
+
         if job_id is None:
             raise ValueError("Please provide a job id")
 
@@ -195,7 +197,69 @@ class MongoUtil:
 
         return jobs
 
-    def update_job_status(self, job_id, status):
+    @staticmethod
+    def check_if_already_finished(job_status):
+        if job_status in [
+            Status.error.value,
+            Status.finished.value,
+            Status.terminated.value,
+        ]:
+            raise InvalidStatusTransitionException(
+                f"A job with status {job_status} cannot be terminated. It is already cancelled."
+            )
+
+    def cancel_job(self, job_id=None, terminated_code=None):
+        """
+        #TODO Should we check for a valid state transition here also?
+        #TODO Make cancel code mandatory and part of spec?
+        :param job_id: Cancel job by id
+        :param terminated_code: Default to terminated by user
+        :param job: Cancel job with actual job document instance
+        """
+
+        with self.mongo_engine_connection():
+            j = self.get_job(job_id, projection=None)
+            self.check_if_already_finished(j.status)
+            if terminated_code is None:
+                terminated_code = TerminatedCode.terminated_by_user.value
+
+            j.terminated_code = terminated_code
+            j.status = Status.terminated.value
+            j.save()
+
+    def finish_job_with_error(self, job_id, error_message, error_code):
+        """
+        #TODO Should we check for a valid state transition here also?
+        :param job_id:
+        :param error_message:
+        :param error_code:
+        :param job:
+        :return:
+        """
+        with self.mongo_engine_connection():
+            j = self.get_job(job_id, projection=None)
+            j.error_code = error_code
+            j.errormsg = error_message
+            j.status = Status.error.value
+            j.finished = datetime.datetime.utcnow()
+            j.save()
+
+    def finish_job_with_success(self, job_id, job_output):
+        """
+        #TODO Should we check for a valid state transition here also?
+        :param job_id:
+        :param job_output:
+        :param job:
+        :return:
+        """
+        with self.mongo_engine_connection():
+            j = self.get_job(job_id, projection=None)
+            j.job_output = job_output
+            j.status = Status.finished.value
+            j.finished = datetime.datetime.utcnow()
+            j.save()
+
+    def update_job_status(self, job_id, status, msg=None, error_message=None):
         """
         A job in status created can be estimating/running/error/terminated
         A job in status created cannot be created
@@ -208,25 +272,20 @@ class MongoUtil:
 
         A job in status finished/terminated/error cannot be changed
 
-
-        Update one job record with an approriate Status
-        :param job_id: The job id to update
-        :param status: The status to update with
-        :return: Void
         """
         with self.mongo_engine_connection():
             j = Job.objects.with_id(job_id)  # type: Job
             #  A job in status finished/terminated/error cannot be changed
-            logging.info("job status is {j.status}")
-
             if j.status in [
-                Status.error.value,
                 Status.finished.value,
                 Status.terminated.value,
+                Status.error.value,
             ]:
                 raise InvalidStatusTransitionException(
-                    f"A job with status {j.status} cannot be changed"
+                    f"Cannot change already finished/terminated/errored job.  {j.status} to {status}"
                 )
+
+            logging.info(f"job status is {j.status}. going to update to {status}")
 
             #  A job in status running can only be terminated/error/finished
             if j.status == Status.running.value:
@@ -251,6 +310,16 @@ class MongoUtil:
                 raise InvalidStatusTransitionException(
                     f"Cannot change from {j.status} to itself {status}"
                 )
+
+            if error_message and msg:
+                raise Exception(
+                    "You can't set both error and msg at the same time because of.. Reasons?"
+                )
+
+            if error_message:
+                j.errormsg = error_message
+            elif msg:
+                j.msg = msg
 
             j.status = status
             j.save()

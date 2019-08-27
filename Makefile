@@ -60,7 +60,7 @@ build-test-script:
 	echo 'python -m nose --with-coverage --cover-package=$(SERVICE_CAPS) --cover-html --cover-html-dir=/kb/module/work/test_coverage --nocapture --nologcapture .' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 
-TEST_FILES = test/ee2_scheduler_test.py test/SDKMethodRunner_test.py test/MongoUtil_test.py test/ee2_models_test.py
+TEST_FILES = test/ee2_scheduler_test.py test/ee2_SDKMethodRunner_test.py test/ee2_MongoUtil_test.py test/ee2_models_test.py
 
 setup-database:
 	# Set up travis user in mongo
@@ -69,8 +69,8 @@ setup-database:
 test:
 	# Requires htcondor python bindings
 	nosetests -x -v --nocapture --nologcapture --with-coverage --cover-html --cover-package=execution_engine2 test/ee2_scheduler_test.py
-	nosetests -x -v --nocapture --nologcapture --with-coverage --cover-html --cover-package=execution_engine2 test/SDKMethodRunner_test.py
-	nosetests -x -v --nocapture --nologcapture --with-coverage --cover-html --cover-package=execution_engine2 test/MongoUtil_test.py
+	nosetests -x -v --nocapture --nologcapture --with-coverage --cover-html --cover-package=execution_engine2 test/ee2_SDKMethodRunner_test.py
+	nosetests -x -v --nocapture --nologcapture --with-coverage --cover-html --cover-package=execution_engine2 test/ee2_MongoUtil_test.py
 
 test-models:
 	# Requires travis user to be set up

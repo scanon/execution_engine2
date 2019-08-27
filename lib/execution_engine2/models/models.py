@@ -128,8 +128,31 @@ class JobOutput(EmbeddedDocument):
     """
 
     version = StringField(required=True)
-    id = LongField(required=True)
+    id = ObjectIdField(required=True)
     result = DynamicField(required=True)
+
+
+class ErrorCode(Enum):
+    """
+    Reasons why the job was marked as error
+    """
+
+    unknown_error = 0
+    job_crashed = 1
+    job_terminated_by_automation = 2
+    job_over_timelimit = 3
+    job_missing_output = 4
+    token_expired = 5
+
+
+class TerminatedCode(Enum):
+    """
+    Reasons for why the job was cancelled
+    """
+
+    terminated_by_user = 0
+    terminated_by_admin = 1
+    terminated_by_automation = 2
 
 
 class Status(Enum):
@@ -142,8 +165,12 @@ class Status(Enum):
     queued = "queued"
     running = "running"
     finished = "finished"  # Successful termination
-    error = "error"  # Something went wrong
-    terminated = "terminated"  # Canceled by user
+    error = (
+        "error"
+    )  # Something went wrong and job failed # Possible Reasons are (ErrorCodes)
+    terminated = (
+        "terminated"
+    )  # Canceled by user, admin, or script # Possible Reasons are (TerminatedCodes)
 
 
 class AuthStrat(Enum):
@@ -176,6 +203,28 @@ def valid_authstrat(strat):
         )
 
 
+def valid_termination_code(code):
+    if code is None:
+        pass
+    try:
+        TerminatedCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid TerminatedCode strategy {vars(TerminatedCode)['_member_names_']}"
+        )
+
+
+def valid_errorcode(code):
+    if code is None:
+        pass
+    try:
+        ErrorCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid ErrorCode strategy {vars(ErrorCode)['_member_names_']}"
+        )
+
+
 class Job(Document):
     """
     A job is created the execution engine service and it's updated from
@@ -189,6 +238,7 @@ class Job(Document):
     )
     wsid = IntField(required=True)
     status = StringField(required=True, validation=valid_status)
+
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     started = DateTimeField(default=None)
     # id.generation_time = created
@@ -198,6 +248,11 @@ class Job(Document):
         default=None
     )  # Time when job finished, errored out, or was terminated by the user/admin
     errormsg = StringField()
+    msg = StringField()
+
+    terminated_code = IntField(validation=valid_termination_code)
+    error_code = IntField(validation=valid_errorcode)
+
     scheduler_type = StringField()
     scheduler_id = StringField()
     scheduler_estimator_id = StringField()
