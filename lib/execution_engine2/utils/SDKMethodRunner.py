@@ -513,7 +513,6 @@ class SDKMethodRunner:
             permission = self.get_permissions_for_workspace(wsid=job.wsid, ctx=ctx)
             if write is True:
                 permitted = self._can_write_ws(permission)
-                return job
             else:
                 permitted = self._can_read_ws(permission)
 
@@ -521,6 +520,7 @@ class SDKMethodRunner:
                 raise PermissionError(
                     f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
                 )
+            return job
 
     def get_job_params(self, job_id, ctx):
         """
