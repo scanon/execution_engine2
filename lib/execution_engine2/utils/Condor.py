@@ -345,4 +345,5 @@ class Condor(Scheduler):
         pass
 
     def cancel_job(self, job_id):
+
         pass

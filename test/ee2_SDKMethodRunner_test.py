@@ -17,7 +17,15 @@ from execution_engine2.exceptions import InvalidStatusTransitionException
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-from execution_engine2.models.models import Job, JobInput, Meta, Status, JobLog
+from execution_engine2.models.models import (
+    Job,
+    JobInput,
+    Meta,
+    Status,
+    JobLog,
+    TerminatedCode,
+    ErrorCode,
+)
 
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
@@ -222,6 +230,36 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         self.assertEqual(
             Status(sdk.get_mongo_util().get_job(job_id=job_id).status),
             Status.terminated,
+        )
+        self.assertEqual(
+            TerminatedCode(sdk.get_mongo_util().get_job(job_id=job_id).terminated_code),
+            TerminatedCode.terminated_by_user,
+        )
+
+        with sdk.get_mongo_util().mongo_engine_connection():
+            job = get_example_job()
+            job.user = self.user_id
+            job.wsid = self.ws_id
+            job_id = job.save().id
+
+        logging.info(
+            f"Created job {job_id} in {job.wsid} status {job.status}. About to cancel"
+        )
+
+        sdk.check_permission_for_job = MagicMock(return_value=[])
+        sdk.cancel_job(
+            job_id=job_id,
+            ctx={"user_id": self.user_id},
+            terminated_code=TerminatedCode.terminated_by_automation.value,
+        )
+
+        self.assertEqual(
+            Status(sdk.get_mongo_util().get_job(job_id=job_id).status),
+            Status.terminated,
+        )
+        self.assertEqual(
+            TerminatedCode(sdk.get_mongo_util().get_job(job_id=job_id).terminated_code),
+            TerminatedCode.terminated_by_automation,
         )
 
     def test_check_ws_permissions(self):
@@ -634,16 +672,17 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             print(f"About to finish job {job_id}. The job status is currently")
             print(runner.get_job_status(job_id, ctx))
-
             runner.finish_job(job_id, ctx, job_output=job_output)
+            print("Job is now finished, status is")
             print(runner.get_job_status(job_id, ctx))
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
-
-            job_output2 = job.job_output.to_mongo().to_dict()
+            # if job_output not a dict#
+            # job_output2 = job.job_output.to_mongo().to_dict()
+            job_output2 = job.job_output
             self.assertEqual(job_output2["version"], "1")
             self.assertEqual(str(job_output2["id"]), job_output["id"])
 

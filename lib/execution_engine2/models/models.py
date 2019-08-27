@@ -141,7 +141,8 @@ class ErrorCode(Enum):
     job_crashed = 1
     job_terminated_by_automation = 2
     job_over_timelimit = 3
-    token_expired = 4
+    job_missing_output = 4
+    token_expired = 5
 
 
 class TerminatedCode(Enum):
@@ -202,6 +203,28 @@ def valid_authstrat(strat):
         )
 
 
+def valid_termination_code(code):
+    if code is None:
+        pass
+    try:
+        TerminatedCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid TerminatedCode strategy {vars(TerminatedCode)['_member_names_']}"
+        )
+
+
+def valid_errorcode(code):
+    if code is None:
+        pass
+    try:
+        ErrorCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid ErrorCode strategy {vars(ErrorCode)['_member_names_']}"
+        )
+
+
 class Job(Document):
     """
     A job is created the execution engine service and it's updated from
@@ -215,6 +238,7 @@ class Job(Document):
     )
     wsid = IntField(required=True)
     status = StringField(required=True, validation=valid_status)
+
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
     started = DateTimeField(default=None)
     # id.generation_time = created
@@ -225,6 +249,10 @@ class Job(Document):
     )  # Time when job finished, errored out, or was terminated by the user/admin
     errormsg = StringField()
     msg = StringField()
+
+    terminated_code = IntField(validation=valid_termination_code)
+    error_code = IntField(validation=valid_errorcode)
+
     scheduler_type = StringField()
     scheduler_id = StringField()
     scheduler_estimator_id = StringField()
