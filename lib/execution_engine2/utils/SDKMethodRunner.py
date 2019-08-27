@@ -513,6 +513,7 @@ class SDKMethodRunner:
             permission = self.get_permissions_for_workspace(wsid=job.wsid, ctx=ctx)
             if write is True:
                 permitted = self._can_write_ws(permission)
+                return job
             else:
                 permitted = self._can_read_ws(permission)
 
@@ -603,7 +604,7 @@ class SDKMethodRunner:
 
     def _check_job_is_status(self, job_id, status):
         job = self.get_mongo_util().get_job(job_id=job_id)
-        if job.status not in [Status.running.value]:
+        if job.status != status:
             raise InvalidStatusTransitionException(
                 f"Unexpected job status: {job.status} . Expected {status} "
             )
@@ -615,12 +616,12 @@ class SDKMethodRunner:
     def _check_job_is_running(self, job_id):
         return self._check_job_is_status(job_id, Status.running.value)
 
-    def _finish_job_with_error(self, job_id, error_message, error_code, job=None):
+    def _finish_job_with_error(self, job_id, error_message, error_code):
         if error_code is None:
             error_code = ErrorCode.unknown_error.value
 
         self.get_mongo_util().finish_job_with_error(
-            job_id=job_id, error_message=error_message, error_code=error_code, job=job
+            job_id=job_id, error_message=error_message, error_code=error_code
         )
 
     def _finish_job_with_success(self, job_id, job_output):
@@ -662,24 +663,20 @@ class SDKMethodRunner:
             raise ValueError("Please provide valid job_id")
 
         self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-        job = self._check_job_is_running(job_id=job_id)
+        self._check_job_is_running(job_id=job_id)
 
         if error_message:
-            print("About to fail job")
             if error_code is None:
                 error_code = ErrorCode.job_crashed.value
             self._finish_job_with_error(
-                job_id=job_id,
-                error_message=error_message,
-                error_code=error_code,
-                job=job,
+                job_id=job_id, error_message=error_message, error_code=error_code
             )
         elif job_output is None:
             if error_code is None:
                 error_code = ErrorCode.job_missing_output.value
             msg = "Missing job output required in order to successfully finish job. Something went wrong"
             self._finish_job_with_error(
-                job_id=job_id, error_message=msg, error_code=error_code, job=job
+                job_id=job_id, error_message=msg, error_code=error_code
             )
             raise ValueError(msg)
         else:
@@ -764,7 +761,10 @@ class SDKMethodRunner:
 
         jobs = self.get_mongo_util().get_jobs(job_ids=job_ids, projection=projection)
 
-        job_states = {str(job.id): {k: str(v) for k, v in job.to_mongo().to_dict().items()} for job in jobs}
+        job_states = {
+            str(job.id): {k: str(v) for k, v in job.to_mongo().to_dict().items()}
+            for job in jobs
+        }
 
         return job_states
 

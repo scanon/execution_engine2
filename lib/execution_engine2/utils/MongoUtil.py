@@ -208,7 +208,7 @@ class MongoUtil:
                 f"A job with status {job_status} cannot be terminated. It is already cancelled."
             )
 
-    def cancel_job(self, job_id=None, terminated_code=None, job=None):
+    def cancel_job(self, job_id=None, terminated_code=None):
         """
         #TODO Should we check for a valid state transition here also?
         #TODO Make cancel code mandatory and part of spec?
@@ -217,14 +217,8 @@ class MongoUtil:
         :param job: Cancel job with actual job document instance
         """
 
-        if job_id is None and job is None:
-            raise Exception("Please provide a job_id or job object to cancel")
-
         with self.mongo_engine_connection():
-            if job is None:
-                j = Job.objects.with_id(job_id)  # type: Job
-            else:
-                j = job
+            j = self.get_job(job_id, projection=None)
             self.check_if_already_finished(j.status)
             if terminated_code is None:
                 terminated_code = TerminatedCode.terminated_by_user.value
@@ -233,7 +227,7 @@ class MongoUtil:
             j.status = Status.terminated.value
             j.save()
 
-    def finish_job_with_error(self, job_id, error_message, error_code, job=None):
+    def finish_job_with_error(self, job_id, error_message, error_code):
         """
         #TODO Should we check for a valid state transition here also?
         :param job_id:
@@ -242,21 +236,15 @@ class MongoUtil:
         :param job:
         :return:
         """
-        if job_id is None and job is None:
-            raise Exception("Please provide a job_id or job object to cancel")
-
         with self.mongo_engine_connection():
-            if job is None:
-                j = Job.objects.with_id(job_id)  # type: Job
-            else:
-                j = job
+            j = self.get_job(job_id, projection=None)
             j.error_code = error_code
             j.errormsg = error_message
             j.status = Status.error.value
             j.finished = datetime.datetime.utcnow()
             j.save()
 
-    def finish_job_with_success(self, job_id, job_output, job=None):
+    def finish_job_with_success(self, job_id, job_output):
         """
         #TODO Should we check for a valid state transition here also?
         :param job_id:
@@ -264,15 +252,8 @@ class MongoUtil:
         :param job:
         :return:
         """
-
-        if job_id is None and job is None:
-            raise Exception("Please provide a job_id or job object to cancel")
-
         with self.mongo_engine_connection():
-            if job is None:
-                j = Job.objects.with_id(job_id)  # type: Job
-            else:
-                j = job
+            j = self.get_job(job_id, projection=None)
             j.job_output = job_output
             j.status = Status.finished.value
             j.finished = datetime.datetime.utcnow()
