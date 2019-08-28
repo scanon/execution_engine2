@@ -164,6 +164,11 @@ class SDKMethodRunner:
         # Does mongoengine lazy-load it?
 
         # TODO IMPLEMENT SKIP LINES
+        # TODO MAKE ONLY THE TIMESTAMP A STRING, so AS TO NOT HAVING TO LOOP OVER EACH ATTRIBUTE?
+        # TODO Filter the lines in the mongo query?
+        # TODO AVOID LOADING ENTIRE THING INTO MEMORY?
+        # TODO Check if there is an off by one for line_count?
+
 
            :returns: instance of type "GetJobLogsResults" (last_line_number -
            common number of lines (including those in skip_lines parameter),
@@ -178,20 +183,19 @@ class SDKMethodRunner:
         :param skip_lines:
         :return:
         """
-
         log = self.get_mongo_util().get_job_log(job_id)
-        # if skip_lines #TODO
-        # TODO MAKE ONLY THE TIMESTAMP A STRING, so AS TO NOT HAVING TO LOOP OVER EACH ATTRIBUTE?
-        # TODO Filter the lines in the mongo query?
         lines = []
-        for line in log.lines:  # type: LogLines
-            line = line.to_mongo().to_dict()
-            for key in line.keys():
-                line[key] = str(line[key])
-                logging.info(line)
-            lines.append(line)
-
-        # TODO AVOID LOADING ENTIRE THING INTO MEMORY
+        for log_line in log.lines:  # type: LogLines
+            if skip_lines and int(skip_lines) >= log_line.linepos:
+                continue
+            lines.append(
+                {
+                    "line": log_line.line,
+                    "linepos": log_line.linepos,
+                    "error": log_line.error,
+                    "ts": str(log_line.ts),
+                }
+            )
 
         log_obj = {"lines": lines, "last_line_number": log.stored_line_count}
         return log_obj
