@@ -8,16 +8,11 @@ import unittest
 from configparser import ConfigParser
 from datetime import timedelta
 from unittest.mock import patch
-import json
 
 from mock import MagicMock
-from bson import ObjectId
 from mongoengine import ValidationError
 
 from execution_engine2.exceptions import InvalidStatusTransitionException
-from execution_engine2.utils.Condor import submission_info
-from execution_engine2.utils.MongoUtil import MongoUtil
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from execution_engine2.models.models import (
     Job,
     JobInput,
@@ -25,9 +20,10 @@ from execution_engine2.models.models import (
     Status,
     JobLog,
     TerminatedCode,
-    ErrorCode,
 )
-
+from execution_engine2.utils.Condor import submission_info
+from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import bootstrap, get_example_job
 
@@ -397,6 +393,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         log_pos_1 = runner.add_job_logs(ctx=ctx, job_id=job_id, log_lines=lines)
         logging.info(f"After insert log position is now {log_pos_1}")
         log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
+
         log_lines = log["lines"]
         for i, inserted_line in enumerate(log_lines):
             self.assertEqual(inserted_line["line"], lines[i]["line"])
@@ -460,6 +457,12 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(error1, error2)
 
         # TODO IMPLEMENT SKIPLINES AND TEST
+
+        log = runner.view_job_logs(job_id=job_id, skip_lines=1, ctx=ctx)
+        self.assertEqual(log["lines"][0]["linepos"], 2)
+
+        log = runner.view_job_logs(job_id=job_id, skip_lines=8, ctx=ctx)
+        self.assertEqual(log, {"lines": [], "last_line_number": 8})
 
     def test_add_job_logs_ok(self):
         with self.mongo_util.mongo_engine_connection():

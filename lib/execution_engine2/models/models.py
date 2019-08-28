@@ -1,6 +1,6 @@
 import datetime
 from enum import Enum
-import mongoengine
+from mongoengine import ValidationError
 
 from mongoengine import (
     StringField,
@@ -10,13 +10,52 @@ from mongoengine import (
     DateTimeField,
     BooleanField,
     ListField,
-    LongField,
     EmbeddedDocumentField,
     DynamicField,
-    ValidationError,
     ObjectIdField,
-    EmbeddedDocumentListField,
 )
+
+
+def valid_status(status):
+    try:
+        Status(status)
+    except Exception:
+        raise ValidationError(
+            f"{status} is not a valid status {vars(Status)['_member_names_']}"
+        )
+
+
+def valid_authstrat(strat):
+    if strat is None:
+        pass
+    try:
+        AuthStrat(strat)
+    except Exception:
+        raise ValidationError(
+            f"{strat} is not a valid Authentication strategy {vars(AuthStrat)['_member_names_']}"
+        )
+
+
+def valid_termination_code(code):
+    if code is None:
+        pass
+    try:
+        TerminatedCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid TerminatedCode strategy {vars(TerminatedCode)['_member_names_']}"
+        )
+
+
+def valid_errorcode(code):
+    if code is None:
+        pass
+    try:
+        ErrorCode(code)
+    except Exception:
+        raise ValidationError(
+            f"{code} is not a valid ErrorCode strategy {vars(ErrorCode)['_member_names_']}"
+        )
 
 
 # TODO Make sure Datetime is correct format
@@ -181,48 +220,6 @@ class AuthStrat(Enum):
 
     kbaseworkspace = "kbaseworkspace"
     execution_engine = "execution_engine"
-
-
-def valid_status(status):
-    try:
-        Status(status)
-    except Exception:
-        raise ValidationError(
-            f"{status} is not a valid status {vars(Status)['_member_names_']}"
-        )
-
-
-def valid_authstrat(strat):
-    if strat is None:
-        pass
-    try:
-        AuthStrat(strat)
-    except Exception:
-        raise ValidationError(
-            f"{strat} is not a valid Authentication strategy {vars(AuthStrat)['_member_names_']}"
-        )
-
-
-def valid_termination_code(code):
-    if code is None:
-        pass
-    try:
-        TerminatedCode(code)
-    except Exception:
-        raise ValidationError(
-            f"{code} is not a valid TerminatedCode strategy {vars(TerminatedCode)['_member_names_']}"
-        )
-
-
-def valid_errorcode(code):
-    if code is None:
-        pass
-    try:
-        ErrorCode(code)
-    except Exception:
-        raise ValidationError(
-            f"{code} is not a valid ErrorCode strategy {vars(ErrorCode)['_member_names_']}"
-        )
 
 
 class Job(Document):
