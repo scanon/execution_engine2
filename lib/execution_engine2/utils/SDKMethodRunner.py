@@ -114,8 +114,14 @@ class SDKMethodRunner:
         inputs.source_ws_objects = params.get("source_ws_objects")
         inputs.parent_job_id = str(params.get("parent_job_id"))
 
-        # TODO Add Meta Fields From Params
         inputs.narrative_cell_info = Meta()
+        meta = params.get('meta')
+        if meta:
+            inputs.narrative_cell_info.run_id = meta.get('run_id')
+            inputs.narrative_cell_info.token_id = meta.get('token_id')
+            inputs.narrative_cell_info.tag = meta.get('tag')
+            inputs.narrative_cell_info.cell_id = meta.get('cell_id')
+            inputs.narrative_cell_info.status = meta.get('status')
 
         job.job_input = inputs
         logging.info(job.job_input.to_mongo().to_dict())
