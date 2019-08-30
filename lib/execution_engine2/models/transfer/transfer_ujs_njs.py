@@ -73,7 +73,11 @@ class MigrateDatabases:
         job_input = njs_job.get("job_input")
         if job_input is None:
             self.none_jobs += 1
-            print("Found ujs job with corresponding njs job with no job input ", self.none_jobs, njs_job["ujs_job_id"])
+            print(
+                "Found ujs job with corresponding njs job with no job input ",
+                self.none_jobs,
+                njs_job["ujs_job_id"],
+            )
             job_input = {
                 "service_ver": UNKNOWN,
                 "method": UNKNOWN,
@@ -87,7 +91,7 @@ class MigrateDatabases:
 
         return job_input
 
-    def begin_job_transfer(self): # flake8: noqa
+    def begin_job_transfer(self):  # flake8: noqa
         ujs_jobs = (
             self._get_ujs_connection()
             .get_database(self.ujs_db)
@@ -104,7 +108,6 @@ class MigrateDatabases:
         njs_count = 0
         for ujs_job in ujs_cursor:
             count += 1
-
 
             ujs_id = str(ujs_job["_id"])
             print(f"Working on job {ujs_id} {count}")

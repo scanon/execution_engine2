@@ -239,7 +239,6 @@ class Job(Document):
 
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
 
-
     # id.generation_time = created
     estimating = DateTimeField(default=None)  # Time when job began estimating
     running = DateTimeField(default=None)  # Time when job started
