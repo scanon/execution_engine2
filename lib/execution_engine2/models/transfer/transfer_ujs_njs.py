@@ -4,6 +4,8 @@ import os
 from configparser import ConfigParser
 
 from pymongo import MongoClient
+from mongoengine import  connect
+
 
 try:
     from lib.execution_engine2.models.models import (
@@ -14,8 +16,10 @@ try:
         Meta,
         TerminatedCode,
     )
+
 except Exception:
     from models import Job, Status, ErrorCode, JobInput, Meta, TerminatedCode
+
 
 UNKNOWN = "UNKNOWN"
 
@@ -27,7 +31,7 @@ class MigrateDatabases:
     """
 
     documents = []
-    threshold = 5000
+    threshold = 1000
     none_jobs = 0
 
     def _get_ujs_connection(self) -> MongoClient:
@@ -53,7 +57,6 @@ class MigrateDatabases:
         self.njs_db = parser.get("NarrativeJobService", "mongodb-database")
         self.njs_user = parser.get("NarrativeJobService", "mongodb-user")
         self.njs_pwd = parser.get("NarrativeJobService", "mongodb-pwd")
-
         self.njs_jobs_collection_name = "exec_tasks"
         self.njs_logs_collection_name = "exec_logs"
 
@@ -63,11 +66,37 @@ class MigrateDatabases:
             username=self.njs_user,
             password=self.njs_pwd,
             authSource=self.njs_db,
+            retryWrites=False,
         )
 
     def __init__(self):
         self.njs = self._get_njs_connection()
         self.ujs = self._get_ujs_connection()
+        self.jobs = []
+        self.threshold = 1000
+
+        self.ujs_jobs = (
+            self._get_ujs_connection()
+            .get_database(self.ujs_db)
+            .get_collection(self.ujs_jobs_collection)
+        )
+        self.njs_jobs = (
+            self._get_njs_connection()
+            .get_database(self.njs_db)
+            .get_collection(self.njs_jobs_collection_name)
+        )
+
+        self.ee2_jobs = self._get_njs_connection().get_database(self.njs_db).get_collection("jobs2")
+
+        config = {'mongo-host' : self.njs_host,
+                  'mongo-port' : 27017,
+                  'mongo-database' : self.njs_db,
+                  'mongo-user' : self.njs_user,
+                  'mongo-password' : self.njs_pwd,
+                  'mongo-authmechanism' : "DEFAULT"}
+       # self.mongo_util = MongoUtil(config=config)
+
+
 
     def get_njs_job_input(self, njs_job):
         job_input = njs_job.get("job_input")
@@ -91,17 +120,21 @@ class MigrateDatabases:
 
         return job_input
 
+    def save_job(self, job):
+        self.jobs.append(job.to_mongo())
+        if len(self.jobs) > self.threshold:
+            print("INSERTING 1000 ELEMENTS")
+            self.ee2_jobs.insert_many(self.jobs)
+            self.jobs = []
+
+    def save_remnants(self):
+        self.ee2_jobs.insert_many(self.jobs)
+        self.jobs = []
+
+
     def begin_job_transfer(self):  # flake8: noqa
-        ujs_jobs = (
-            self._get_ujs_connection()
-            .get_database(self.ujs_db)
-            .get_collection(self.ujs_jobs_collection)
-        )
-        njs_jobs = (
-            self._get_njs_connection()
-            .get_database(self.njs_db)
-            .get_collection(self.njs_jobs_collection_name)
-        )
+        ujs_jobs = self.ujs_jobs
+        njs_jobs = self.njs_jobs
 
         ujs_cursor = ujs_jobs.find()
         count = 0
@@ -258,6 +291,10 @@ class MigrateDatabases:
                 job.job_input = job_input
                 job.job_output = njs_job.get("job_output")
                 job.validate()
+
+            self.save_job(job)
+            # Save leftover jobs
+        self.save_remnants()
 
         # TODO SAVE up to 5000 in memory and do a bulk insert
         # a = []
