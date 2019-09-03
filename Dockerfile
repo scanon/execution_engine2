@@ -29,6 +29,14 @@ RUN echo "mongodb-org hold" | dpkg --set-selections \
     && echo "mongodb-org-mongos hold" | dpkg --set-selections \
     && echo "mongodb-org-tools hold" | dpkg --set-selections
 
+
+RUN conda install python=3.7 anaconda=custom
+
+#RUN conda update -n base -c defaults conda && conda install python=3.7 anaconda=custom
+
+RUN python -V
+
+
 COPY ./requirements.txt /kb/module/requirements.txt
 RUN pip install -r /kb/module/requirements.txt
 RUN useradd kbase
