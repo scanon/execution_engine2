@@ -9,4 +9,3 @@ cd condorflask
 python3 -m venv condorflask && . condorflask/bin/activate
 pip install -r requirements.txt
 chown kbase . && chmod +x ./rungunicorn
-su --preserve-environment kbase --command ". condorflask/bin/activate && ./rungunicorn"

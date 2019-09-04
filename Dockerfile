@@ -29,8 +29,13 @@ RUN echo "mongodb-org hold" | dpkg --set-selections \
     && echo "mongodb-org-mongos hold" | dpkg --set-selections \
     && echo "mongodb-org-tools hold" | dpkg --set-selections
 
+#3GB Size
+#RUN conda install python=3.7 anaconda=custom
 
-RUN conda install python=3.7 anaconda=custom
+#Install Python3 and Libraries (source /root/miniconda/bin/activate)
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh \
+&& bash ~/miniconda.sh -b -p /miniconda3.7
+
 
 #RUN conda update -n base -c defaults conda && conda install python=3.7 anaconda=custom
 
@@ -50,6 +55,7 @@ RUN make all
 
 WORKDIR /kb/module/scripts
 RUN chmod +x download_runner.sh && ./download_runner.sh
+RUN chmod +x download_condorflask.sh && ./download_condorflask.sh
 
 WORKDIR /kb/module/
 
