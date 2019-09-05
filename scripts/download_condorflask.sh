@@ -4,7 +4,7 @@
 set -x
 condor_flask=/condor_flask
 mkdir -p ${condor_flask} && cd ${condor_flask} && rm -rf condorflask
-git clone --single-branch --branch master https://github.com/matyasselmeci/condorflask.git
+git clone --single-branch --branch master https://github.com/kbase/condorflask
 cd condorflask
 python3 -m venv condorflask && . condorflask/bin/activate
 pip install -r requirements.txt
