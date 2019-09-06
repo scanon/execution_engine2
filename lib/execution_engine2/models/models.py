@@ -218,6 +218,7 @@ class AuthStrat(Enum):
     has access to the workspace
     """
 
+    DEFAULT = "DEFAULT"
     kbaseworkspace = "kbaseworkspace"
     execution_engine = "execution_engine"
 
@@ -237,12 +238,12 @@ class Job(Document):
     status = StringField(required=True, validation=valid_status)
 
     updated = DateTimeField(default=datetime.datetime.utcnow, autonow=True)
+
     # id.generation_time = created
     estimating = DateTimeField(default=None)  # Time when job began estimating
     running = DateTimeField(default=None)  # Time when job started
-    finished = DateTimeField(
-        default=None
-    )  # Time when job finished, errored out, or was terminated by the user/admin
+    # Time when job finished, errored out, or was terminated by the user/admin
+    finished = DateTimeField(default=None)
     errormsg = StringField()
     msg = StringField()
 
