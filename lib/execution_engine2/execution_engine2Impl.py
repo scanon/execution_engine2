@@ -23,10 +23,8 @@ class execution_engine2:
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.0.1"
-    GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
-    GIT_COMMIT_HASH = "e8d5a7b9c26bea9dbcfb5f30dd79b43335f43143"
-
-
+    GIT_URL = "https://bio-boris@github.com/kbase/execution_engine2"
+    GIT_COMMIT_HASH = "f0b9d5d449882d24d13a42dbf1452927a1e7c40b"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -437,6 +435,60 @@ class execution_engine2:
         # At some point might do deeper type checking...
         if not isinstance(returnVal, dict):
             raise ValueError('Method check_workspace_jobs return value ' +
+                             'returnVal is not type dict as required.')
+        # return the results
+        return [returnVal]
+
+    def check_jobs_date_range(self, ctx, params):
+        """
+        :param params: instance of type "CheckJobsDateRangeParams" (Check job
+           for all jobs in a given date range for all users (Admin function))
+           -> structure: parameter "start_date" of String, parameter
+           "end_date" of String, parameter "projection" of list of String
+        :returns: instance of type "CheckJobsResults" (job_states - states of
+           jobs) -> structure: parameter "job_states" of mapping from type
+           "job_id" (A job id.) to unspecified object
+        """
+        # ctx is the context object
+        # return variables are: returnVal
+        #BEGIN check_jobs_date_range
+        mr = SDKMethodRunner(self.config)
+        returnVal = mr.check_jobs_date_range(
+            ctx=ctx,
+            start_date=params.get("start_date"),
+            end_date=params.get("end_date"),
+            projection=params.get("projection"),
+        )
+
+        #END check_jobs_date_range
+
+        # At some point might do deeper type checking...
+        if not isinstance(returnVal, dict):
+            raise ValueError('Method check_jobs_date_range return value ' +
+                             'returnVal is not type dict as required.')
+        # return the results
+        return [returnVal]
+
+    def check_jobs_date_range_for_user(self, ctx, params):
+        """
+        :param params: instance of type "CheckJobsDateRangeForUserParams"
+           (Check job for all jobs in a given date range for a given user
+           (Regular users can see their own jobs, admins can see other
+           people's jobs)) -> structure: parameter "user" of String,
+           parameter "start_date" of String, parameter "end_date" of String,
+           parameter "projection" of list of String
+        :returns: instance of type "CheckJobsResults" (job_states - states of
+           jobs) -> structure: parameter "job_states" of mapping from type
+           "job_id" (A job id.) to unspecified object
+        """
+        # ctx is the context object
+        # return variables are: returnVal
+        #BEGIN check_jobs_date_range_for_user
+        #END check_jobs_date_range_for_user
+
+        # At some point might do deeper type checking...
+        if not isinstance(returnVal, dict):
+            raise ValueError('Method check_jobs_date_range_for_user return value ' +
                              'returnVal is not type dict as required.')
         # return the results
         return [returnVal]

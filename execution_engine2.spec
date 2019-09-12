@@ -213,6 +213,7 @@ module execution_engine2 {
     } CheckJobsParams;
 
     funcdef check_jobs(CheckJobsParams params) returns (CheckJobsResults) authentication required;
+
     /*
       Check job for all jobs in a given workspace
     */
@@ -220,7 +221,36 @@ module execution_engine2 {
         string workspace_id;
         list<string> projection;
     } CheckWorkspaceJobsParams;
+
     funcdef check_workspace_jobs(CheckWorkspaceJobsParams params) returns (CheckJobsResults) authentication required;
+
+
+    /*
+      Check job for all jobs in a given date range for all users (Admin function)
+    */
+    typedef structure {
+        string start_date;
+        string end_date;
+        list<string> projection;
+    } CheckJobsDateRangeParams;
+
+    funcdef check_jobs_date_range(CheckJobsDateRangeParams params) returns (CheckJobsResults) authentication required;
+
+    /*
+      Check job for all jobs in a given date range for a given user (Regular users can see their own jobs,
+       admins can see other people's jobs)
+    */
+    typedef structure {
+        string user;
+        string start_date;
+        string end_date;
+        list<string> projection;
+    } CheckJobsDateRangeForUserParams;
+
+    funcdef check_jobs_date_range_for_user(CheckJobsDateRangeForUserParams params) returns (CheckJobsResults) authentication required;
+
+
+
     typedef structure {
         job_id job_id;
     } CancelJobParams;

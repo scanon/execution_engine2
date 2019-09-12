@@ -739,6 +739,42 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
+
+    def check_jobs_date_range(self, ctx,  creation_start_date, creation_end_date, job_projection=None, job_filter=None, limit=None):
+
+        if not self._is_admin(ctx['token']):
+            raise Exception(
+                f"You are not authorized. Please request a role from {self.admin_roles}"
+            )
+
+        if creation_start_date is None:
+            raise Exception("Please provide a valid start date for when job was created")
+        dummy_start_id = ObjectId.from_datetime(creation_start_date)
+
+        if creation_end_date is None:
+            raise Exception("Please provide a valid end date for when job was created")
+        dummy_end_id = ObjectId.from_datetime(creation_end_date)
+
+        if job_projection is None:
+            # Maybe set a default here?
+            job_projection = []
+
+        if job_filter is None:
+            # Maybe set a default here?
+            job_filter = []
+
+        if limit is None:
+            # Maybe put this in config
+            limit = 2000
+
+        kwargs['created_at'] = {'$lt': end, '$gt': start_date}
+
+
+
+
+        Job.objects().only(job_projection)
+
+
     def check_job(self, job_id, ctx, check_permission=True, projection=[]):
         """
         check_job: check and return job status for a given job_id
