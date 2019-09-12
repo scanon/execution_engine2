@@ -115,13 +115,13 @@ class SDKMethodRunner:
         inputs.parent_job_id = str(params.get("parent_job_id"))
 
         inputs.narrative_cell_info = Meta()
-        meta = params.get('meta')
+        meta = params.get("meta")
         if meta:
-            inputs.narrative_cell_info.run_id = meta.get('run_id')
-            inputs.narrative_cell_info.token_id = meta.get('token_id')
-            inputs.narrative_cell_info.tag = meta.get('tag')
-            inputs.narrative_cell_info.cell_id = meta.get('cell_id')
-            inputs.narrative_cell_info.status = meta.get('status')
+            inputs.narrative_cell_info.run_id = meta.get("run_id")
+            inputs.narrative_cell_info.token_id = meta.get("token_id")
+            inputs.narrative_cell_info.tag = meta.get("tag")
+            inputs.narrative_cell_info.cell_id = meta.get("cell_id")
+            inputs.narrative_cell_info.status = meta.get("status")
 
         job.job_input = inputs
         logging.info(job.job_input.to_mongo().to_dict())
@@ -739,16 +739,25 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
+    def check_jobs_date_range(
+        self,
+        ctx,
+        creation_start_date,
+        creation_end_date,
+        job_projection=None,
+        job_filter=None,
+        limit=None,
+    ):
 
-    def check_jobs_date_range(self, ctx,  creation_start_date, creation_end_date, job_projection=None, job_filter=None, limit=None):
-
-        if not self._is_admin(ctx['token']):
+        if not self._is_admin(ctx["token"]):
             raise Exception(
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
 
         if creation_start_date is None:
-            raise Exception("Please provide a valid start date for when job was created")
+            raise Exception(
+                "Please provide a valid start date for when job was created"
+            )
         dummy_start_id = ObjectId.from_datetime(creation_start_date)
 
         if creation_end_date is None:
@@ -767,13 +776,9 @@ class SDKMethodRunner:
             # Maybe put this in config
             limit = 2000
 
-        kwargs['created_at'] = {'$lt': end, '$gt': start_date}
-
-
-
+        kwargs["created_at"] = {"$lt": end, "$gt": start_date}
 
         Job.objects().only(job_projection)
-
 
     def check_job(self, job_id, ctx, check_permission=True, projection=[]):
         """
@@ -810,15 +815,15 @@ class SDKMethodRunner:
         job_states = dict()
         for job in jobs:
             mongo_rec = job.to_mongo().to_dict()
-            mongo_rec['_id'] = str(job.id)
-            mongo_rec['created'] = str(job.id.generation_time)
-            mongo_rec['updated'] = str(job.updated)
+            mongo_rec["_id"] = str(job.id)
+            mongo_rec["created"] = str(job.id.generation_time)
+            mongo_rec["updated"] = str(job.updated)
             if job.estimating:
-                mongo_rec['estimating'] = str(job.estimating)
+                mongo_rec["estimating"] = str(job.estimating)
             if job.running:
-                mongo_rec['running'] = str(job.running)
+                mongo_rec["running"] = str(job.running)
             if job.finished:
-                mongo_rec['finished'] = str(job.finished)
+                mongo_rec["finished"] = str(job.finished)
 
             job_states[str(job.id)] = mongo_rec
 
