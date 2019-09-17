@@ -784,7 +784,9 @@ class SDKMethodRunner:
         job_filter['id__gt'] = dummy_start_id
         job_filter['id__lt'] = dummy_end_id
 
-        jobs = Job.objects[:limit].filter()
+        jobs = Job.objects[:limit].filter(**job_filter)
+
+        print("Searching for jobs with id_gt {dummy_start_id} id_lt {dummy_end_id}")
 
         return self._job_state_from_jobs(jobs)
         # .only(job_projection).as_pymongo()
