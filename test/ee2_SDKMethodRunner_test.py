@@ -174,16 +174,21 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
                 "method": "MEGAHIT.run_megahit",
                 "app_id": "MEGAHIT/run_megahit",
                 "service_ver": "2.2.1",
-                "params": [{"workspace_name": "wjriehl:1475006266615",
-                            "read_library_refs": ["18836/5/1"],
-                            "output_contigset_name": "rhodo_contigs",
-                            "recipe": "auto",
-                            "assembler": None,
-                            "pipeline": None,
-                            "min_contig_len": None}],
+                "params": [
+                    {
+                        "workspace_name": "wjriehl:1475006266615",
+                        "read_library_refs": ["18836/5/1"],
+                        "output_contigset_name": "rhodo_contigs",
+                        "recipe": "auto",
+                        "assembler": None,
+                        "pipeline": None,
+                        "min_contig_len": None,
+                    }
+                ],
                 "source_ws_objects": ["a/b/c", "e/d"],
                 "parent_job_id": "9998",
-                'meta': {'tag': 'dev', 'token_id': '12345'}}
+                "meta": {"tag": "dev", "token_id": "12345"},
+            }
 
             job_id = runner._init_job_rec(self.user_id, job_params)
 
@@ -205,8 +210,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(job_input.parent_job_id, "9998")
 
             narrative_cell_info = job_input.narrative_cell_info
-            self.assertEqual(narrative_cell_info.tag, 'dev')
-            self.assertEqual(narrative_cell_info.token_id, '12345')
+            self.assertEqual(narrative_cell_info.tag, "dev")
+            self.assertEqual(narrative_cell_info.token_id, "12345")
             self.assertFalse(narrative_cell_info.status)
 
             self.assertFalse(job.job_output)
@@ -868,7 +873,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
     def test_check_jobs_date_range(self, condor_mock):
-        ctx = {"foo": "bar", 'token': 'false'}
+        ctx = {"foo": "bar", "token": "false"}
 
         runner = self.getRunner()
         runner.get_permissions_for_workspace = MagicMock(return_value=True)
@@ -889,7 +894,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         job_id5 = runner.run_job(params=job, ctx=ctx)
         job_id6 = runner.run_job(params=job, ctx=ctx)
         time.sleep(1)
-        job_ids = [job_id1, job_id2, job_id3, job_id4, job_id5, job_id6]
+
         new_job_ids = []
 
         now = datetime.datetime.utcnow()
@@ -955,21 +960,53 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             )
             runner.is_admin = MagicMock(return_value=True)
 
-            job_state = runner.check_jobs_date_range(ctx=ctx, creation_end_date=str(tomorrow),
-                                                     creation_start_date=str(last_week))
+            print(
+                "Test case 1. Retrieving Jobs from last_week and tomorrow_max (yesterday and now jobs) "
+            )
+            job_state = runner.check_jobs_date_range(
+                ctx=ctx,
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_week),
+            )
+            count = 0
+            for key in job_state.keys():
+                js = job_state[key]
+                print("Job is id", key, js["_id"])
+                if key is new_job_ids:
+                    count += 1
+                    self.assertEqual(js["status"], "created")
+                    date = dateutil.parser.parse(js["created"])
+                    ts = date.timestamp()
+                    print(date, last_week, tomorrow)
+                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    self.assertTrue(ts >= last_week.timestamp())
+                    self.assertTrue(ts <= tomorrow.timestamp())
+            self.assertEqual(2, count)
+
+            print(
+                "Test case 2. Retrieving Jobs from last_week and tomorrow_max (yesterday and now jobs) "
+            )
+
+            job_state = runner.check_jobs_date_range(
+                ctx=ctx,
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_week),
+            )
 
             count = 0
             for key in job_state.keys():
                 js = job_state[key]
-                print("Job is", key, js['_id'] )
+                print("Job is id", key, js["_id"])
 
-                if key in new_job_ids:
+                if key is new_job_ids:
                     count += 1
                     self.assertEqual(js["status"], "created")
-                    ts =  dateutil.parser.parse(js['created']).timestamp()
+                    date = dateutil.parser.parse(js["created"])
+                    ts = date.timestamp()
+                    print(date, last_week, tomorrow)
                     print(ts, last_week.timestamp(), tomorrow.timestamp())
                     self.assertTrue(ts >= last_week.timestamp())
                     self.assertTrue(ts <= tomorrow.timestamp())
+            self.assertEqual(2, count)
 
-            self.assertEqual(len(new_job_ids), count)
             print("Found all of the jobs", len(new_job_ids))
