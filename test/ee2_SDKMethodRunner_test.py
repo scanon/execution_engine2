@@ -4,11 +4,14 @@ import datetime
 import json
 import logging
 import os
+import time
 import unittest
 from configparser import ConfigParser
 from datetime import timedelta
 from unittest.mock import patch
 
+import dateutil
+from bson import ObjectId
 from mock import MagicMock
 from mongoengine import ValidationError
 
@@ -842,3 +845,131 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())
+
+    def create_job_from_job(self, job, new_job_id):
+        j = Job()
+        j.id = new_job_id
+        j.wsid = job.wsid
+        j.user = job.user
+        j.authstrat = job.authstrat
+        j.status = job.status
+        j.finished = new_job_id.generation_time
+
+        j.job_input = job.job_input
+        return j
+
+    def replace_job_id(self, job1, new_id):
+        with self.mongo_util.mongo_engine_connection():
+            job2 = self.create_job_from_job(job1, new_id)
+
+            job2.save()
+            print("Saved job with id", job2.id, job2.id.generation_time)
+            job1.delete()
+
+    @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
+    def test_check_jobs_date_range(self, condor_mock):
+        ctx = {"foo": "bar", 'token': 'false'}
+
+        runner = self.getRunner()
+        runner.get_permissions_for_workspace = MagicMock(return_value=True)
+        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
+        runner.get_condor = MagicMock(return_value=condor_mock)
+        ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
+        job = get_example_job().to_mongo().to_dict()
+        job["method"] = job["job_input"]["app_id"]
+        job["app_id"] = job["job_input"]["app_id"]
+
+        si = submission_info(clusterid="test", submit=job, error=None)
+        condor_mock.run_job = MagicMock(return_value=si)
+
+        job_id1 = runner.run_job(params=job, ctx=ctx)
+        job_id2 = runner.run_job(params=job, ctx=ctx)
+        job_id3 = runner.run_job(params=job, ctx=ctx)
+        job_id4 = runner.run_job(params=job, ctx=ctx)
+        job_id5 = runner.run_job(params=job, ctx=ctx)
+        job_id6 = runner.run_job(params=job, ctx=ctx)
+        time.sleep(1)
+        job_ids = [job_id1, job_id2, job_id3, job_id4, job_id5, job_id6]
+        new_job_ids = []
+
+        now = datetime.datetime.utcnow()
+        last_month = now - timedelta(days=30)
+        last_week = now - timedelta(days=7)
+        yesterday = now - timedelta(days=1)
+        tomorrow = now + timedelta(days=1)
+        day_after = now + timedelta(days=2)
+
+        with self.mongo_util.mongo_engine_connection():
+            # Last Month
+            job = Job.objects.with_id(job_id1)  # type : Job
+            new_id_last_month = ObjectId.from_datetime(last_month)
+            print(last_month, new_id_last_month, new_id_last_month.generation_time)
+
+            self.replace_job_id(job, new_id_last_month)
+            new_job_ids.append(str(new_id_last_month))
+
+            # Last week
+            job = Job.objects.with_id(job_id2)  # type : Job
+            new_id_last_week = ObjectId.from_datetime(last_week)
+            self.replace_job_id(job, new_id_last_week)
+            new_job_ids.append(str(new_id_last_week))
+
+            # Yesterday
+            job = Job.objects.with_id(job_id3)  # type : Job
+            new_id_yesterday = ObjectId.from_datetime(yesterday)
+            self.replace_job_id(job, new_id_yesterday)
+            new_job_ids.append(str(new_id_yesterday))
+
+            # Now
+            job = Job.objects.with_id(job_id4)  # type : Job
+            new_id_now = ObjectId.from_datetime(now)
+            self.replace_job_id(job, new_id_now)
+            new_job_ids.append(str(new_id_now))
+
+            # Tomorrow
+            job = Job.objects.with_id(job_id5)  # type : Job
+            new_id_tomorrow = ObjectId.from_datetime(tomorrow)
+            self.replace_job_id(job, new_id_tomorrow)
+            new_job_ids.append(str(new_id_tomorrow))
+
+            # Day After
+            job = Job.objects.with_id(job_id6)  # type : Job
+            new_id_day_after = ObjectId.from_datetime(day_after)
+            self.replace_job_id(job, new_id_day_after)
+            new_job_ids.append(str(new_id_day_after))
+
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "created")
+            self.assertFalse(job.finished)
+            self.assertFalse(job.running)
+            self.assertFalse(job.estimating)
+
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            runner.get_permissions_for_workspace = MagicMock(
+                return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR
+            )
+            runner.is_admin = MagicMock(return_value=True)
+
+            job_state = runner.check_jobs_date_range(ctx=ctx, creation_end_date=str(tomorrow),
+                                                     creation_start_date=str(last_week))
+
+            count = 0
+            for key in job_state.keys():
+                js = job_state[key]
+                print("Job is", key, js['_id'] )
+
+                if key in new_job_ids:
+                    count += 1
+                    self.assertEqual(js["status"], "created")
+                    ts =  dateutil.parser.parse(js['created']).timestamp()
+                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    self.assertTrue(ts >= last_week.timestamp())
+                    self.assertTrue(ts <= tomorrow.timestamp())
+
+            self.assertEqual(len(new_job_ids), count)
+            print("Found all of the jobs", len(new_job_ids))

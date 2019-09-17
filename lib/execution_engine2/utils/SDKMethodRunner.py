@@ -370,7 +370,7 @@ class SDKMethodRunner:
         #     raise Exception("Please provide wsid")
 
         if not self._can_write_ws(
-            self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
+                self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
         ):
             logging.debug("You don't have permission to run jobs in this workspace")
 
@@ -405,10 +405,12 @@ class SDKMethodRunner:
         except Exception as e:
             ## delete job from database? Or mark it to a state it will never run?
             logging.error(e)
+            print("error is")
+            print(type(submission_info))
+            # TODO Will this ever be null? Try catch again?
+            print(submission_info.error, type(submission_info.error))
             raise e
-        print("error is")
-        print(type(submission_info))
-        print(submission_info.error, type(submission_info.error))
+
 
         if submission_info.error is not None:
             raise submission_info.error
@@ -655,7 +657,7 @@ class SDKMethodRunner:
         )
 
     def finish_job(
-        self, job_id, ctx, error_message=None, error_code=None, job_output=None
+            self, job_id, ctx, error_message=None, error_code=None, job_output=None
     ):
         """
         #TODO Fix too many open connections to mongoengine
@@ -739,15 +741,14 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
-
     def check_jobs_date_range(
-        self,
-        ctx,
-        creation_start_date,
-        creation_end_date,
-        job_projection=None,
-        job_filter=None,
-        limit=None,
+            self,
+            ctx,
+            creation_start_date,
+            creation_end_date,
+            job_projection=None,
+            job_filter=None,
+            limit=None,
     ):
 
         if not self._is_admin(ctx["token"]):
@@ -755,12 +756,15 @@ class SDKMethodRunner:
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
 
+        creation_start_date = dateutil.parser.parse(creation_start_date)
+        print("Creation start date is",creation_start_date)
         if creation_start_date is None:
             raise Exception(
                 "Please provide a valid start date for when job was created"
             )
         dummy_start_id = ObjectId.from_datetime(creation_start_date)
 
+        creation_end_date = dateutil.parser.parse(creation_end_date)
         if creation_end_date is None:
             raise Exception("Please provide a valid end date for when job was created")
         dummy_end_id = ObjectId.from_datetime(creation_end_date)
@@ -771,16 +775,25 @@ class SDKMethodRunner:
 
         if job_filter is None:
             # Maybe set a default here?
-            job_filter = []
+            job_filter = {}
 
         if limit is None:
             # Maybe put this in config
             limit = 2000
 
-        kwargs["created_at"] = {"$lt": end, "$gt": start_date}
+        job_filter['id__gt'] = dummy_start_id
+        job_filter['id__lt'] = dummy_end_id
 
-        Job.objects().only(job_projection)
+        jobs = Job.objects[:limit].filter()
 
+        return self._job_state_from_jobs(jobs)
+        # .only(job_projection).as_pymongo()
+        #kwargs["created_at"] = {"$lt": end, "$gt": start_date}
+
+        #TODO USE AS_PYMONGO() FOR SPEED
+        #as_pymongo()
+        # Instead of returning Document instances, return raw values from pymongo.
+        # Job.objects.filter()only(job_projection).as
 
     def check_job(self, job_id, ctx, check_permission=True, projection=None):
         """
@@ -804,6 +817,23 @@ class SDKMethodRunner:
 
         return job_state
 
+    def _job_state_from_jobs(self, jobs):
+        job_states = dict()
+        for job in jobs:
+            mongo_rec = job.to_mongo().to_dict()
+            mongo_rec["_id"] = str(job.id)
+            mongo_rec["created"] = str(job.id.generation_time)
+            mongo_rec["updated"] = str(job.updated)
+            if job.estimating:
+                mongo_rec["estimating"] = str(job.estimating)
+            if job.running:
+                mongo_rec["running"] = str(job.running)
+            if job.finished:
+                mongo_rec["finished"] = str(job.finished)
+
+            job_states[str(job.id)] = mongo_rec
+        return job_states
+
     def check_jobs(self, job_ids, ctx, check_permission=True, projection=None):
         """
         check_jobs: check and return job status for a given of list job_ids
@@ -821,22 +851,7 @@ class SDKMethodRunner:
 
         jobs = self.get_mongo_util().get_jobs(job_ids=job_ids, projection=projection)
 
-        job_states = dict()
-        for job in jobs:
-            mongo_rec = job.to_mongo().to_dict()
-            mongo_rec["_id"] = str(job.id)
-            mongo_rec["created"] = str(job.id.generation_time)
-            mongo_rec["updated"] = str(job.updated)
-            if job.estimating:
-                mongo_rec["estimating"] = str(job.estimating)
-            if job.running:
-                mongo_rec["running"] = str(job.running)
-            if job.finished:
-                mongo_rec["finished"] = str(job.finished)
-
-            job_states[str(job.id)] = mongo_rec
-
-        return job_states
+        return self._job_state_from_jobs(jobs)
 
     def check_workspace_jobs(self, workspace_id, ctx, projection=None):
         """
@@ -850,7 +865,7 @@ class SDKMethodRunner:
             projection = []
 
         if not self._can_read_ws(
-            self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
+                self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
         ):
             raise PermissionError(
                 "User {} does not have permissions to get status for wsid: {}".format(

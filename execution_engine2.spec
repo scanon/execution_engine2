@@ -232,6 +232,9 @@ module execution_engine2 {
         string start_date;
         string end_date;
         list<string> projection;
+        list<string> filter;
+        list<string> projection;
+        int limit;
     } CheckJobsDateRangeParams;
 
     funcdef check_jobs_date_range(CheckJobsDateRangeParams params) returns (CheckJobsResults) authentication required;
@@ -245,6 +248,9 @@ module execution_engine2 {
         string start_date;
         string end_date;
         list<string> projection;
+        list<string> filter;
+        list<string> projection;
+        int limit;
     } CheckJobsDateRangeForUserParams;
 
     funcdef check_jobs_date_range_for_user(CheckJobsDateRangeForUserParams params) returns (CheckJobsResults) authentication required;

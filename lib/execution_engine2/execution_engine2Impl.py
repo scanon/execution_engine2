@@ -455,9 +455,11 @@ class execution_engine2:
         mr = SDKMethodRunner(self.config)
         returnVal = mr.check_jobs_date_range(
             ctx=ctx,
-            start_date=params.get("start_date"),
-            end_date=params.get("end_date"),
-            projection=params.get("projection"),
+            creation_start_date=params.get("start_date"),
+            creation_end_date=params.get("end_date"),
+            job_projection=params.get("projection"),
+            job_filter=params.get("filter"),
+            limit=params.get("limit"),
         )
 
         #END check_jobs_date_range
