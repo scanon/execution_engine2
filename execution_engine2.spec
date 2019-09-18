@@ -56,7 +56,7 @@ module execution_engine2 {
     */
     funcdef list_config() returns (mapping<string, string>) authentication optional;
 
-    /* Returns the current running version of the NarrativeJobService as a semantic version string. */
+    /* Returns the current running version of the execution_engine2 servicve as a semantic version string. */
     funcdef ver() returns (string);
 
     /* Simply check the status of this service to see queue details */
