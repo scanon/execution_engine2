@@ -270,12 +270,14 @@ module execution_engine2 {
             4 - job was missing its automated output document
             5 - job authentication token expired
         errormsg - string - message (e.g. stacktrace) accompanying an errored job
+        error - object - the JSON-RPC error package that accompanies the error code and message
 
         terminated_code - int - internal reason why a job was terminated, one of:
             0 - user cancellation
             1 - admin cancellation
             2 - terminated by some automatic process
 
+        @optional error
         @optional error_code
         @optional errormsg
         @optional terminated_code
@@ -299,6 +301,7 @@ module execution_engine2 {
         timestamp running;
         timestamp finished;
 
+        JsonRpcError error;
         int error_code;
         string errormsg;
 
