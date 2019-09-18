@@ -782,7 +782,8 @@ class SDKMethodRunner:
         job_states = dict()
         for job in jobs:
             mongo_rec = job.to_mongo().to_dict()
-            mongo_rec['_id'] = str(job.id)
+            del mongo_rec['_id']
+            mongo_rec['job_id'] = str(job.id)
             mongo_rec['created'] = str(job.id.generation_time)
             mongo_rec['updated'] = str(job.updated)
             if job.estimating:

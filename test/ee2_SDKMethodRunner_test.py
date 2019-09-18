@@ -25,7 +25,11 @@ from execution_engine2.utils.Condor import submission_info
 from execution_engine2.utils.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
-from test.test_utils import bootstrap, get_example_job
+from test.test_utils import (
+    bootstrap,
+    get_example_job,
+    validate_job_state
+)
 
 logging.basicConfig(level=logging.INFO)
 bootstrap()
@@ -823,8 +827,10 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             # test check_job
             job_state = runner.check_job(job_id, ctx)
             json.dumps(job_state)  # make sure it's JSON serializable
+            self.assertTrue(validate_job_state(job_state))
             self.assertEqual(job_state["status"], "created")
             self.assertEqual(job_state["wsid"], 9999)
+
 
             # test check_job with projection
             job_state = runner.check_job(job_id, ctx, projection=["status"])
@@ -834,6 +840,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             # test check_jobs
             job_states = runner.check_jobs([job_id], ctx)
             json.dumps(job_states)  # make sure it's JSON serializable
+            self.assertTrue(validate_job_state(job_states[job_id]))
             self.assertTrue(job_id in job_states)
             self.assertEqual(job_states[job_id]["status"], "created")
             self.assertEqual(job_states[job_id]["wsid"], 9999)
@@ -846,6 +853,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             # test check_workspace_jobs
             job_states = runner.check_workspace_jobs(9999, ctx)
+            for job_id in job_states:
+                self.assertTrue(job_states[job_id])
             json.dumps(job_states)  # make sure it's JSON serializable
             self.assertTrue(job_id in job_states)
             self.assertEqual(job_states[job_id]["status"], "created")
