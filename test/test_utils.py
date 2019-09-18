@@ -166,5 +166,5 @@ def _is_timestamp(ts: str):
     try:
         dateparser.parse(ts)
         return True
-    except:
+    except ValueError:
         return False
