@@ -36,7 +36,24 @@ module execution_engine2 {
         string git_commit;
     } Status;
 
-    /* Returns the service configuration, including URL endpoints and timeouts */
+    /*
+        Returns the service configuration, including URL endpoints and timeouts.
+        The returned values are:
+        external-url - string - url of this service
+        kbase-endpoint - string - url of the services endpoint for the KBase environment
+        workspace-url - string - Workspace service url
+        catalog-url - string - catalog service url
+        shock-url - string - shock service url
+        handle-url - string - handle service url
+        auth-service-url - string - legacy auth service url
+        auth-service-url-v2 - string - current auth service url
+        auth-service-url-allow-insecure - boolean string (true or false) - whether to allow insecure requests
+        scratch - string - local path to scratch directory
+        executable - string - name of Job Runner executable
+        docker_timeout - int - time in seconds before a job will be timed out and terminated
+        initial_dir - string - initial dir for HTCondor to search for passed input/output files
+        transfer_input_files - initial list of files to transfer to HTCondor for job running
+    */
     funcdef list_config() returns (mapping<string, string>) authentication optional;
 
     /* Returns the current running version of the NarrativeJobService as a semantic version string. */
