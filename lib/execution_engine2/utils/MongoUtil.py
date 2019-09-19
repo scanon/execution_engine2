@@ -18,7 +18,6 @@ from lib.execution_engine2.models.models import JobLog, Job, Status, TerminatedC
 
 class MongoUtil:
     def _start_local_service(self):
-
         try:
             start_local = int(self.config.get("start-local-mongo", 0))
         except Exception:
@@ -56,15 +55,15 @@ class MongoUtil:
     @classmethod
     def _get_collection(
         self,
-        mongo_host,
-        mongo_port,
-        mongo_database,
-        mongo_user=None,
-        mongo_password=None,
-        mongo_authmechanism="DEFAULT",
+        mongo_host: str,
+        mongo_port: int,
+        mongo_database: str,
+        mongo_user: str=None,
+        mongo_password: str=None,
+        mongo_authmechanism: str="DEFAULT",
     ):
         """
-        connect Mongo server and return a collection
+        Connect to Mongo server and return a tuple with the MongoClient and MongoClient?
         """
 
         if mongo_user:
@@ -100,7 +99,7 @@ class MongoUtil:
         try:
             pymongo_client.server_info()  # force a call to server
         except ServerSelectionTimeoutError as e:
-            error_msg = "Connot connect to Mongo server\n"
+            error_msg = "Cannot connect to Mongo server\n"
             error_msg += "ERROR -- {}:\n{}".format(
                 e, "".join(traceback.format_exception(None, e, e.__traceback__))
             )
@@ -108,7 +107,7 @@ class MongoUtil:
 
         return pymongo_client, mongoengine_client
 
-    def __init__(self, config):
+    def __init__(self, config: dict):
         self.config = config
         self.mongo_host = config["mongo-host"]
         self.mongo_port = int(config["mongo-port"])
@@ -147,7 +146,7 @@ class MongoUtil:
         finally:
             mc.close()
 
-    def get_job_log(self, job_id=None) -> JobLog:
+    def get_job_log(self, job_id: str=None) -> JobLog:
         if job_id is None:
             raise ValueError("Please provide a job id")
         with self.mongo_engine_connection():
