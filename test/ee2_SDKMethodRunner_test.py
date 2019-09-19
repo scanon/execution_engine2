@@ -899,6 +899,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
         now = datetime.datetime.utcnow()
         last_month = now - timedelta(days=30)
+        last_month_and_1_hour = now - timedelta(days=30) - timedelta(hours=1)
+
         last_week = now - timedelta(days=7)
         yesterday = now - timedelta(days=1)
         tomorrow = now + timedelta(days=1)
@@ -972,25 +974,25 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             for key in job_state.keys():
                 js = job_state[key]
                 print("Job is id", key, js["_id"])
-                if key is new_job_ids:
+                if key in new_job_ids:
                     count += 1
                     self.assertEqual(js["status"], "created")
                     date = dateutil.parser.parse(js["created"])
                     ts = date.timestamp()
                     print(date, last_week, tomorrow)
                     print(ts, last_week.timestamp(), tomorrow.timestamp())
-                    self.assertTrue(ts >= last_week.timestamp())
-                    self.assertTrue(ts <= tomorrow.timestamp())
+                    self.assertTrue(ts > last_week.timestamp())
+                    self.assertTrue(ts < tomorrow.timestamp())
             self.assertEqual(2, count)
 
             print(
-                "Test case 2. Retrieving Jobs from last_week and tomorrow_max (yesterday and now jobs) "
+                "Test case 2. Retrieving Jobs from last_month and tomorrow_max (last_month, last_week, yesterday and now jobs) "
             )
 
             job_state = runner.check_jobs_date_range(
                 ctx=ctx,
                 creation_end_date=str(tomorrow),
-                creation_start_date=str(last_week),
+                creation_start_date=str(last_month_and_1_hour),
             )
 
             count = 0
@@ -998,15 +1000,26 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
                 js = job_state[key]
                 print("Job is id", key, js["_id"])
 
-                if key is new_job_ids:
+                if key in new_job_ids:
                     count += 1
                     self.assertEqual(js["status"], "created")
                     date = dateutil.parser.parse(js["created"])
                     ts = date.timestamp()
                     print(date, last_week, tomorrow)
                     print(ts, last_week.timestamp(), tomorrow.timestamp())
-                    self.assertTrue(ts >= last_week.timestamp())
-                    self.assertTrue(ts <= tomorrow.timestamp())
-            self.assertEqual(2, count)
+                    self.assertTrue(ts > last_month_and_1_hour.timestamp())
+                    self.assertTrue(ts < tomorrow.timestamp())
+            self.assertEqual(4, count)
 
             print("Found all of the jobs", len(new_job_ids))
+
+            with self.assertRaises(Exception) as context:
+                job_state = runner.check_jobs_date_range(
+                    ctx=ctx,
+                    creation_end_date=str(yesterday),
+                    creation_start_date=str(tomorrow),
+                )
+                self.assertEqual(
+                    "The start date cannot be greater than the end date.",
+                    str(context.exception),
+                )

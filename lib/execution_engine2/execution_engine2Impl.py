@@ -486,6 +486,16 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN check_jobs_date_range_for_user
+        mr = SDKMethodRunner(self.config)
+        returnVal = mr.check_jobs_date_range_for_user(
+            ctx=ctx,
+            creation_start_date=params.get("start_date"),
+            creation_end_date=params.get("end_date"),
+            job_projection=params.get("projection"),
+            job_filter=params.get("filter"),
+            limit=params.get("limit"),
+        )
+
         #END check_jobs_date_range_for_user
 
         # At some point might do deeper type checking...

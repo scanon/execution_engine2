@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from collections import namedtuple
 from datetime import datetime
 from enum import Enum
 from time import time
@@ -370,7 +371,7 @@ class SDKMethodRunner:
         #     raise Exception("Please provide wsid")
 
         if not self._can_write_ws(
-                self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
+            self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
         ):
             logging.debug("You don't have permission to run jobs in this workspace")
 
@@ -410,7 +411,6 @@ class SDKMethodRunner:
             # TODO Will this ever be null? Try catch again?
             print(submission_info.error, type(submission_info.error))
             raise e
-
 
         if submission_info.error is not None:
             raise submission_info.error
@@ -657,7 +657,7 @@ class SDKMethodRunner:
         )
 
     def finish_job(
-            self, job_id, ctx, error_message=None, error_code=None, job_output=None
+        self, job_id, ctx, error_message=None, error_code=None, job_output=None
     ):
         """
         #TODO Fix too many open connections to mongoengine
@@ -741,23 +741,9 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
-    def check_jobs_date_range(
-            self,
-            ctx,
-            creation_start_date,
-            creation_end_date,
-            job_projection=None,
-            job_filter=None,
-            limit=None,
-    ):
-
-        if not self._is_admin(ctx["token"]):
-            raise Exception(
-                f"You are not authorized. Please request a role from {self.admin_roles}"
-            )
-
+    def _get_dummy_dates(self, creation_start_date, creation_end_date):
         creation_start_date = dateutil.parser.parse(creation_start_date)
-        print("Creation start date is",creation_start_date)
+
         if creation_start_date is None:
             raise Exception(
                 "Please provide a valid start date for when job was created"
@@ -768,6 +754,35 @@ class SDKMethodRunner:
         if creation_end_date is None:
             raise Exception("Please provide a valid end date for when job was created")
         dummy_end_id = ObjectId.from_datetime(creation_end_date)
+
+        if creation_start_date.timestamp() > creation_end_date.timestamp():
+            raise Exception("The start date cannot be greater than the end date.")
+
+        dummy_ids = namedtuple("dummy_ids", "start stop")
+
+        return dummy_ids(start=dummy_start_id, stop=dummy_end_id)
+
+    def check_jobs_date_range(
+        self,
+        ctx,
+        creation_start_date,
+        creation_end_date,
+        job_projection=None,
+        job_filter=None,
+        limit=None,
+    ):
+
+        # Well the username is just a filter.... So maybe remove the 2nd endpoint
+
+        # So default behavior depends on filters....
+        # So if filter is set to a specific usernames?
+
+        if not self._is_admin(ctx["token"]):
+            raise Exception(
+                f"You are not authorized. Please request a role from {self.admin_roles}"
+            )
+
+        dummy_ids = self._get_dummy_dates(creation_start_date, creation_end_date)
 
         if job_projection is None:
             # Maybe set a default here?
@@ -781,21 +796,66 @@ class SDKMethodRunner:
             # Maybe put this in config
             limit = 2000
 
-        job_filter['id__gt'] = dummy_start_id
-        job_filter['id__lt'] = dummy_end_id
+        job_filter["id__gt"] = dummy_ids.start
+        job_filter["id__lt"] = dummy_ids.stop
 
-        jobs = Job.objects[:limit].filter(**job_filter)
+        jobs = Job.objects[:limit].filter(**job_filter).only(job_projection)
 
-        print("Searching for jobs with id_gt {dummy_start_id} id_lt {dummy_end_id}")
+        logging.info(
+            "Searching for jobs with id_gt {dummy_start_id} id_lt {dummy_end_id}"
+        )
 
         return self._job_state_from_jobs(jobs)
-        # .only(job_projection).as_pymongo()
-        #kwargs["created_at"] = {"$lt": end, "$gt": start_date}
 
-        #TODO USE AS_PYMONGO() FOR SPEED
-        #as_pymongo()
-        # Instead of returning Document instances, return raw values from pymongo.
-        # Job.objects.filter()only(job_projection).as
+        # TODO Add support for projection (validate the allowed fields to project?) (Need better api design)
+        # TODO Add support for filter (validate the allowed fields to project?) (Need better api design)
+        # TODO USE AS_PYMONGO() FOR SPEED
+        # TODO Better define default fields
+
+    def check_jobs_date_range_for_user(
+        self,
+        ctx,
+        creation_start_date,
+        creation_end_date,
+        job_projection=None,
+        job_filter=None,
+        limit=None,
+    ):
+
+        if not self._is_admin(ctx["token"]):
+            raise Exception(
+                f"You are not authorized. Please request a role from {self.admin_roles}"
+            )
+
+        dummy_ids = self._get_dummy_dates(creation_start_date, creation_end_date)
+
+        if job_projection is None:
+            # Maybe set a default here?
+            job_projection = []
+
+        if job_filter is None:
+            # Maybe set a default here?
+            job_filter = {}
+
+        if limit is None:
+            # Maybe put this in config
+            limit = 2000
+
+        job_filter["id__gt"] = dummy_ids.start
+        job_filter["id__lt"] = dummy_ids.stop
+
+        jobs = Job.objects[:limit].filter(**job_filter).only(job_projection)
+
+        logging.info(
+            "Searching for jobs with id_gt {dummy_start_id} id_lt {dummy_end_id}"
+        )
+
+        return self._job_state_from_jobs(jobs)
+
+        # TODO Add support for projection (validate the allowed fields to project?) (Need better api design)
+        # TODO Add support for filter (validate the allowed fields to project?) (Need better api design)
+        # TODO USE AS_PYMONGO() FOR SPEED
+        # TODO Better define default fields
 
     def check_job(self, job_id, ctx, check_permission=True, projection=None):
         """
@@ -867,7 +927,7 @@ class SDKMethodRunner:
             projection = []
 
         if not self._can_read_ws(
-                self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
+            self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
         ):
             raise PermissionError(
                 "User {} does not have permissions to get status for wsid: {}".format(
