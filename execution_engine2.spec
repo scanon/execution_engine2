@@ -288,7 +288,7 @@ module execution_engine2 {
 
 
     typedef structure {
-        job_id _id;
+        job_id job_id;
         string user;
         string authstrat;
         int wsid;
@@ -297,7 +297,7 @@ module execution_engine2 {
         timestamp created;
         timestamp updated;
 
-        timestamp estimating
+        timestamp estimating;
         timestamp running;
         timestamp finished;
 
