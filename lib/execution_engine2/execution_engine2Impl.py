@@ -2,7 +2,7 @@
 #BEGIN_HEADER
 
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
-
+from datetime import datetime
 
 #END_HEADER
 
@@ -13,7 +13,7 @@ class execution_engine2:
     execution_engine2
 
     Module Description:
-    
+
     '''
 
     ######## WARNING FOR GEVENT USERS ####### noqa
@@ -29,6 +29,8 @@ class execution_engine2:
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
     MONGO_AUTHMECHANISM = "DEFAULT"
+
+    SERVICE_NAME = "KBase Execution Engine"
 
     #END_CLASS_HEADER
 
@@ -123,8 +125,13 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN status
-        mr = SDKMethodRunner(self.config)
-        returnVal = mr.status()
+        returnVal = {
+            "server_time": datetime.now().isoformat(),
+            "git_commit": self.GIT_COMMIT_HASH,
+            "version": self.VERSION,
+            "service": self.SERVICE_NAME
+        }
+
         #END status
 
         # At some point might do deeper type checking...
