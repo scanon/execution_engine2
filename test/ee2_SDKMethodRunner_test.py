@@ -13,7 +13,7 @@ from mock import MagicMock
 from mongoengine import ValidationError
 
 from execution_engine2.exceptions import InvalidStatusTransitionException
-from execution_engine2.models.models import (
+from execution_engine2.db.models.models import (
     Job,
     JobInput,
     Meta,
@@ -22,7 +22,7 @@ from execution_engine2.models.models import (
     TerminatedCode,
 )
 from execution_engine2.utils.Condor import submission_info
-from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.db.MongoUtil import MongoUtil
 from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import (
@@ -293,7 +293,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         for item in [sdk.WorkspacePermissions.NONE, sdk.WorkspacePermissions.READ]:
             self.assertFalse(sdk._can_write_ws(item))
 
-    @patch("execution_engine2.utils.MongoUtil.MongoUtil", autospec=True)
+    @patch("execution_engine2.db.MongoUtil.MongoUtil", autospec=True)
     def test_check_job_canceled(self, mongo_util):
         def generateJob(job_id):
             j = Job()

@@ -13,7 +13,7 @@ from execution_engine2.exceptions import (
     RecordNotFoundException,
     InvalidStatusTransitionException,
 )
-from lib.execution_engine2.models.models import JobLog, Job, Status, TerminatedCode
+from execution_engine2.db.models.models import JobLog, Job, Status, TerminatedCode
 
 
 class MongoUtil:

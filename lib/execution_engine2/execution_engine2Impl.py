@@ -23,8 +23,8 @@ class execution_engine2:
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.0.1"
-    GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
-    GIT_COMMIT_HASH = "f762139bb3893c5aaf97944954e55f09befc0821"
+    GIT_URL = "https://github.com/briehl/execution_engine2"
+    GIT_COMMIT_HASH = "1902d2b91dcad412ba95cb2c81f6eb4108147f78"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"

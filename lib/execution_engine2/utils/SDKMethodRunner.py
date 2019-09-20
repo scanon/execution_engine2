@@ -14,7 +14,7 @@ from execution_engine2.exceptions import (
     RecordNotFoundException,
     InvalidStatusTransitionException,
 )
-from execution_engine2.models.models import (
+from execution_engine2.db.models.models import (
     Job,
     JobInput,
     JobOutput,
@@ -25,7 +25,7 @@ from execution_engine2.models.models import (
     ErrorCode,
 )
 from execution_engine2.utils.Condor import Condor
-from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.db.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
