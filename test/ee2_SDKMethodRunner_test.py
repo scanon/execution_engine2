@@ -23,7 +23,7 @@ from execution_engine2.db.models.models import (
 )
 from execution_engine2.utils.Condor import submission_info
 from execution_engine2.db.MongoUtil import MongoUtil
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import (
     bootstrap,
@@ -215,7 +215,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())
 
-    @patch("execution_engine2.utils.SDKMethodRunner.SDKMethodRunner", autospec=True)
+    @patch("execution_engine2.SDKMethodRunner.SDKMethodRunner", autospec=True)
     def test_cancel_job(self, runner):
         logging.info("\n\n  Test cancel job")
         sdk = copy.deepcopy(self.getRunner())

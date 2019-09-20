@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #BEGIN_HEADER
 
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.SDKMethodRunner import SDKMethodRunner
 
 
 #END_HEADER
@@ -24,7 +24,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/briehl/execution_engine2"
-    GIT_COMMIT_HASH = "1902d2b91dcad412ba95cb2c81f6eb4108147f78"
+    GIT_COMMIT_HASH = "ac6568038d951a35b1d64422c9f44cc390bde64b"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
