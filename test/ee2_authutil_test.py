@@ -4,6 +4,7 @@ import requests_mock
 import os
 from configparser import ConfigParser
 from execution_engine2.utils.auth import AuthUtil
+from execution_engine2.exceptions import AuthError
 
 class AuthUtilTestCase(unittest.TestCase):
     @classmethod
@@ -14,7 +15,6 @@ class AuthUtilTestCase(unittest.TestCase):
         config.read(config_file)
         for nameval in config.items("execution_engine2"):
             cls.cfg[nameval[0]] = nameval[1]
-        cls.cfg["auth-url"] = cls.cfg["auth-service-url-v2"]
         cls.auth_endpt = cls.cfg["auth-url"] + "/api/V2/me"
 
     def init_auth_util(self) -> AuthUtil:
@@ -43,19 +43,19 @@ class AuthUtilTestCase(unittest.TestCase):
         auth_util = self.init_auth_util()
 
         # test invalid token
-        with self.assertRaises(ValueError) as e:
+        with self.assertRaises(AuthError) as e:
             auth_util.is_admin("some_token")
-        self.assertIn("An error occurred while fetching user roles from auth service", str(e.exception))
+        self.assertIn("Token is not valid", str(e.exception))
 
         # test HTTP error
         rq_mock.register_uri("GET", self.auth_endpt, [{"text": "error", "status_code": 500}])
-        with self.assertRaises(ValueError) as e:
+        with self.assertRaises(RuntimeError) as e:
             auth_util.is_admin("some_token")
         self.assertIn("An error occurred while fetching user roles from auth service", str(e.exception))
 
         # test timeout
         rq_mock.register_uri("GET", self.auth_endpt, exc=requests.exceptions.ConnectTimeout)
-        with self.assertRaises(ValueError) as e:
+        with self.assertRaises(RuntimeError) as e:
             auth_util.is_admin("some_token")
         self.assertIn("The auth service timed out while fetching user roles.", str(e.exception))
 
