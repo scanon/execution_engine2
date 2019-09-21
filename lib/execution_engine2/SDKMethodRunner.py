@@ -29,6 +29,8 @@ from execution_engine2.db.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
+from .utils.auth import AuthUtil
+
 
 debug = json.loads(os.environ.get("debug", "False").lower())
 
@@ -324,6 +326,8 @@ class SDKMethodRunner:
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
         )
 
+        self.auth_util = AuthUtil(self.auth_url, self.admin_roles)
+
     @staticmethod
     def status():
         return {"servertime": f"{time()}"}
@@ -468,25 +472,25 @@ class SDKMethodRunner:
         }
         return commands[command](**p[command])
 
-    def _is_admin(self, token):
-        """
-        Cache whether or not you are an ee2 admin based on your token / custom_roles
-        :param token:
-        :return:
-        """
-        if self.is_admin is None:
-            logging.info("URL:" + self.auth_url + "/api/V2/me")
-            r = requests.get(
-                self.auth_url + "/api/V2/me", headers={"Authorization": token}
-            )
-            logging.info(r.json())
-            roles = r.json().get("customroles", [])
-            if any(r in self.admin_roles for r in roles):
-                self.is_admin = True
-            else:
-                self.is_admin = False
+    # def _is_admin(self, token):
+    #     """
+    #     Cache whether or not you are an ee2 admin based on your token / custom_roles
+    #     :param token:
+    #     :return:
+    #     """
+    #     if self.is_admin is None:
+    #         logging.info("URL:" + self.auth_url + "/api/V2/me")
+    #         r = requests.get(
+    #             self.auth_url + "/api/V2/me", headers={"Authorization": token}
+    #         )
+    #         logging.info(r.json())
+    #         roles = r.json().get("customroles", [])
+    #         if any(r in self.admin_roles for r in roles):
+    #             self.is_admin = True
+    #         else:
+    #             self.is_admin = False
 
-        return self.is_admin
+    #     return self.is_admin
 
     def administer(self, command, params, token):
         """
@@ -497,7 +501,8 @@ class SDKMethodRunner:
         :param token: The auth token (Will be checked for the correct auth role)
         :return:
         """
-        if self._is_admin(token):
+        logging.info('Attempting to run administrative command "f{command}" as user "')
+        if self.auth_util.is_admin(token):
             self._run_admin_command(command, params)
         else:
             raise Exception(
