@@ -2,8 +2,6 @@
 #BEGIN_HEADER
 
 from execution_engine2.SDKMethodRunner import SDKMethodRunner
-
-from execution_engine2.utils.SDKMethodRunner import SDKMethodRunner
 from datetime import datetime
 
 #END_HEADER
@@ -15,7 +13,7 @@ class execution_engine2:
     execution_engine2
 
     Module Description:
-
+    
     '''
 
     ######## WARNING FOR GEVENT USERS ####### noqa
@@ -26,7 +24,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/briehl/execution_engine2"
-    GIT_COMMIT_HASH = "75d41b7576be4a685f0c82a2bcd36b4540e05f2a"
+    GIT_COMMIT_HASH = "7eb0ce8a76d359187d6f8abadf256cec516263a7"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -109,20 +107,23 @@ class execution_engine2:
         """
         Simply check the status of this service to see queue details
         :returns: instance of type "Status" (A structure representing the
-           Execution Engine status reboot_mode - if 1, then in the process of
+           Execution Engine status git_commit - the Git hash of the version
+           of the module. version - the semantic version for the module.
+           service - the name of the service. server_time - the current
+           server timestamp (as a timestamp, above) # TODO - add some or all
+           of the following reboot_mode - if 1, then in the process of
            rebooting stopping_mode - if 1, then in the process of stopping
            running_tasks_total - number of total running jobs
            running_tasks_per_user - mapping from user id to number of running
            jobs for that user tasks_in_queue - number of jobs in the queue
-           that are not running config - the current service configuration
-           (see also list_config()) git_commit - the Git commit string
-           denoting the deployed version of EE2) -> structure: parameter
-           "reboot_mode" of type "boolean" (@range [0,1]), parameter
-           "stopping_mode" of type "boolean" (@range [0,1]), parameter
-           "running_tasks_total" of Long, parameter "running_tasks_per_user"
-           of mapping from String to Long, parameter "tasks_in_queue" of
-           Long, parameter "config" of mapping from String to String,
-           parameter "git_commit" of String
+           that are not running) -> structure: parameter "git_commit" of
+           String, parameter "version" of String, parameter "service" of
+           String, parameter "server_time" of type "timestamp" (A time in the
+           format YYYY-MM-DDThh:mm:ssZ, where Z is either the character Z
+           (representing the UTC timezone) or the difference in time to UTC
+           in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
+           2013-04-03T08:56:32+0000 (UTC time) 2013-04-03T08:56:32Z (UTC
+           time))
         """
         # ctx is the context object
         # return variables are: returnVal

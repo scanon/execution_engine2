@@ -29,8 +29,10 @@ class AuthUtil(object):
         roles = self._fetch_user_roles(token)
         if self.admin_roles.intersection(set(roles)):
             self.__admin_cache.add_valid_token(token, IS_ADMIN)
+            return True
         else:
             self.__admin_cache.add_valid_token(token, NOT_ADMIN)
+            return False
 
     def _fetch_user_roles(self, token: str) -> Set:
         if not token:
@@ -51,3 +53,5 @@ class AuthUtil(object):
                 e.response.reason,
                 err_msg.get('message', 'Unknown Auth error')
             ))
+        except requests.exceptions.ConnectTimeout as e:
+            raise ValueError("The auth service timed out while fetching user roles.")

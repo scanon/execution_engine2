@@ -320,6 +320,7 @@ class SDKMethodRunner:
 
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
+        self.auth_util = AuthUtil(self.auth_url, self.admin_roles)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
