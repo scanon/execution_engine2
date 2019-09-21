@@ -24,7 +24,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/briehl/execution_engine2"
-    GIT_COMMIT_HASH = "7eb0ce8a76d359187d6f8abadf256cec516263a7"
+    GIT_COMMIT_HASH = "0f9064f47607aa7601873c9c0b9229bb1e769afd"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
