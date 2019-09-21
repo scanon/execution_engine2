@@ -24,13 +24,13 @@ class AuthUtilTestCase(unittest.TestCase):
     def test_auth_util_isadmin_ok(self, rq_mock):
         rq_mock.get(self.auth_endpt, json={"customroles": ["EE2_ADMIN", "some_role"]})
         auth_util = self.init_auth_util()
-        self.assertTrue(auth_util.is_admin("some_token"))
+        self.assertTrue(auth_util.is_admin("some_admin_token"))
 
     @requests_mock.Mocker()
     def test_auth_util_notadmin_ok(self, rq_mock):
         rq_mock.get(self.auth_endpt, json={"customroles": ["some_role"]})
         auth_util = self.init_auth_util()
-        self.assertFalse(auth_util.is_admin("some_token"))
+        self.assertFalse(auth_util.is_admin("some_nonadmin_token"))
 
     @requests_mock.Mocker()
     def test_auth_util_isadmin_fail(self, rq_mock):
@@ -44,19 +44,19 @@ class AuthUtilTestCase(unittest.TestCase):
 
         # test invalid token
         with self.assertRaises(AuthError) as e:
-            auth_util.is_admin("some_token")
+            auth_util.is_admin("some_invalid_token")
         self.assertIn("Token is not valid", str(e.exception))
 
         # test HTTP error
         rq_mock.register_uri("GET", self.auth_endpt, [{"text": "error", "status_code": 500}])
         with self.assertRaises(RuntimeError) as e:
-            auth_util.is_admin("some_token")
+            auth_util.is_admin("some_fail_token")
         self.assertIn("An error occurred while fetching user roles from auth service", str(e.exception))
 
         # test timeout
         rq_mock.register_uri("GET", self.auth_endpt, exc=requests.exceptions.ConnectTimeout)
         with self.assertRaises(RuntimeError) as e:
-            auth_util.is_admin("some_token")
+            auth_util.is_admin("some_timeout_token")
         self.assertIn("The auth service timed out while fetching user roles.", str(e.exception))
 
     def test_auth_util_isadmin_bad_params(self):
@@ -67,10 +67,16 @@ class AuthUtilTestCase(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_auth_util_caching(self, rq_mock):
+        token = "some_token1"
+
         auth_util = self.init_auth_util()
         rq_mock.get(self.auth_endpt, json={"customroles": ["some_role"]})
-        auth_util.is_admin("token1")
-        auth_util.is_admin("token1")
-        self.assertEqual(rq_mock.call_count, 1)
+        auth_util.is_admin(token)
+        auth_util.is_admin(token)
+        self.assertEqual(rq_mock.call_count, 1)   # should cache the first result
+
+        auth_util2 = self.init_auth_util()
+        auth_util2.is_admin(token)
+        self.assertEqual(rq_mock.call_count, 1)   # cache should be a singleton
 
 

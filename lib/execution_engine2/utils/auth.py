@@ -18,6 +18,7 @@ from ..exceptions import AuthError
 IS_ADMIN = "EE2_ADMIN"
 NOT_ADMIN = "NOT_ADMIN"
 
+_admin_cache = TokenCache()
 
 class AuthUtil(object):
     """
@@ -31,7 +32,6 @@ class AuthUtil(object):
         """
         # Use the token cache from the service's authclient, but put in strings for whether the
         # token's account is an admin or not.
-        self.__admin_cache = TokenCache()
         self.auth_url = auth_url
         self.admin_roles = set(admin_roles)
 
@@ -50,7 +50,7 @@ class AuthUtil(object):
         """
         if not token:
             raise ValueError("Must supply token to check privileges")
-        is_admin = self.__admin_cache.get_user(token)
+        is_admin = _admin_cache.get_user(token)
         # is_admin will be a string if present, either IS_ADMIN or NOT_ADMIN
         if is_admin is not None:
             return is_admin == IS_ADMIN
@@ -58,10 +58,10 @@ class AuthUtil(object):
         # if we don't have the info, go fetch it
         roles = self._fetch_user_roles(token)
         if self.admin_roles.intersection(set(roles)):
-            self.__admin_cache.add_valid_token(token, IS_ADMIN)
+            _admin_cache.add_valid_token(token, IS_ADMIN)
             return True
         else:
-            self.__admin_cache.add_valid_token(token, NOT_ADMIN)
+            _admin_cache.add_valid_token(token, NOT_ADMIN)
             return False
 
     def _fetch_user_roles(self, token: str) -> Set:
