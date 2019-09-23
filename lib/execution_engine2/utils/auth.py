@@ -8,7 +8,6 @@ a valid EE2 admin role attached to the user.
 """
 from typing import List, Set
 from installed_clients.authclient import (
-    KBaseAuth,
     TokenCache
 )
 import requests
@@ -19,6 +18,7 @@ IS_ADMIN = "EE2_ADMIN"
 NOT_ADMIN = "NOT_ADMIN"
 
 _admin_cache = TokenCache()
+
 
 class AuthUtil(object):
     """
@@ -90,5 +90,5 @@ class AuthUtil(object):
                 e.response.reason,
                 err_msg.get('message', 'Unknown Auth error')
             ))
-        except requests.exceptions.ConnectTimeout as e:
+        except requests.exceptions.ConnectTimeout:
             raise RuntimeError("The auth service timed out while fetching user roles.")

@@ -6,6 +6,7 @@ from configparser import ConfigParser
 from execution_engine2.utils.auth import AuthUtil
 from execution_engine2.exceptions import AuthError
 
+
 class AuthUtilTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -78,5 +79,3 @@ class AuthUtilTestCase(unittest.TestCase):
         auth_util2 = self.init_auth_util()
         auth_util2.is_admin(token)
         self.assertEqual(rq_mock.call_count, 1)   # cache should be a singleton
-
-
