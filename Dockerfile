@@ -56,6 +56,7 @@ RUN make all
 WORKDIR /kb/module/scripts
 RUN chmod +x download_runner.sh && ./download_runner.sh
 RUN chmod +x download_condorflask.sh && ./download_condorflask.sh
+RUN git rev-parse HEAD > version
 
 WORKDIR /kb/module/
 

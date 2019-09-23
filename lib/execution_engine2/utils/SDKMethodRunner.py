@@ -628,12 +628,12 @@ class SDKMethodRunner:
     def _check_job_is_running(self, job_id):
         return self._check_job_is_status(job_id, Status.running.value)
 
-    def _finish_job_with_error(self, job_id, error_message, error_code):
+    def _finish_job_with_error(self, job_id, error_message, error_code, error=None):
         if error_code is None:
             error_code = ErrorCode.unknown_error.value
 
         self.get_mongo_util().finish_job_with_error(
-            job_id=job_id, error_message=error_message, error_code=error_code
+            job_id=job_id, error_message=error_message, error_code=error_code, error=error
         )
 
     def _finish_job_with_success(self, job_id, job_output):
@@ -657,8 +657,9 @@ class SDKMethodRunner:
         )
 
     def finish_job(
-        self, job_id, ctx, error_message=None, error_code=None, job_output=None
+        self, job_id, ctx, error_message=None, error_code=None, error=None, job_output=None
     ):
+
         """
         #TODO Fix too many open connections to mongoengine
 
@@ -681,7 +682,7 @@ class SDKMethodRunner:
             if error_code is None:
                 error_code = ErrorCode.job_crashed.value
             self._finish_job_with_error(
-                job_id=job_id, error_message=error_message, error_code=error_code
+                job_id=job_id, error_message=error_message, error_code=error_code, error=error
             )
         elif job_output is None:
             if error_code is None:
@@ -802,7 +803,7 @@ class SDKMethodRunner:
         jobs = Job.objects[:limit].filter(**job_filter).only(job_projection)
 
         logging.info(
-            "Searching for jobs with id_gt {dummy_start_id} id_lt {dummy_end_id}"
+            f"Searching for jobs with id_gt {dummy_ids.start} id_lt {dummy_ids.stop}"
         )
 
         return self._job_state_from_jobs(jobs)
@@ -820,9 +821,23 @@ class SDKMethodRunner:
         job_projection=None,
         job_filter=None,
         limit=None,
+        user=None,
     ):
 
-        if not self._is_admin(ctx["token"]):
+        if user is None:
+            user = ctx['user']
+
+        auth_user = self.get_auth().get_user(ctx['token'])
+        if
+
+
+        if self._is_admin(ctx["token"]):
+
+        else:
+            if user is not nm
+
+
+
             raise Exception(
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
@@ -867,7 +882,7 @@ class SDKMethodRunner:
 
         logging.info("Start fetching status for job: {}".format(job_id))
 
-        if not projection:
+        if projection is None:
             projection = []
 
         if not job_id:
@@ -904,7 +919,7 @@ class SDKMethodRunner:
 
         logging.info("Start fetching status for jobs: {}".format(job_ids))
 
-        if not projection:
+        if projection is None:
             projection = []
 
         if check_permission:
@@ -923,7 +938,7 @@ class SDKMethodRunner:
             "Start fetching all jobs status in workspace: {}".format(workspace_id)
         )
 
-        if not projection:
+        if projection is None:
             projection = []
 
         if not self._can_read_ws(

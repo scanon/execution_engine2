@@ -24,7 +24,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://bio-boris@github.com/kbase/execution_engine2"
-    GIT_COMMIT_HASH = "f0b9d5d449882d24d13a42dbf1452927a1e7c40b"
+    GIT_COMMIT_HASH = "b6fcd8327375b816658761d8893b25a90a833a81"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -45,6 +45,22 @@ class execution_engine2:
 
     def list_config(self, ctx):
         """
+        Returns the service configuration, including URL endpoints and timeouts.
+        The returned values are:
+        external-url - string - url of this service
+        kbase-endpoint - string - url of the services endpoint for the KBase environment
+        workspace-url - string - Workspace service url
+        catalog-url - string - catalog service url
+        shock-url - string - shock service url
+        handle-url - string - handle service url
+        auth-service-url - string - legacy auth service url
+        auth-service-url-v2 - string - current auth service url
+        auth-service-url-allow-insecure - boolean string (true or false) - whether to allow insecure requests
+        scratch - string - local path to scratch directory
+        executable - string - name of Job Runner executable
+        docker_timeout - int - time in seconds before a job will be timed out and terminated
+        initial_dir - string - initial dir for HTCondor to search for passed input/output files
+        transfer_input_files - initial list of files to transfer to HTCondor for job running
         :returns: instance of mapping from String to String
         """
         # ctx is the context object
@@ -54,7 +70,7 @@ class execution_engine2:
                        'shock-url', 'handle-url', 'auth-service-url', 'auth-service-url-v2',
                        'auth-service-url-allow-insecure',
                        'scratch', 'executable', 'docker_timeout',
-                       'intialdir', 'transfer_input_files']
+                       'initialdir', 'transfer_input_files']
 
         returnVal = {key: self.config.get(key) for key in public_keys}
 
@@ -69,7 +85,7 @@ class execution_engine2:
 
     def ver(self, ctx):
         """
-        Returns the current running version of the NarrativeJobService.
+        Returns the current running version of the execution_engine2 servicve as a semantic version string.
         :returns: instance of String
         """
         # ctx is the context object
@@ -88,7 +104,15 @@ class execution_engine2:
     def status(self, ctx):
         """
         Simply check the status of this service to see queue details
-        :returns: instance of type "Status" -> structure: parameter
+        :returns: instance of type "Status" (A structure representing the
+           Execution Engine status reboot_mode - if 1, then in the process of
+           rebooting stopping_mode - if 1, then in the process of stopping
+           running_tasks_total - number of total running jobs
+           running_tasks_per_user - mapping from user id to number of running
+           jobs for that user tasks_in_queue - number of jobs in the queue
+           that are not running config - the current service configuration
+           (see also list_config()) git_commit - the Git commit string
+           denoting the deployed version of EE2) -> structure: parameter
            "reboot_mode" of type "boolean" (@range [0,1]), parameter
            "stopping_mode" of type "boolean" (@range [0,1]), parameter
            "running_tasks_total" of Long, parameter "running_tasks_per_user"
@@ -155,10 +179,10 @@ class execution_engine2:
            String, parameter "job_id" of type "job_id" (A job id.), parameter
            "run_id" of String, parameter "remote_url" of String, parameter
            "source_ws_objects" of list of type "wsref" (A workspace object
-           reference of the form X/Y/Z, where X is the workspace name or id,
-           Y is the object name or id, Z is the version, which is optional.),
-           parameter "app_id" of String, parameter "meta" of mapping from
-           String to String, parameter "wsid" of Long, parameter
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String
         :returns: instance of type "job_id" (A job id.)
         """
@@ -221,10 +245,10 @@ class execution_engine2:
            String, parameter "job_id" of type "job_id" (A job id.), parameter
            "run_id" of String, parameter "remote_url" of String, parameter
            "source_ws_objects" of list of type "wsref" (A workspace object
-           reference of the form X/Y/Z, where X is the workspace name or id,
-           Y is the object name or id, Z is the version, which is optional.),
-           parameter "app_id" of String, parameter "meta" of mapping from
-           String to String, parameter "wsid" of Long, parameter
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String
         """
         # ctx is the context object
@@ -243,11 +267,8 @@ class execution_engine2:
 
     def update_job_status(self, ctx, params):
         """
-        :param params: instance of type "UpdateJobStatusParams" (typedef
-           structure { job_id job_id; boolean is_started; } UpdateJobParams;
-           typedef structure { list<string> messages; } UpdateJobResults;
-           funcdef update_job(UpdateJobParams params) returns
-           (UpdateJobResults) authentication required;) -> structure:
+        :param params: instance of type "UpdateJobStatusParams" (job_id - a
+           job id status - the new status to set for the job.) -> structure:
            parameter "job_id" of type "job_id" (A job id.), parameter
            "status" of String
         :returns: instance of type "job_id" (A job id.)
@@ -269,7 +290,10 @@ class execution_engine2:
     def add_job_logs(self, ctx, job_id, lines):
         """
         :param job_id: instance of type "job_id" (A job id.)
-        :param lines: instance of list of type "LogLine" -> structure:
+        :param lines: instance of list of type "LogLine" (line - string - a
+           string to set for the log line. is_error - int - if 1, then this
+           line should be treated as an error, default 0 ts - string - a
+           timestamp for the log line (optional) @optional ts) -> structure:
            parameter "line" of String, parameter "is_error" of type "boolean"
            (@range [0,1]), parameter "ts" of String
         :returns: instance of Long
@@ -298,7 +322,10 @@ class execution_engine2:
            common number of lines (including those in skip_lines parameter),
            this number can be used as next skip_lines value to skip already
            loaded lines next time.) -> structure: parameter "lines" of list
-           of type "LogLine" -> structure: parameter "line" of String,
+           of type "LogLine" (line - string - a string to set for the log
+           line. is_error - int - if 1, then this line should be treated as
+           an error, default 0 ts - string - a timestamp for the log line
+           (optional) @optional ts) -> structure: parameter "line" of String,
            parameter "is_error" of type "boolean" (@range [0,1]), parameter
            "ts" of String, parameter "last_line_number" of Long
         """
@@ -321,11 +348,17 @@ class execution_engine2:
     def finish_job(self, ctx, params):
         """
         Register results of already started job
-        :param params: instance of type "FinishJobParams" (error_message:
-           optional if job is finished with error job_output: job output if
-           job completed successfully) -> structure: parameter "job_id" of
-           type "job_id" (A job id.), parameter "error_message" of String,
-           parameter "job_output" of unspecified object
+        :param params: instance of type "FinishJobParams" (job_id - string -
+           the id of the job to mark finished error_message - string -
+           optional if job is finished with and error error_code - int -
+           optional if job finished with an error error - JsonRpcError -
+           optional job_output - job output if job completed successfully) ->
+           structure: parameter "job_id" of type "job_id" (A job id.),
+           parameter "error_message" of String, parameter "error_code" of
+           Long, parameter "error" of type "JsonRpcError" (Error block of
+           JSON RPC response) -> structure: parameter "name" of String,
+           parameter "code" of Long, parameter "message" of String, parameter
+           "error" of String, parameter "job_output" of unspecified object
         """
         # ctx is the context object
         #BEGIN finish_job
@@ -333,6 +366,8 @@ class execution_engine2:
         mr.finish_job(params.get('job_id'),
                       ctx,
                       error_message=params.get('error_message'),
+                      error_code=params.get('error_code'),
+                      error=params.get('error'),
                       job_output=params.get('job_output'))
 
         #END finish_job
@@ -360,11 +395,117 @@ class execution_engine2:
     def check_job(self, ctx, params):
         """
         get current status of a job
-        :param params: instance of type "CheckJobParams" (projection:
-           projecct certain fields to return. default None.) -> structure:
-           parameter "job_id" of type "job_id" (A job id.), parameter
-           "projection" of list of String
-        :returns: instance of unspecified object
+        :param params: instance of type "CheckJobParams" (projection: project
+           certain fields to return. default None. projection strings can be
+           one of: ...) -> structure: parameter "job_id" of type "job_id" (A
+           job id.), parameter "projection" of list of String
+        :returns: instance of type "JobState" (job_id - string - id of the
+           job user - string - user who started the job wsid - int - id of
+           the workspace where the job is bound authstrat - string - what
+           strategy used to authenticate the job job_input - object - inputs
+           to the job (from the run_job call)  ## TODO - verify updated -
+           string - timestamp of the last time the status was updated running
+           - string - timestamp of when it entered the running state created
+           - string - timestamp when the job was created finished - string -
+           timestamp when the job was finished status - string - status of
+           the job. one of the following: created - job has been created in
+           the service estimating - an estimation job is running to estimate
+           resources required for the main job, and which queue should be
+           used queued - job is queued to be run running - job is running on
+           a worker node finished - job was completed successfully error -
+           job is no longer running, but failed with an error terminated -
+           job is no longer running, terminated either due to user
+           cancellation, admin cancellation, or some automated task
+           error_code - int - internal reason why the job is an error. one of
+           the following: 0 - unknown 1 - job crashed 2 - job terminated by
+           automation 3 - job ran over time limit 4 - job was missing its
+           automated output document 5 - job authentication token expired
+           errormsg - string - message (e.g. stacktrace) accompanying an
+           errored job error - object - the JSON-RPC error package that
+           accompanies the error code and message terminated_code - int -
+           internal reason why a job was terminated, one of: 0 - user
+           cancellation 1 - admin cancellation 2 - terminated by some
+           automatic process @optional error @optional error_code @optional
+           errormsg @optional terminated_code @optional estimating @optional
+           running @optional finished) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "user" of String, parameter
+           "authstrat" of String, parameter "wsid" of Long, parameter
+           "status" of String, parameter "job_input" of type "RunJobParams"
+           (method - service defined in standard JSON RPC way, typically it's
+           module name from spec-file followed by '.' and name of funcdef
+           from spec-file corresponding to running method (e.g.
+           'KBaseTrees.construct_species_tree' from trees service); params -
+           the parameters of the method that performed this call; Optional
+           parameters: service_ver - specific version of deployed service,
+           last version is used if this parameter is not defined rpc_context
+           - context of current method call including nested call history
+           remote_url - run remote service call instead of local command line
+           execution. source_ws_objects - denotes the workspace objects that
+           will serve as a source of data when running the SDK method. These
+           references will be added to the autogenerated provenance. app_id -
+           the id of the Narrative application running this job (e.g.
+           repo/name) mapping<string, string> meta - user defined metadata to
+           associate with the job. This data is passed to the User and Job
+           State (UJS) service. wsid - a workspace id to associate with the
+           job. This is passed to the UJS service, which will share the job
+           based on the permissions of the workspace rather than UJS ACLs.
+           parent_job_id - UJS id of the parent of a batch job. Sub jobs will
+           add this id to the NJS database under the field "parent_job_id")
+           -> structure: parameter "method" of String, parameter "params" of
+           list of unspecified object, parameter "service_ver" of String,
+           parameter "rpc_context" of type "RpcContext" (call_stack -
+           upstream calls details including nested service calls and parent
+           jobs where calls are listed in order from outer to inner.) ->
+           structure: parameter "call_stack" of list of type "MethodCall"
+           (time - the time the call was started; method - service defined in
+           standard JSON RPC way, typically it's module name from spec-file
+           followed by '.' and name of funcdef from spec-file corresponding
+           to running method (e.g. 'KBaseTrees.construct_species_tree' from
+           trees service); job_id - job id if method is asynchronous
+           (optional field).) -> structure: parameter "time" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "method" of
+           String, parameter "job_id" of type "job_id" (A job id.), parameter
+           "run_id" of String, parameter "remote_url" of String, parameter
+           "source_ws_objects" of list of type "wsref" (A workspace object
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
+           "parent_job_id" of String, parameter "created" of type "timestamp"
+           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
+           character Z (representing the UTC timezone) or the difference in
+           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
+           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
+           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
+           "JsonRpcError" (Error block of JSON RPC response) -> structure:
+           parameter "name" of String, parameter "code" of Long, parameter
+           "message" of String, parameter "error" of String, parameter
+           "error_code" of Long, parameter "errormsg" of String, parameter
+           "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: job_state
@@ -378,20 +519,128 @@ class execution_engine2:
         #END check_job
 
         # At some point might do deeper type checking...
-        if not isinstance(job_state, object):
+        if not isinstance(job_state, dict):
             raise ValueError('Method check_job return value ' +
-                             'job_state is not type object as required.')
+                             'job_state is not type dict as required.')
         # return the results
         return [job_state]
 
     def check_jobs(self, ctx, params):
         """
-        :param params: instance of type "CheckJobsParams" -> structure:
-           parameter "job_ids" of list of type "job_id" (A job id.),
-           parameter "projection" of list of String
+        :param params: instance of type "CheckJobsParams" (As in check_job,
+           projection strings can be used to return only useful fields. see
+           CheckJobParams for allowed strings.) -> structure: parameter
+           "job_ids" of list of type "job_id" (A job id.), parameter
+           "projection" of list of String
         :returns: instance of type "CheckJobsResults" (job_states - states of
            jobs) -> structure: parameter "job_states" of mapping from type
-           "job_id" (A job id.) to unspecified object
+           "job_id" (A job id.) to type "JobState" (job_id - string - id of
+           the job user - string - user who started the job wsid - int - id
+           of the workspace where the job is bound authstrat - string - what
+           strategy used to authenticate the job job_input - object - inputs
+           to the job (from the run_job call)  ## TODO - verify updated -
+           string - timestamp of the last time the status was updated running
+           - string - timestamp of when it entered the running state created
+           - string - timestamp when the job was created finished - string -
+           timestamp when the job was finished status - string - status of
+           the job. one of the following: created - job has been created in
+           the service estimating - an estimation job is running to estimate
+           resources required for the main job, and which queue should be
+           used queued - job is queued to be run running - job is running on
+           a worker node finished - job was completed successfully error -
+           job is no longer running, but failed with an error terminated -
+           job is no longer running, terminated either due to user
+           cancellation, admin cancellation, or some automated task
+           error_code - int - internal reason why the job is an error. one of
+           the following: 0 - unknown 1 - job crashed 2 - job terminated by
+           automation 3 - job ran over time limit 4 - job was missing its
+           automated output document 5 - job authentication token expired
+           errormsg - string - message (e.g. stacktrace) accompanying an
+           errored job error - object - the JSON-RPC error package that
+           accompanies the error code and message terminated_code - int -
+           internal reason why a job was terminated, one of: 0 - user
+           cancellation 1 - admin cancellation 2 - terminated by some
+           automatic process @optional error @optional error_code @optional
+           errormsg @optional terminated_code @optional estimating @optional
+           running @optional finished) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "user" of String, parameter
+           "authstrat" of String, parameter "wsid" of Long, parameter
+           "status" of String, parameter "job_input" of type "RunJobParams"
+           (method - service defined in standard JSON RPC way, typically it's
+           module name from spec-file followed by '.' and name of funcdef
+           from spec-file corresponding to running method (e.g.
+           'KBaseTrees.construct_species_tree' from trees service); params -
+           the parameters of the method that performed this call; Optional
+           parameters: service_ver - specific version of deployed service,
+           last version is used if this parameter is not defined rpc_context
+           - context of current method call including nested call history
+           remote_url - run remote service call instead of local command line
+           execution. source_ws_objects - denotes the workspace objects that
+           will serve as a source of data when running the SDK method. These
+           references will be added to the autogenerated provenance. app_id -
+           the id of the Narrative application running this job (e.g.
+           repo/name) mapping<string, string> meta - user defined metadata to
+           associate with the job. This data is passed to the User and Job
+           State (UJS) service. wsid - a workspace id to associate with the
+           job. This is passed to the UJS service, which will share the job
+           based on the permissions of the workspace rather than UJS ACLs.
+           parent_job_id - UJS id of the parent of a batch job. Sub jobs will
+           add this id to the NJS database under the field "parent_job_id")
+           -> structure: parameter "method" of String, parameter "params" of
+           list of unspecified object, parameter "service_ver" of String,
+           parameter "rpc_context" of type "RpcContext" (call_stack -
+           upstream calls details including nested service calls and parent
+           jobs where calls are listed in order from outer to inner.) ->
+           structure: parameter "call_stack" of list of type "MethodCall"
+           (time - the time the call was started; method - service defined in
+           standard JSON RPC way, typically it's module name from spec-file
+           followed by '.' and name of funcdef from spec-file corresponding
+           to running method (e.g. 'KBaseTrees.construct_species_tree' from
+           trees service); job_id - job id if method is asynchronous
+           (optional field).) -> structure: parameter "time" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "method" of
+           String, parameter "job_id" of type "job_id" (A job id.), parameter
+           "run_id" of String, parameter "remote_url" of String, parameter
+           "source_ws_objects" of list of type "wsref" (A workspace object
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
+           "parent_job_id" of String, parameter "created" of type "timestamp"
+           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
+           character Z (representing the UTC timezone) or the difference in
+           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
+           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
+           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
+           "JsonRpcError" (Error block of JSON RPC response) -> structure:
+           parameter "name" of String, parameter "code" of Long, parameter
+           "message" of String, parameter "error" of String, parameter
+           "error_code" of Long, parameter "errormsg" of String, parameter
+           "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -414,12 +663,120 @@ class execution_engine2:
 
     def check_workspace_jobs(self, ctx, params):
         """
-        :param params: instance of type "CheckWorkspaceJobsParams" (Check job
-           for all jobs in a given workspace) -> structure: parameter
-           "workspace_id" of String, parameter "projection" of list of String
+        :param params: instance of type "CheckWorkspaceJobsParams" (Check
+           status of all jobs in a given workspace. Only checks jobs that
+           have been associated with a workspace at their creation.) ->
+           structure: parameter "workspace_id" of String, parameter
+           "projection" of list of String
         :returns: instance of type "CheckJobsResults" (job_states - states of
            jobs) -> structure: parameter "job_states" of mapping from type
-           "job_id" (A job id.) to unspecified object
+           "job_id" (A job id.) to type "JobState" (job_id - string - id of
+           the job user - string - user who started the job wsid - int - id
+           of the workspace where the job is bound authstrat - string - what
+           strategy used to authenticate the job job_input - object - inputs
+           to the job (from the run_job call)  ## TODO - verify updated -
+           string - timestamp of the last time the status was updated running
+           - string - timestamp of when it entered the running state created
+           - string - timestamp when the job was created finished - string -
+           timestamp when the job was finished status - string - status of
+           the job. one of the following: created - job has been created in
+           the service estimating - an estimation job is running to estimate
+           resources required for the main job, and which queue should be
+           used queued - job is queued to be run running - job is running on
+           a worker node finished - job was completed successfully error -
+           job is no longer running, but failed with an error terminated -
+           job is no longer running, terminated either due to user
+           cancellation, admin cancellation, or some automated task
+           error_code - int - internal reason why the job is an error. one of
+           the following: 0 - unknown 1 - job crashed 2 - job terminated by
+           automation 3 - job ran over time limit 4 - job was missing its
+           automated output document 5 - job authentication token expired
+           errormsg - string - message (e.g. stacktrace) accompanying an
+           errored job error - object - the JSON-RPC error package that
+           accompanies the error code and message terminated_code - int -
+           internal reason why a job was terminated, one of: 0 - user
+           cancellation 1 - admin cancellation 2 - terminated by some
+           automatic process @optional error @optional error_code @optional
+           errormsg @optional terminated_code @optional estimating @optional
+           running @optional finished) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "user" of String, parameter
+           "authstrat" of String, parameter "wsid" of Long, parameter
+           "status" of String, parameter "job_input" of type "RunJobParams"
+           (method - service defined in standard JSON RPC way, typically it's
+           module name from spec-file followed by '.' and name of funcdef
+           from spec-file corresponding to running method (e.g.
+           'KBaseTrees.construct_species_tree' from trees service); params -
+           the parameters of the method that performed this call; Optional
+           parameters: service_ver - specific version of deployed service,
+           last version is used if this parameter is not defined rpc_context
+           - context of current method call including nested call history
+           remote_url - run remote service call instead of local command line
+           execution. source_ws_objects - denotes the workspace objects that
+           will serve as a source of data when running the SDK method. These
+           references will be added to the autogenerated provenance. app_id -
+           the id of the Narrative application running this job (e.g.
+           repo/name) mapping<string, string> meta - user defined metadata to
+           associate with the job. This data is passed to the User and Job
+           State (UJS) service. wsid - a workspace id to associate with the
+           job. This is passed to the UJS service, which will share the job
+           based on the permissions of the workspace rather than UJS ACLs.
+           parent_job_id - UJS id of the parent of a batch job. Sub jobs will
+           add this id to the NJS database under the field "parent_job_id")
+           -> structure: parameter "method" of String, parameter "params" of
+           list of unspecified object, parameter "service_ver" of String,
+           parameter "rpc_context" of type "RpcContext" (call_stack -
+           upstream calls details including nested service calls and parent
+           jobs where calls are listed in order from outer to inner.) ->
+           structure: parameter "call_stack" of list of type "MethodCall"
+           (time - the time the call was started; method - service defined in
+           standard JSON RPC way, typically it's module name from spec-file
+           followed by '.' and name of funcdef from spec-file corresponding
+           to running method (e.g. 'KBaseTrees.construct_species_tree' from
+           trees service); job_id - job id if method is asynchronous
+           (optional field).) -> structure: parameter "time" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "method" of
+           String, parameter "job_id" of type "job_id" (A job id.), parameter
+           "run_id" of String, parameter "remote_url" of String, parameter
+           "source_ws_objects" of list of type "wsref" (A workspace object
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
+           "parent_job_id" of String, parameter "created" of type "timestamp"
+           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
+           character Z (representing the UTC timezone) or the difference in
+           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
+           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
+           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
+           "JsonRpcError" (Error block of JSON RPC response) -> structure:
+           parameter "name" of String, parameter "code" of Long, parameter
+           "message" of String, parameter "error" of String, parameter
+           "error_code" of Long, parameter "errormsg" of String, parameter
+           "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -439,49 +796,146 @@ class execution_engine2:
         # return the results
         return [returnVal]
 
-    def check_jobs_date_range(self, ctx, params):
-        """
-        :param params: instance of type "CheckJobsDateRangeParams" (Check job
-           for all jobs in a given date range for all users (Admin function))
-           -> structure: parameter "start_date" of String, parameter
-           "end_date" of String, parameter "projection" of list of String
-        :returns: instance of type "CheckJobsResults" (job_states - states of
-           jobs) -> structure: parameter "job_states" of mapping from type
-           "job_id" (A job id.) to unspecified object
-        """
-        # ctx is the context object
-        # return variables are: returnVal
-        #BEGIN check_jobs_date_range
-        mr = SDKMethodRunner(self.config)
-        returnVal = mr.check_jobs_date_range(
-            ctx=ctx,
-            creation_start_date=params.get("start_date"),
-            creation_end_date=params.get("end_date"),
-            job_projection=params.get("projection"),
-            job_filter=params.get("filter"),
-            limit=params.get("limit"),
-        )
-
-        #END check_jobs_date_range
-
-        # At some point might do deeper type checking...
-        if not isinstance(returnVal, dict):
-            raise ValueError('Method check_jobs_date_range return value ' +
-                             'returnVal is not type dict as required.')
-        # return the results
-        return [returnVal]
-
     def check_jobs_date_range_for_user(self, ctx, params):
         """
-        :param params: instance of type "CheckJobsDateRangeForUserParams"
-           (Check job for all jobs in a given date range for a given user
-           (Regular users can see their own jobs, admins can see other
-           people's jobs)) -> structure: parameter "user" of String,
-           parameter "start_date" of String, parameter "end_date" of String,
-           parameter "projection" of list of String
+        :param params: instance of type "CheckJobsDateRangeParams"
+           (Projection Fields user = StringField(required=True) authstrat =
+           StringField( required=True, default="kbaseworkspace",
+           validation=valid_authstrat ) wsid = IntField(required=True) status
+           = StringField(required=True, validation=valid_status) updated =
+           DateTimeField(default=datetime.datetime.utcnow, autonow=True)
+           estimating = DateTimeField(default=None)  # Time when job began
+           estimating running = DateTimeField(default=None)  # Time when job
+           started # Time when job finished, errored out, or was terminated
+           by the user/admin finished = DateTimeField(default=None) errormsg
+           = StringField() msg = StringField() error = DynamicField()
+           terminated_code = IntField(validation=valid_termination_code)
+           error_code = IntField(validation=valid_errorcode) scheduler_type =
+           StringField() scheduler_id = StringField() scheduler_estimator_id
+           = StringField() job_input = EmbeddedDocumentField(JobInput,
+           required=True) job_output = DynamicField() /* /* Check job for all
+           jobs in a given date range for all users (Admin function) string
+           start_date; # Filter based on creation date string end_date; #
+           Filter based on creation date list<string> projection; # A list of
+           fields to include in the projection, default ALL See "Projection
+           Fields" list<string> filter; # A list of simple filters to "AND"
+           together, such as error_code=1, wsid=1234, terminated_code = 1 int
+           limit; # The maximum number of records to return #TODO Make a
+           better API Decision Here string user; # Optional. Defaults off of
+           your token @optional projection @optional filter @optional limit
+           @optional user) -> structure: parameter "start_date" of String,
+           parameter "end_date" of String, parameter "projection" of list of
+           String, parameter "filter" of list of String, parameter "limit" of
+           Long, parameter "user" of String
         :returns: instance of type "CheckJobsResults" (job_states - states of
            jobs) -> structure: parameter "job_states" of mapping from type
-           "job_id" (A job id.) to unspecified object
+           "job_id" (A job id.) to type "JobState" (job_id - string - id of
+           the job user - string - user who started the job wsid - int - id
+           of the workspace where the job is bound authstrat - string - what
+           strategy used to authenticate the job job_input - object - inputs
+           to the job (from the run_job call)  ## TODO - verify updated -
+           string - timestamp of the last time the status was updated running
+           - string - timestamp of when it entered the running state created
+           - string - timestamp when the job was created finished - string -
+           timestamp when the job was finished status - string - status of
+           the job. one of the following: created - job has been created in
+           the service estimating - an estimation job is running to estimate
+           resources required for the main job, and which queue should be
+           used queued - job is queued to be run running - job is running on
+           a worker node finished - job was completed successfully error -
+           job is no longer running, but failed with an error terminated -
+           job is no longer running, terminated either due to user
+           cancellation, admin cancellation, or some automated task
+           error_code - int - internal reason why the job is an error. one of
+           the following: 0 - unknown 1 - job crashed 2 - job terminated by
+           automation 3 - job ran over time limit 4 - job was missing its
+           automated output document 5 - job authentication token expired
+           errormsg - string - message (e.g. stacktrace) accompanying an
+           errored job error - object - the JSON-RPC error package that
+           accompanies the error code and message terminated_code - int -
+           internal reason why a job was terminated, one of: 0 - user
+           cancellation 1 - admin cancellation 2 - terminated by some
+           automatic process @optional error @optional error_code @optional
+           errormsg @optional terminated_code @optional estimating @optional
+           running @optional finished) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "user" of String, parameter
+           "authstrat" of String, parameter "wsid" of Long, parameter
+           "status" of String, parameter "job_input" of type "RunJobParams"
+           (method - service defined in standard JSON RPC way, typically it's
+           module name from spec-file followed by '.' and name of funcdef
+           from spec-file corresponding to running method (e.g.
+           'KBaseTrees.construct_species_tree' from trees service); params -
+           the parameters of the method that performed this call; Optional
+           parameters: service_ver - specific version of deployed service,
+           last version is used if this parameter is not defined rpc_context
+           - context of current method call including nested call history
+           remote_url - run remote service call instead of local command line
+           execution. source_ws_objects - denotes the workspace objects that
+           will serve as a source of data when running the SDK method. These
+           references will be added to the autogenerated provenance. app_id -
+           the id of the Narrative application running this job (e.g.
+           repo/name) mapping<string, string> meta - user defined metadata to
+           associate with the job. This data is passed to the User and Job
+           State (UJS) service. wsid - a workspace id to associate with the
+           job. This is passed to the UJS service, which will share the job
+           based on the permissions of the workspace rather than UJS ACLs.
+           parent_job_id - UJS id of the parent of a batch job. Sub jobs will
+           add this id to the NJS database under the field "parent_job_id")
+           -> structure: parameter "method" of String, parameter "params" of
+           list of unspecified object, parameter "service_ver" of String,
+           parameter "rpc_context" of type "RpcContext" (call_stack -
+           upstream calls details including nested service calls and parent
+           jobs where calls are listed in order from outer to inner.) ->
+           structure: parameter "call_stack" of list of type "MethodCall"
+           (time - the time the call was started; method - service defined in
+           standard JSON RPC way, typically it's module name from spec-file
+           followed by '.' and name of funcdef from spec-file corresponding
+           to running method (e.g. 'KBaseTrees.construct_species_tree' from
+           trees service); job_id - job id if method is asynchronous
+           (optional field).) -> structure: parameter "time" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "method" of
+           String, parameter "job_id" of type "job_id" (A job id.), parameter
+           "run_id" of String, parameter "remote_url" of String, parameter
+           "source_ws_objects" of list of type "wsref" (A workspace object
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
+           "parent_job_id" of String, parameter "created" of type "timestamp"
+           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
+           character Z (representing the UTC timezone) or the difference in
+           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
+           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
+           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
+           "JsonRpcError" (Error block of JSON RPC response) -> structure:
+           parameter "name" of String, parameter "code" of Long, parameter
+           "message" of String, parameter "error" of String, parameter
+           "error_code" of Long, parameter "errormsg" of String, parameter
+           "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -494,8 +948,8 @@ class execution_engine2:
             job_projection=params.get("projection"),
             job_filter=params.get("filter"),
             limit=params.get("limit"),
+            user=params.get("user")
         )
-
         #END check_jobs_date_range_for_user
 
         # At some point might do deeper type checking...
@@ -505,8 +959,162 @@ class execution_engine2:
         # return the results
         return [returnVal]
 
+    def check_jobs_date_range_for_all(self, ctx, params):
+        """
+        :param params: instance of type "CheckJobsDateRangeParams"
+           (Projection Fields user = StringField(required=True) authstrat =
+           StringField( required=True, default="kbaseworkspace",
+           validation=valid_authstrat ) wsid = IntField(required=True) status
+           = StringField(required=True, validation=valid_status) updated =
+           DateTimeField(default=datetime.datetime.utcnow, autonow=True)
+           estimating = DateTimeField(default=None)  # Time when job began
+           estimating running = DateTimeField(default=None)  # Time when job
+           started # Time when job finished, errored out, or was terminated
+           by the user/admin finished = DateTimeField(default=None) errormsg
+           = StringField() msg = StringField() error = DynamicField()
+           terminated_code = IntField(validation=valid_termination_code)
+           error_code = IntField(validation=valid_errorcode) scheduler_type =
+           StringField() scheduler_id = StringField() scheduler_estimator_id
+           = StringField() job_input = EmbeddedDocumentField(JobInput,
+           required=True) job_output = DynamicField() /* /* Check job for all
+           jobs in a given date range for all users (Admin function) string
+           start_date; # Filter based on creation date string end_date; #
+           Filter based on creation date list<string> projection; # A list of
+           fields to include in the projection, default ALL See "Projection
+           Fields" list<string> filter; # A list of simple filters to "AND"
+           together, such as error_code=1, wsid=1234, terminated_code = 1 int
+           limit; # The maximum number of records to return #TODO Make a
+           better API Decision Here string user; # Optional. Defaults off of
+           your token @optional projection @optional filter @optional limit
+           @optional user) -> structure: parameter "start_date" of String,
+           parameter "end_date" of String, parameter "projection" of list of
+           String, parameter "filter" of list of String, parameter "limit" of
+           Long, parameter "user" of String
+        :returns: instance of type "CheckJobsResults" (job_states - states of
+           jobs) -> structure: parameter "job_states" of mapping from type
+           "job_id" (A job id.) to type "JobState" (job_id - string - id of
+           the job user - string - user who started the job wsid - int - id
+           of the workspace where the job is bound authstrat - string - what
+           strategy used to authenticate the job job_input - object - inputs
+           to the job (from the run_job call)  ## TODO - verify updated -
+           string - timestamp of the last time the status was updated running
+           - string - timestamp of when it entered the running state created
+           - string - timestamp when the job was created finished - string -
+           timestamp when the job was finished status - string - status of
+           the job. one of the following: created - job has been created in
+           the service estimating - an estimation job is running to estimate
+           resources required for the main job, and which queue should be
+           used queued - job is queued to be run running - job is running on
+           a worker node finished - job was completed successfully error -
+           job is no longer running, but failed with an error terminated -
+           job is no longer running, terminated either due to user
+           cancellation, admin cancellation, or some automated task
+           error_code - int - internal reason why the job is an error. one of
+           the following: 0 - unknown 1 - job crashed 2 - job terminated by
+           automation 3 - job ran over time limit 4 - job was missing its
+           automated output document 5 - job authentication token expired
+           errormsg - string - message (e.g. stacktrace) accompanying an
+           errored job error - object - the JSON-RPC error package that
+           accompanies the error code and message terminated_code - int -
+           internal reason why a job was terminated, one of: 0 - user
+           cancellation 1 - admin cancellation 2 - terminated by some
+           automatic process @optional error @optional error_code @optional
+           errormsg @optional terminated_code @optional estimating @optional
+           running @optional finished) -> structure: parameter "job_id" of
+           type "job_id" (A job id.), parameter "user" of String, parameter
+           "authstrat" of String, parameter "wsid" of Long, parameter
+           "status" of String, parameter "job_input" of type "RunJobParams"
+           (method - service defined in standard JSON RPC way, typically it's
+           module name from spec-file followed by '.' and name of funcdef
+           from spec-file corresponding to running method (e.g.
+           'KBaseTrees.construct_species_tree' from trees service); params -
+           the parameters of the method that performed this call; Optional
+           parameters: service_ver - specific version of deployed service,
+           last version is used if this parameter is not defined rpc_context
+           - context of current method call including nested call history
+           remote_url - run remote service call instead of local command line
+           execution. source_ws_objects - denotes the workspace objects that
+           will serve as a source of data when running the SDK method. These
+           references will be added to the autogenerated provenance. app_id -
+           the id of the Narrative application running this job (e.g.
+           repo/name) mapping<string, string> meta - user defined metadata to
+           associate with the job. This data is passed to the User and Job
+           State (UJS) service. wsid - a workspace id to associate with the
+           job. This is passed to the UJS service, which will share the job
+           based on the permissions of the workspace rather than UJS ACLs.
+           parent_job_id - UJS id of the parent of a batch job. Sub jobs will
+           add this id to the NJS database under the field "parent_job_id")
+           -> structure: parameter "method" of String, parameter "params" of
+           list of unspecified object, parameter "service_ver" of String,
+           parameter "rpc_context" of type "RpcContext" (call_stack -
+           upstream calls details including nested service calls and parent
+           jobs where calls are listed in order from outer to inner.) ->
+           structure: parameter "call_stack" of list of type "MethodCall"
+           (time - the time the call was started; method - service defined in
+           standard JSON RPC way, typically it's module name from spec-file
+           followed by '.' and name of funcdef from spec-file corresponding
+           to running method (e.g. 'KBaseTrees.construct_species_tree' from
+           trees service); job_id - job id if method is asynchronous
+           (optional field).) -> structure: parameter "time" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "method" of
+           String, parameter "job_id" of type "job_id" (A job id.), parameter
+           "run_id" of String, parameter "remote_url" of String, parameter
+           "source_ws_objects" of list of type "wsref" (A workspace object
+           reference of the form X/Y or X/Y/Z, where X is the workspace name
+           or id, Y is the object name or id, Z is the version, which is
+           optional.), parameter "app_id" of String, parameter "meta" of
+           mapping from String to String, parameter "wsid" of Long, parameter
+           "parent_job_id" of String, parameter "created" of type "timestamp"
+           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
+           character Z (representing the UTC timezone) or the difference in
+           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
+           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
+           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
+           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
+           either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
+           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
+           Z is either the character Z (representing the UTC timezone) or the
+           difference in time to UTC in the format +/-HHMM, eg:
+           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
+           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
+           "JsonRpcError" (Error block of JSON RPC response) -> structure:
+           parameter "name" of String, parameter "code" of Long, parameter
+           "message" of String, parameter "error" of String, parameter
+           "error_code" of Long, parameter "errormsg" of String, parameter
+           "terminated_code" of Long
+        """
+        # ctx is the context object
+        # return variables are: returnVal
+        #BEGIN check_jobs_date_range_for_all
+        #END check_jobs_date_range_for_all
+
+        # At some point might do deeper type checking...
+        if not isinstance(returnVal, dict):
+            raise ValueError('Method check_jobs_date_range_for_all return value ' +
+                             'returnVal is not type dict as required.')
+        # return the results
+        return [returnVal]
+
     def cancel_job(self, ctx, params):
         """
+        Cancels a job. This results in the status becoming "terminated" with termination_code 0.
         :param params: instance of type "CancelJobParams" -> structure:
            parameter "job_id" of type "job_id" (A job id.)
         """
@@ -547,6 +1155,7 @@ class execution_engine2:
 
     def get_job_status(self, ctx, job_id):
         """
+        Just returns the status string for a job of a given id.
         :param job_id: instance of type "job_id" (A job id.)
         :returns: instance of type "GetJobStatusResult" -> structure:
            parameter "status" of String
