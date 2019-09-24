@@ -12,7 +12,7 @@ from installed_clients.authclient import (
 )
 import requests
 from json import JSONDecodeError
-from ..exceptions import AuthError
+from execution_engine2.exceptions import AuthError
 
 IS_ADMIN = "EE2_ADMIN"
 NOT_ADMIN = "NOT_ADMIN"
@@ -20,7 +20,7 @@ NOT_ADMIN = "NOT_ADMIN"
 _admin_cache = TokenCache()
 
 
-class AuthUtil(object):
+class AuthUtil:
     """
     A simple Auth utility. This is NOT an auth client, but a utility class that's
     used to look up user roles.

@@ -23,13 +23,13 @@ from execution_engine2.db.models.models import (
     LogLines,
     ErrorCode,
 )
-from execution_engine2.utils.Condor import Condor
-from execution_engine2.db.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
-from .utils.auth import AuthUtil
-from .exceptions import AuthError
+from execution_engine2.utils.Condor import Condor
+from execution_engine2.db.MongoUtil import MongoUtil
+from execution_engine2.utils.auth import AuthUtil
+from execution_engine2.exceptions import AuthError
 
 
 debug = json.loads(os.environ.get("debug", "False").lower())
