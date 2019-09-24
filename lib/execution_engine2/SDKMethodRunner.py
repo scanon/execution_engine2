@@ -28,7 +28,7 @@ from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
 from execution_engine2.utils.Condor import Condor
 from execution_engine2.db.MongoUtil import MongoUtil
-from execution_engine2.utils.auth import AuthUtil
+from execution_engine2.authorization.roles import AdminAuthUtil
 from execution_engine2.exceptions import AuthError
 
 
@@ -311,7 +311,7 @@ class SDKMethodRunner:
 
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
-        self.auth_util = AuthUtil(self.auth_url, self.admin_roles)
+        self.admin_auth_util = AdminAuthUtil(self.auth_url, self.admin_roles)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -469,7 +469,7 @@ class SDKMethodRunner:
         logging.info('Attempting to run administrative command "f{command}" as user "')
         is_admin = False
         try:
-            is_admin = self.auth_util.is_admin(token)
+            is_admin = self.admin_auth_util.is_admin(token)
         except AuthError as e:
             logging.error(f"An auth error occurred: {str(e)}")
             raise e
