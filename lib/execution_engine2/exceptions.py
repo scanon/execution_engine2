@@ -20,3 +20,8 @@ class MalformedJobIdException(Exception):
 
 class RecordNotFoundException(Exception):
     pass
+
+
+class AuthError(Exception):
+    """Raised if a user is unauthorized for a particular action, or doesn't have the right auth role"""
+    pass

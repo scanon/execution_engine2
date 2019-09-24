@@ -6,8 +6,8 @@ from configparser import ConfigParser
 
 from bson.objectid import ObjectId
 
-from execution_engine2.models.models import Job, JobInput, Meta
-from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.db.models.models import Job, JobInput, Meta
+from execution_engine2.db.MongoUtil import MongoUtil
 from test.mongo_test_helper import MongoTestHelper
 
 logging.basicConfig(level=logging.INFO)

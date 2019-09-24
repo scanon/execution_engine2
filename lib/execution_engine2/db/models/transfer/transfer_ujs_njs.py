@@ -8,7 +8,7 @@ from mongoengine import  connect
 
 
 try:
-    from lib.execution_engine2.models.models import (
+    from lib.execution_engine2.db.models.models import (
         Job,
         Status,
         ErrorCode,

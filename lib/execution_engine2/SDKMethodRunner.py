@@ -13,7 +13,7 @@ from execution_engine2.exceptions import (
     RecordNotFoundException,
     InvalidStatusTransitionException,
 )
-from execution_engine2.models.models import (
+from execution_engine2.db.models.models import (
     Job,
     JobInput,
     JobOutput,
@@ -23,11 +23,14 @@ from execution_engine2.models.models import (
     LogLines,
     ErrorCode,
 )
-from execution_engine2.utils.Condor import Condor
-from execution_engine2.utils.MongoUtil import MongoUtil
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
+from execution_engine2.utils.Condor import Condor
+from execution_engine2.db.MongoUtil import MongoUtil
+from execution_engine2.utils.auth import AuthUtil
+from execution_engine2.exceptions import AuthError
+
 
 debug = json.loads(os.environ.get("debug", "False").lower())
 
@@ -147,15 +150,6 @@ class SDKMethodRunner:
         if self.workspace is None:
             self.workspace = Workspace(token=ctx["token"], url=self.workspace_url)
         return self.workspace
-
-    def get_auth(self, ctx=None):
-        if ctx is None:
-            ctx = self.ctx
-        if ctx is None:
-            raise Exception("Need to provide credentials for the auth client")
-        if self.auth is None:
-            self.auth = KBaseAuth(token=ctx["token"], auth_url=self.auth_url)
-        return self.auth
 
     class WorkspacePermissions(Enum):
         ADMINISTRATOR = "a"
@@ -310,7 +304,6 @@ class SDKMethodRunner:
         self.condor = None
         self.workspace = None
         self.auth = None
-        self.is_admin = None
         self.admin_roles = config.get("admin_roles", ["EE2_ADMIN"])
 
         catalog_url = config.get("catalog-url")
@@ -318,6 +311,7 @@ class SDKMethodRunner:
 
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
+        self.auth_util = AuthUtil(self.auth_url, self.admin_roles)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -463,26 +457,6 @@ class SDKMethodRunner:
         }
         return commands[command](**p[command])
 
-    def _is_admin(self, token):
-        """
-        Cache whether or not you are an ee2 admin based on your token / custom_roles
-        :param token:
-        :return:
-        """
-        if self.is_admin is None:
-            logging.info("URL:" + self.auth_url + "/api/V2/me")
-            r = requests.get(
-                self.auth_url + "/api/V2/me", headers={"Authorization": token}
-            )
-            logging.info(r.json())
-            roles = r.json().get("customroles", [])
-            if any(r in self.admin_roles for r in roles):
-                self.is_admin = True
-            else:
-                self.is_admin = False
-
-        return self.is_admin
-
     def administer(self, command, params, token):
         """
         Run commands as an admin
@@ -492,10 +466,19 @@ class SDKMethodRunner:
         :param token: The auth token (Will be checked for the correct auth role)
         :return:
         """
-        if self._is_admin(token):
+        logging.info('Attempting to run administrative command "f{command}" as user "')
+        is_admin = False
+        try:
+            is_admin = self.auth_util.is_admin(token)
+        except AuthError as e:
+            logging.error(f"An auth error occurred: {str(e)}")
+            raise e
+        except RuntimeError as e:
+            logging.error(f"A runtime error occurred while looking up user roles: {str(e)}")
+        if is_admin:
             self._run_admin_command(command, params)
         else:
-            raise Exception(
+            raise AuthError(
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
 

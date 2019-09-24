@@ -1,5 +1,5 @@
 from mongoengine import connect
-from lib.execution_engine2.models.models import Job, JobOutput, JobInput
+from lib.execution_engine2.db.models.models import Job, JobOutput, JobInput
 
 connect("jobs")
 

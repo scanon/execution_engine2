@@ -4,8 +4,8 @@ import unittest
 
 logging.basicConfig(level=logging.INFO)
 
-from execution_engine2.models.models import LogLines, JobLog
-from execution_engine2.utils.MongoUtil import MongoUtil
+from execution_engine2.db.models.models import LogLines, JobLog
+from execution_engine2.db.MongoUtil import MongoUtil
 from test.test_utils import read_config_into_dict, bootstrap, get_example_job
 
 bootstrap()
