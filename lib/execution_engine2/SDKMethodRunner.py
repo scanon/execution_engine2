@@ -30,6 +30,7 @@ from execution_engine2.utils.Condor import Condor
 from execution_engine2.db.MongoUtil import MongoUtil
 from execution_engine2.authorization.roles import AdminAuthUtil
 from execution_engine2.exceptions import AuthError
+from execution_engine2.authorization.authstrategy import get_auth_strategy
 
 
 debug = json.loads(os.environ.get("debug", "False").lower())
@@ -312,6 +313,8 @@ class SDKMethodRunner:
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
         self.admin_auth_util = AdminAuthUtil(self.auth_url, self.admin_roles)
+        self.user_id = ctx.get("user_id")
+        self.is_admin = AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.user_id)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -481,6 +484,10 @@ class SDKMethodRunner:
             raise AuthError(
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
+
+    def check_job_permission(self, job: Job):
+        authstrat = get_auth_strategy(job.authstrat, self.ctx['user_id'], self.ctx['token'], self.config)
+
 
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
