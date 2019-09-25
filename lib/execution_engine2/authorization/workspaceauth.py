@@ -2,6 +2,7 @@ from typing import List, Dict
 from enum import Enum
 from execution_engine2.authorization.authstrategy import AuthStrategy
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.baseclient import ServerError
 
 STRATEGY = "kbaseworkspace"
 
@@ -93,11 +94,16 @@ class WorkspaceAuth(AuthStrategy):
         returns user permissions as a dictionary. Keys are the workspace ids, and permissions
         are the user's WorkspacePermission for that workspace.
 
-        If any workspace is deleted, this raises a ServerError.
+        If any workspace is deleted, or any other Workspace error happens, this raises a
+        RuntimeError.
         """
         params = [{"id": w} for w in ws_ids]
-        perm_list = self.ws_client.get_permissions_mass({"workspaces": params})["perms"]
+        try:
+            perm_list = self.ws_client.get_permissions_mass({"workspaces": params})["perms"]
+        except ServerError as e:
+            raise RuntimeError("An error occurred while fetching user permissions from the Workspace", e)
+
         perms = dict()
         for idx, ws_id in enumerate(ws_ids):
             perms[ws_id] = WorkspacePermission(perm_list[idx].get(self.user_id, 'n'))
-
+        return perms
