@@ -30,7 +30,12 @@ from execution_engine2.utils.Condor import Condor
 from execution_engine2.db.MongoUtil import MongoUtil
 from execution_engine2.authorization.roles import AdminAuthUtil
 from execution_engine2.exceptions import AuthError
-from execution_engine2.authorization.authstrategy import get_auth_strategy
+from execution_engine2.authorization.authstrategy import (
+    can_read_job,
+    can_write_job,
+    can_read_jobs,
+    can_write_jobs
+)
 
 
 debug = json.loads(os.environ.get("debug", "False").lower())
@@ -297,8 +302,7 @@ class SDKMethodRunner:
 
         return log.stored_line_count
 
-    def __init__(self, config, ctx=None):
-        self.ctx = ctx
+    def __init__(self, config, user_id=None, token=None):
         self.deployment_config_fp = os.environ.get("KB_DEPLOYMENT_CONFIG")
         self.config = config
         self.mongo_util = None
@@ -313,8 +317,11 @@ class SDKMethodRunner:
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
         self.admin_auth_util = AdminAuthUtil(self.auth_url, self.admin_roles)
-        self.user_id = ctx.get("user_id")
-        self.is_admin = AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.user_id)
+        self.user_id = user_id
+        self.token = token
+        self.is_admin = False
+        if self.token:
+            AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.token)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
