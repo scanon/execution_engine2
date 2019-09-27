@@ -5,7 +5,6 @@ This doesn't include checking admin rights.
 from typing import Dict, List
 from execution_engine2.authorization.basestrategy import AuthStrategy
 from execution_engine2.authorization.workspaceauth import WorkspaceAuth
-from execution_engine2.authorization.executionengine import ExecutionEngineAuth
 from execution_engine2.db.models.models import Job
 import logging
 
