@@ -1,8 +1,5 @@
 import abc
 from typing import List, Dict
-from installed_clients.WorkspaceClient import Workspace
-from installed_clients.baseclient import ServerError
-
 
 WS_AUTH_STRAT = "kbaseworkspace"
 
