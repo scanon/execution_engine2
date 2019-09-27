@@ -1,8 +1,6 @@
 import unittest
-import requests
 import requests_mock
 import os
-import json
 from configparser import ConfigParser
 from execution_engine2.authorization.workspaceauth import WorkspaceAuth
 
