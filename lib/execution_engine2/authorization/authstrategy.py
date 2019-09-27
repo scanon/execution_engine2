@@ -12,19 +12,6 @@ import logging
 KBASE_WS_AUTHSTRAT = "kbaseworkspace"
 
 
-def get_auth_strategy(authstrat: str, user_id: str, token: str, config: Dict[str, str]) -> AuthStrategy:
-    """
-    Pretty simple for now, makes a new WorkspaceAuth strat.
-    Other authstrats (if we ever make them) can also get made here.
-    """
-    if authstrat == KBASE_WS_AUTHSTRAT:
-        return WorkspaceAuth(token, user_id, config['workspace-url'])
-    elif authstrat == "execution_engine":
-        return ExecutionEngineAuth(token, user_id)
-    else:
-        raise ValueError(f"Unknown auth strategy {authstrat}")
-
-
 def can_read_job(job: Job, user_id: str, token: str, config: Dict[str, str]) -> bool:
     """
     Returns True if the user has read access to the job, False otherwise.

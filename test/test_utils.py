@@ -7,10 +7,10 @@ from execution_engine2.db.models.models import Job, JobInput, Meta
 from dateutil import parser as dateparser
 
 
-def get_example_job():
+def get_example_job(user: str = "boris", wsid: int = 123, authstrat: str = "kbaseworkspace") -> Job:
     j = Job()
-    j.user = "boris"
-    j.wsid = 123
+    j.user = user
+    j.wsid = wsid
     job_input = JobInput()
     job_input.wsid = j.wsid
 
@@ -25,6 +25,7 @@ def get_example_job():
     job_input.narrative_cell_info = m
     j.job_input = job_input
     j.status = "queued"
+    j.authstrat = authstrat
 
     return j
 
