@@ -492,10 +492,6 @@ class SDKMethodRunner:
                 f"You are not authorized. Please request a role from {self.admin_roles}"
             )
 
-    def check_job_permission(self, job: Job):
-        authstrat = get_auth_strategy(job.authstrat, self.ctx['user_id'], self.ctx['token'], self.config)
-
-
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
         #TODO Check if administrator flag is passed

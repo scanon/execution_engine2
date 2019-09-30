@@ -5,6 +5,7 @@ This doesn't include checking admin rights.
 from typing import Dict, List
 from execution_engine2.authorization.workspaceauth import WorkspaceAuth
 from execution_engine2.db.models.models import Job
+from collections import defaultdict
 
 KBASE_WS_AUTHSTRAT = "kbaseworkspace"
 
@@ -79,7 +80,7 @@ def _check_permissions(job: Job, user_id: str, token: str, config: Dict[str, str
         return user_id == job.user
 
 
-def _check_permissions_list(jobs: List[Job], user_id: str, token: str, config: Dict[str, str], level="read") -> bool:
+def _check_permissions_list(jobs: List[Job], user_id: str, token: str, config: Dict[str, str], level="read") -> List[bool]:
     """
     Returns True for each job the user has read access to, and False for the ones they don't.
     :param job: a Job model object
@@ -107,7 +108,7 @@ def _check_permissions_list(jobs: List[Job], user_id: str, token: str, config: D
     perms = len(jobs) * [False]    # permissions start False
 
     # job_idx_to_perm = dict()                      # permissions that get returned
-    ws_ids_to_jobs = dict()
+    ws_ids_to_jobs = defaultdict(list)
     for idx, j in enumerate(jobs):
         if j.user == user_id:
             # If this job belongs to our user, then they can read it
@@ -115,8 +116,6 @@ def _check_permissions_list(jobs: List[Job], user_id: str, token: str, config: D
             # job_idx_to_perm[idx] = True
         elif j.authstrat == "kbaseworkspace" and j.wsid:
             # If this job has a workspace stuck to it, then mark it
-            if j.wsid not in ws_ids_to_jobs:
-                ws_ids_to_jobs[j.wsid] = list()
             ws_ids_to_jobs[j.wsid].append(idx)
         else:
             # Otherwise, they can't read it.
