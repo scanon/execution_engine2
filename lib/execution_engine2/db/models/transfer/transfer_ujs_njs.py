@@ -6,6 +6,8 @@ from configparser import ConfigParser
 from pymongo import MongoClient
 from mongoengine import  connect
 
+jobs_database_name = "ee2_jobs"
+
 
 try:
     from lib.execution_engine2.db.models.models import (
@@ -86,7 +88,7 @@ class MigrateDatabases:
             .get_collection(self.njs_jobs_collection_name)
         )
 
-        self.ee2_jobs = self._get_njs_connection().get_database(self.njs_db).get_collection("jobs2")
+        self.ee2_jobs = self._get_njs_connection().get_database(self.njs_db).get_collection(jobs_database_name")
 
         config = {'mongo-host' : self.njs_host,
                   'mongo-port' : 27017,
