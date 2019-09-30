@@ -6,9 +6,7 @@ from configparser import ConfigParser
 from pymongo import MongoClient
 
 try:
-    from lib.execution_engine2.db.models.models import (
-        LogLines, JobLog
-    )
+    from lib.execution_engine2.db.models.models import LogLines, JobLog
 
 except Exception:
     from models import LogLines, JobLog
@@ -23,9 +21,8 @@ class MigrateDatabases:
     """
 
     documents = []
-    threshold = 1000
+    threshold = 20
     none_jobs = 0
-
 
     def _get_njs_connection(self) -> MongoClient:
         parser = ConfigParser()
@@ -48,21 +45,22 @@ class MigrateDatabases:
     def __init__(self):
         self.njs = self._get_njs_connection()
         self.logs = []
-        self.threshold = 1000
+        self.threshold = 20
 
         self.njs_logs = (
             self._get_njs_connection()
-                .get_database(self.njs_db)
-                .get_collection(self.njs_logs_collection_name)
+            .get_database(self.njs_db)
+            .get_collection(self.njs_logs_collection_name)
         )
 
-        self.ee2_logs = self._get_njs_connection().get_database(self.njs_db).get_collection("logs")
-
+        self.ee2_logs = (
+            self._get_njs_connection().get_database(self.njs_db).get_collection("logs")
+        )
 
     def save_log(self, log):
         self.logs.append(log.to_mongo())
         if len(self.logs) > self.threshold:
-            print("INSERTING 1000 ELEMENTS")
+            print("INSERTING ELEMENTS")
             self.ee2_logs.insert_many(self.logs)
             self.logs = []
 
@@ -72,19 +70,34 @@ class MigrateDatabases:
 
     def begin_log_transfer(self):  # flake8: noqa
 
-        logs = self.njs_logs
 
-        logs_cursor = logs.find()
+        logs_cursor = self.njs_logs.find()
 
+
+        count = 0
         for log in logs_cursor:
-            print(log)
+            job_log = JobLog()
 
+            job_log.primary_key = log['_id']
+            count+=1
+            print(f"Working on {log['_id']}", count)
 
+            job_log.original_line_count = log['original_line_count']
+            job_log.stored_line_count = log['stored_line_count']
 
-
-        #self.save_log(log)
+            lines = []
+            for line in log['lines']:
+                ll = LogLines()
+                ll.error = line['is_error']
+                ll.linepos  = line['line_pos']
+                ll.line = line['line']
+                ll.validate()
+                lines.append(ll)
+            job_log.lines = lines
+            job_log.validate()
+            self.save_log(job_log)
         # Save leftover jobs
-        #self.save_remnants()
+        self.save_remnants()
 
         # TODO SAVE up to 5000 in memory and do a bulk insert
         # a = []
@@ -95,4 +108,3 @@ class MigrateDatabases:
 
 c = MigrateDatabases()
 c.begin_log_transfer()
-
