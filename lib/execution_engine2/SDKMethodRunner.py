@@ -319,9 +319,6 @@ class SDKMethodRunner:
         self.admin_auth_util = AdminAuthUtil(self.auth_url, self.admin_roles)
         self.user_id = user_id
         self.token = token
-        self.is_admin = False
-        if self.token:
-            AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.token)
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
