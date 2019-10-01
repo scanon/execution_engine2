@@ -50,17 +50,17 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         if mongo_in_docker is not None:
             cls.cfg["mongo-host"] = cls.cfg["mongo-in-docker-compose"]
 
-        cls.method_runner = SDKMethodRunner(cls.cfg)
+        cls.user_id = "fake_test_user"
+        cls.ws_id = 9999
+        cls.token = "token"
+
+        cls.method_runner = SDKMethodRunner(cls.cfg, user_id=cls.user_id, token=cls.token)
         cls.mongo_util = MongoUtil(cls.cfg)
         cls.mongo_helper = MongoTestHelper(cls.cfg)
 
         cls.test_collection = cls.mongo_helper.create_test_db(
             db=cls.cfg["mongo-database"], col=cls.cfg["mongo-jobs-collection"]
         )
-
-        cls.user_id = "fake_test_user"
-        cls.ws_id = 9999
-        cls.token = "token"
 
     def getRunner(self) -> SDKMethodRunner:
         return copy.deepcopy(self.__class__.method_runner)
@@ -130,26 +130,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             runner._get_client_groups("kb_uploadmethods")
 
         self.assertIn("unrecognized method:", str(context.exception.args))
-
-    # def test_check_ws_objects(self):
-    #     runner = self.getRunner()
-    #
-    #     [info1, info2] = self.foft.create_fake_reads(
-    #         {"ws_name": self.wsName, "obj_names": ["reads1", "reads2"]}
-    #     )
-    #     read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4])
-    #     read2ref = str(info2[6]) + "/" + str(info2[0]) + "/" + str(info2[4])
-    #
-    #     runner._check_ws_objects([read1ref, read2ref])
-    #
-    #     fake_read1ref = str(info1[6]) + "/" + str(info1[0]) + "/" + str(info1[4] + 100)
-    #
-    #     with self.assertRaises(ValueError) as context:
-    #         runner._check_ws_objects([read1ref, read2ref, fake_read1ref])
-    #
-    #     self.assertIn(
-    #         "Some workspace object is inaccessible", str(context.exception.args)
-    #     )
 
     def test_get_module_git_commit(self):
 
@@ -555,6 +535,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             runner.check_permission_for_job = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
             params = runner.get_job_params(job_id, ctx)
@@ -588,6 +570,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
 
             # test missing status
@@ -625,6 +609,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
 
             # test missing job_id input
@@ -652,9 +638,11 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.finished)
 
             runner = self.getRunner()
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             runner.check_permission_for_job = MagicMock(return_value=True)
             runner.catalog.log_exec_stats = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
+            ctx = {"token": "foo", "user_id": "bar"}
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
@@ -716,6 +704,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         runner.check_permission_for_job = MagicMock(return_value=True)
         runner._send_exec_stats_to_catalog = MagicMock(return_value=True)
         runner.catalog.log_exec_stats = MagicMock(return_value=True)
+        runner._is_admin = MagicMock(return_value=False)
+        runner._test_job_permissions = MagicMock(return_value=True)
 
         ctx = {"foo": "bar"}
 
@@ -768,6 +758,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             runner = self.getRunner()
             runner.check_permission_for_job = MagicMock(return_value=True)
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             ctx = {"foo": "bar"}
 
             # test missing job_id input
@@ -813,6 +805,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.estimating)
 
             runner = self.getRunner()
+            runner._is_admin = MagicMock(return_value=False)
+            runner._test_job_permissions = MagicMock(return_value=True)
             runner.check_permission_for_job = MagicMock(return_value=True)
             runner.get_permissions_for_workspace = MagicMock(
                 return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR

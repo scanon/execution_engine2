@@ -46,6 +46,11 @@ else:
     logging.basicConfig(level=logging.WARN)
 
 
+class JobPermissions(Enum):
+    READ = "r"
+    WRITE = "w"
+    NONE = "n"
+
 class SDKMethodRunner:
     def _get_client_groups(self, method):
         """
@@ -316,7 +321,6 @@ class SDKMethodRunner:
 
         self.workspace_url = config.get("workspace-url")
         self.auth_url = config.get("auth-url")
-        self.admin_auth_util = AdminAuthUtil(self.auth_url, self.admin_roles)
         self.user_id = user_id
         self.token = token
 
@@ -473,21 +477,12 @@ class SDKMethodRunner:
         :param token: The auth token (Will be checked for the correct auth role)
         :return:
         """
-        logging.info('Attempting to run administrative command "f{command}" as user "')
-        is_admin = False
-        try:
-            is_admin = self.admin_auth_util.is_admin(token)
-        except AuthError as e:
-            logging.error(f"An auth error occurred: {str(e)}")
-            raise e
-        except RuntimeError as e:
-            logging.error(f"A runtime error occurred while looking up user roles: {str(e)}")
-        if is_admin:
-            self._run_admin_command(command, params)
-        else:
+        logging.info(f'Attempting to run administrative command "{command}" as user {self.user_id}')
+        if not self._is_admin(token):
             raise AuthError(
-                f"You are not authorized. Please request a role from {self.admin_roles}"
+                f"You are not authorized for this command."
             )
+        self._run_admin_command(command, params)
 
     def check_permission_for_job(self, job_id, ctx, write=False):
         """
@@ -517,6 +512,31 @@ class SDKMethodRunner:
                 )
             return job
 
+    def _is_admin(self, token: str) -> bool:
+        try:
+            self.is_admin = AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.token)
+        except AuthError as e:
+            logging.error(f"An auth error occurred: {str(e)}")
+            raise e
+        except RuntimeError as e:
+            logging.error(f"A runtime error occurred while looking up user roles: {str(e)}")
+            raise e
+
+    def _test_job_permissions(self, job: Job, job_id: str, level: str) -> bool:
+        try:
+            perm = False
+            if perm == JobPermissions.READ:
+                perm = can_read_job(job, self.user_id, self.token, self.cfg)
+            elif perm == JobPermissions.WRITE:
+                perm = can_write_job(job, self.user_id, self.token, self.cfg)
+            if not perm and not self._is_admin(self.token):
+                raise PermissionError(
+                    f"User {self.user_id} does not have permission to read job {job_id}"
+                )
+        except RuntimeError as e:
+            logging.error(f"An error occurred while checking permissions for job {job_id}")
+            raise e
+
     def get_job_params(self, job_id, ctx):
         """
         get_job_params: fetch SDK method params passed to job runner
@@ -527,11 +547,10 @@ class SDKMethodRunner:
         Returns:
         job_params:
         """
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
-
         job_params = dict()
 
         job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.READ)
 
         job_input = job.job_input
 
@@ -561,12 +580,10 @@ class SDKMethodRunner:
         if not (job_id and status):
             raise ValueError("Please provide both job_id and status")
 
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-
         job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.WRITE)
 
         job.status = status
-
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
@@ -589,9 +606,8 @@ class SDKMethodRunner:
         if not job_id:
             raise ValueError("Please provide valid job_id")
 
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
-
         job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.READ)
 
         returnVal["status"] = job.status
 
