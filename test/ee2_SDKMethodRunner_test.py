@@ -28,14 +28,67 @@ from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import (
     bootstrap,
     get_example_job,
-    validate_job_state
+    validate_job_state,
+    custom_ws_perm_maker
 )
+import requests
+import requests_mock
 
 logging.basicConfig(level=logging.INFO)
 bootstrap()
 
 
 class ee2_SDKMethodRunner_test(unittest.TestCase):
+    def _run_job_adapter(self,
+                         ws_perms_info: dict = None,
+                         client_groups_info: dict = None,
+                         module_versions: dict = None):
+        """
+        Mocks calls to:
+            Workspace.get_permissions_mass,
+            Catalog.list_client_group_configs,
+            Catalog.get_module_version
+
+        Returns an Adapter for requests_mock that deals with mocking workspace permissions.
+        :param ws_perms_info: dict - keys user_id, and ws_perms
+                user_id: str - the user id
+                ws_perms: dict of permissions, keys are ws ids, values are permission. Example:
+                    {123: "a", 456: "w"} means workspace id 123 has admin permissions, and 456 has
+                    write permission
+        :param client_groups_info: dict - keys client_groups (list), function_name, module_name
+        :param module_versions: dict - key git_commit_hash (str), others aren't used
+        :return: an adapter function to be passed to request_mock
+        """
+        def perm_adapter(request):
+            params = request.json().get("params")
+            method = request.json().get("method")
+            response = requests.Response()
+            response.status_code = 200
+
+            result = []
+            if method == "Workspace.get_permissions_mass":
+                perms_req = params[0].get("workspaces")
+                ret_perms = []
+                user_id = ws_perms_info.get("user_id")
+                ws_perms = ws_perms_info.get("ws_perms", {})
+                for ws in perms_req:
+                    ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
+                result = [{"perms": ret_perms}]
+            elif method == "Catalog.list_client_group_configs":
+                result = []
+                if client_groups_info is not None:
+                    result = [client_groups_info]
+            elif method == "Catalog.get_module_version":
+                result = [{"git_commit_hash": "some_commit_hash"}]
+                if module_versions is not None:
+                    result = [module_versions]
+            response._content = bytes(json.dumps({
+                "result": result,
+                "version": "1.1"
+            }), "UTF-8")
+            return response
+        return perm_adapter
+
     @classmethod
     def setUpClass(cls):
         config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", "test/deploy.cfg")
@@ -332,25 +385,25 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             return_value={"perms": [runner.WorkspacePermissions.ADMINISTRATOR]}
         )
 
+    @requests_mock.Mocker()
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
-    def test_run_job(self, condor_mock):
+    def test_run_job(self, rq_mock, condor_mock):
+        rq_mock.add_matcher(self._run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
         runner = self.getRunner()
-        runner.get_permissions_for_workspace = MagicMock(return_value=True)
-        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
         runner.get_condor = MagicMock(return_value=condor_mock)
-        ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
-        job = get_example_job().to_mongo().to_dict()
+        job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
         job["method"] = job["job_input"]["app_id"]
         job["app_id"] = job["job_input"]["app_id"]
 
         si = submission_info(clusterid="test", submit=job, error=None)
         condor_mock.run_job = MagicMock(return_value=si)
 
-        job_id = runner.run_job(params=job, ctx=ctx)
+        job_id = runner.run_job(params=job)
         print(f"Job id is {job_id} ")
 
+    @requests_mock.Mocker()
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
-    def test_run_job_and_add_log(self, condor_mock):
+    def test_run_job_and_add_log(self, rq_mock, condor_mock):
         """
         This test runs a job and then adds logs
 
@@ -358,20 +411,17 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         :return:
         """
         runner = self.getRunner()
-        runner.get_permissions_for_workspace = MagicMock(return_value=True)
-        runner.check_permission_for_job = MagicMock(return_value=True)
-
-        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
+        rq_mock.add_matcher(self._run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
         runner.get_condor = MagicMock(return_value=condor_mock)
         ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
-        job = get_example_job().to_mongo().to_dict()
+        job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
         job["method"] = job["job_input"]["app_id"]
         job["app_id"] = job["job_input"]["app_id"]
 
         si = submission_info(clusterid="test", submit=job, error=None)
         condor_mock.run_job = MagicMock(return_value=si)
 
-        job_id = runner.run_job(params=job, ctx=ctx)
+        job_id = runner.run_job(params=job)
         logging.info(f"Job id is {job_id} ")
 
         lines = []

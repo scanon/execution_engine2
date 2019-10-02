@@ -199,8 +199,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_id
         #BEGIN run_job
-        mr = SDKMethodRunner(self.config)
-        job_id = mr.run_job(params, ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        job_id = mr.run_job(params)
         #END run_job
 
         # At some point might do deeper type checking...

@@ -36,6 +36,7 @@ from execution_engine2.authorization.authstrategy import (
     can_read_jobs,
     can_write_jobs
 )
+from execution_engine2.authorization.workspaceauth import WorkspaceAuth
 
 
 debug = json.loads(os.environ.get("debug", "False").lower())
@@ -359,43 +360,47 @@ class SDKMethodRunner:
             rv["finished"] = True
         return rv
 
-    def run_job(self, params, ctx):
+    def run_job(self, params):
         """
 
         :param params: RunJobParams object (See spec file)
-        :param ctx: User_Id and Token from the request
         :return: The condor job id
         """
         # if 'wsid' not in params:
         #     raise Exception("Please provide wsid")
 
-        if not self._can_write_ws(
-            self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
-        ):
-            logging.debug("You don't have permission to run jobs in this workspace")
+        print(params)
+
+        ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
+        if not ws_auth.can_write(params["wsid"]):
+            logging.debug(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
+            raise PermissionError(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
+        # if not self._can_write_ws(
+        #     self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
+        # ):
+        #     logging.debug("You don't have permission to run jobs in this workspace")
 
         method = params.get("method")
 
         client_groups = self._get_client_groups(method)
 
         # perform sanity checks before creating job
-        self._check_ws_objects(source_objects=params.get("source_ws_objects"), ctx=ctx)
+        self._check_ws_objects(source_objects=params.get("source_ws_objects"), ctx={"user_id": self.user_id, "token": self.token})
 
         # update service_ver
         git_commit_hash = self._get_module_git_commit(method, params.get("service_ver"))
         params["service_ver"] = git_commit_hash
 
         # insert initial job document
-        job_id = self._init_job_rec(ctx["user_id"], params)
+        job_id = self._init_job_rec(self.user_id, params)
 
         # TODO Figure out log level
         logging.debug("About to run job with")
         logging.debug(client_groups)
         logging.debug(params)
-        logging.debug(ctx)
         params["job_id"] = job_id
-        params["user_id"] = ctx["user_id"]
-        params["token"] = ctx["token"]
+        params["user_id"] = self.user_id
+        params["token"] = self.token
         params["cg_resources_requirements"] = client_groups
         try:
             submission_info = self.get_condor().run_job(params)
@@ -522,7 +527,26 @@ class SDKMethodRunner:
             logging.error(f"A runtime error occurred while looking up user roles: {str(e)}")
             raise e
 
-    def _test_job_permissions(self, job: Job, job_id: str, level: str) -> bool:
+    def _test_job_permissions(self, job: Job, job_id: str, level: JobPermissions) -> bool:
+        """
+        Tests if the currently loaded token has the requested permissions for the given job.
+        Returns True if so. Raises a PermissionError if not.
+        Can also raise a RuntimeError if anything bad happens while looking up rights. This
+        can be triggered from either Auth or Workspace errors.
+
+        Effectively, this can be used the following way:
+        some_job = get_job(job_id)
+        _test_job_permissions(some_job, job_id, JobPermissions.READ)
+
+        ...and continue on with code. If the user doesn't have permission, a PermissionError gets
+        thrown. This can either be captured by the calling function, or allowed to propagate out
+        to the user and just end the RPC call.
+
+        :param job: a Job object to seek permissions for
+        :param job_id: string - the id associated with the Job object
+        :param level: string - the level to seek - either READ or WRITE
+        :returns: True if the user has permission, raises a PermissionError otherwise.
+        """
         try:
             perm = False
             if perm == JobPermissions.READ:

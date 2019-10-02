@@ -10,7 +10,10 @@ from execution_engine2.authorization.authstrategy import (
     can_write_job,
     can_write_jobs
 )
-from test.test_utils import get_example_job
+from test.test_utils import (
+    get_example_job,
+    custom_ws_perm_maker
+)
 
 
 class AuthStrategyTestCase(unittest.TestCase):
@@ -55,21 +58,6 @@ class AuthStrategyTestCase(unittest.TestCase):
                     expected_perms.append(expect)
         return (jobs, expected_perms)
 
-    def _custom_ws_perm_maker(self, user_id, ws_perms):
-        def perm_adapter(request):
-            perms_req = request.json().get("params")[0].get("workspaces")
-            ret_perms = []
-            for ws in perms_req:
-                ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
-            response = requests.Response()
-            response.status_code = 200
-            response._content = bytes(json.dumps({
-                "result": [{"perms": ret_perms}],
-                "version": "1.1"
-            }), "UTF-8")
-            return response
-        return perm_adapter
-
     def _mock_ws_deleted(self, rq_mock, ws_id):
         response = {
             "error": {
@@ -84,7 +72,7 @@ class AuthStrategyTestCase(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_can_read_job_ok(self, rq_mock):
-        rq_mock.add_matcher(self._custom_ws_perm_maker(self.user, self.ws_access))
+        rq_mock.add_matcher(custom_ws_perm_maker(self.user, self.ws_access))
         (jobs, expected_perms) = self._generate_all_test_jobs(perm="read")
         for idx, job in enumerate(jobs):
             self.assertEqual(expected_perms[idx], can_read_job(job, self.user, "foo", self.cfg))
@@ -99,7 +87,7 @@ class AuthStrategyTestCase(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_can_write_job_ok(self, rq_mock):
-        rq_mock.add_matcher(self._custom_ws_perm_maker(self.user, self.ws_access))
+        rq_mock.add_matcher(custom_ws_perm_maker(self.user, self.ws_access))
         (jobs, expected_perms) = self._generate_all_test_jobs(perm="write")
         for idx, job in enumerate(jobs):
             self.assertEqual(expected_perms[idx], can_write_job(job, self.user, "foo", self.cfg))
@@ -118,7 +106,7 @@ class AuthStrategyTestCase(unittest.TestCase):
         # 1 job, r, w, a, n access, with and without ws, self vs. other user (so that's 16)
         # 2 jobs, each with those accesses (so that's another 32)
         # this is all looked up from the POV of the main user, so set up ws access that way
-        rq_mock.add_matcher(self._custom_ws_perm_maker(self.user, self.ws_access))
+        rq_mock.add_matcher(custom_ws_perm_maker(self.user, self.ws_access))
         (jobs, expected_perms) = self._generate_all_test_jobs(perm="read")
         for idx, job in enumerate(jobs):
             self.assertEqual([expected_perms[idx]], can_read_jobs([job], self.user, "foo", self.cfg))
@@ -133,7 +121,7 @@ class AuthStrategyTestCase(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_can_write_jobs_ok(self, rq_mock):
-        rq_mock.add_matcher(self._custom_ws_perm_maker(self.user, self.ws_access))
+        rq_mock.add_matcher(custom_ws_perm_maker(self.user, self.ws_access))
         (jobs, expected_perms) = self._generate_all_test_jobs(perm="write")
         for idx, job in enumerate(jobs):
             self.assertEqual([expected_perms[idx]], can_write_jobs([job], self.user, "foo", self.cfg))
