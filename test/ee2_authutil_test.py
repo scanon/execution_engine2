@@ -3,11 +3,11 @@ import requests
 import requests_mock
 import os
 from configparser import ConfigParser
-from execution_engine2.utils.auth import AuthUtil
+from execution_engine2.authorization.roles import AdminAuthUtil
 from execution_engine2.exceptions import AuthError
 
 
-class AuthUtilTestCase(unittest.TestCase):
+class AdminAuthUtilTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", "test/deploy.cfg")
@@ -18,8 +18,8 @@ class AuthUtilTestCase(unittest.TestCase):
             cls.cfg[nameval[0]] = nameval[1]
         cls.auth_endpt = cls.cfg["auth-url"] + "/api/V2/me"
 
-    def init_auth_util(self) -> AuthUtil:
-        return AuthUtil(self.cfg["auth-url"], self.cfg.get("admin_roles", ["EE2_ADMIN"]))
+    def init_auth_util(self) -> AdminAuthUtil:
+        return AdminAuthUtil(self.cfg["auth-url"], self.cfg.get("admin_roles", ["EE2_ADMIN"]))
 
     @requests_mock.Mocker()
     def test_auth_util_isadmin_ok(self, rq_mock):

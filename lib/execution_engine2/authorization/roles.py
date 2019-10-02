@@ -20,7 +20,7 @@ NOT_ADMIN = "NOT_ADMIN"
 _admin_cache = TokenCache()
 
 
-class AuthUtil:
+class AdminAuthUtil:
     """
     A simple Auth utility. This is NOT an auth client, but a utility class that's
     used to look up user roles.
