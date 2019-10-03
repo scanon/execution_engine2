@@ -312,6 +312,7 @@ class SDKMethodRunner:
         self.auth_url = config.get("auth-url")
         self.user_id = user_id
         self.token = token
+        self.is_admin = False
 
         logging.basicConfig(
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
@@ -352,18 +353,16 @@ class SDKMethodRunner:
 
     def run_job(self, params):
         """
-
         :param params: RunJobParams object (See spec file)
         :return: The condor job id
         """
-        print(params)
-
         ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
         if not ws_auth.can_write(params["wsid"]):
             logging.debug(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
             raise PermissionError(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
 
         method = params.get("method")
+        logging.info(f"User {self.user_id} attempting to run job {method}")
 
         client_groups = self._get_client_groups(method)
 
@@ -377,7 +376,6 @@ class SDKMethodRunner:
         # insert initial job document
         job_id = self._init_job_rec(self.user_id, params)
 
-        # TODO Figure out log level
         logging.debug("About to run job with")
         logging.debug(client_groups)
         logging.debug(params)
@@ -388,8 +386,7 @@ class SDKMethodRunner:
         try:
             submission_info = self.get_condor().run_job(params)
             condor_job_id = submission_info.clusterid
-            logging.debug("Submitted job id and got ")
-            logging.debug(condor_job_id)
+            logging.debug(f"Submitted job id and got '{condor_job_id}'")
         except Exception as e:
             ## delete job from database? Or mark it to a state it will never run?
             logging.error(e)
@@ -401,7 +398,7 @@ class SDKMethodRunner:
         if submission_info.error is not None:
             raise submission_info.error
         if condor_job_id is None:
-            raise Exception(
+            raise RuntimeError(
                 "Condor job not ran, and error not found. Something went wrong"
             )
 
@@ -414,31 +411,41 @@ class SDKMethodRunner:
     def _run_admin_command(self, command, params):
         available_commands = ["cancel_job", "view_job_logs"]
         if command not in available_commands:
-            raise Exception(
+            raise ValueError(
                 f"{command} not an admin command. See {available_commands} "
             )
         commands = {"cancel_job": self.cancel_job, "view_job_logs": self.view_job_logs}
         p = {
-            "cancel_job": {"job_id": params.get("job_id")},
+            "cancel_job": {"job_id": params.get("job_id"), "terminated_code": params.get("terminated_code")},
             "view_job_logs": {"job_id": params.get("job_id")},
         }
         return commands[command](**p[command])
 
     def administer(self, command, params, token):
         """
-        Run commands as an admin
-        See https://github.com/kbase/workspace_deluxe/blob/dev-candidate/src/us/kbase/workspace/kbase/admin/WorkspaceAdministration.java#L174
+        Run commands as an administrator. Requires a token for a user with an EE2 administrative role.
+        Currently allowed commands are cancel_job and view_job_logs.
+
+        Commands are given as strings, and their parameters are given as a dictionary of keys and values.
+        For example:
+            administer("cancel_job", {"job_id": 12345}, auth_token)
+        is the same as running
+            cancel_job(12345)
+        but with administrative privileges.
         :param command: The command to run (See specfile)
         :param params: The parameters for that command that will be expanded (See specfile)
         :param token: The auth token (Will be checked for the correct auth role)
         :return:
         """
         logging.info(f'Attempting to run administrative command "{command}" as user {self.user_id}')
-        if not self._is_admin(token):
-            raise AuthError(
-                f"You are not authorized for this command."
+        # set admin privs, one way or the other
+        self.is_admin = self._is_admin(token)
+        if not self.is_admin:
+            raise PermissionError(
+                f"User {self.user_id} is not authorized to run administrative commands."
             )
         self._run_admin_command(command, params)
+        self.is_admin = False
 
     def _is_admin(self, token: str) -> bool:
         try:
@@ -470,13 +477,15 @@ class SDKMethodRunner:
         :param level: string - the level to seek - either READ or WRITE
         :returns: True if the user has permission, raises a PermissionError otherwise.
         """
+        if self.is_admin:  # bypass if we're in admin mode.
+            return
         try:
             perm = False
             if level == JobPermissions.READ:
                 perm = can_read_job(job, self.user_id, self.token, self.config)
             elif level == JobPermissions.WRITE:
                 perm = can_write_job(job, self.user_id, self.token, self.config)
-            if not perm and not self._is_admin(self.token):
+            if not perm:
                 raise PermissionError(
                     f"User {self.user_id} does not have permission to {level} job {job_id}"
                 )
@@ -713,7 +722,6 @@ class SDKMethodRunner:
     def check_jobs(self, job_ids, check_permission=True, projection=None):
         """
         check_jobs: check and return job status for a given of list job_ids
-
         """
 
         logging.info("Start fetching status for jobs: {}".format(job_ids))

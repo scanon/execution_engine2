@@ -561,7 +561,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
             params = runner.get_job_params(job_id)
 
@@ -593,7 +592,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
 
             # test missing status
@@ -630,7 +628,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
 
             # test missing job_id input
@@ -658,7 +655,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.finished)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
             runner.catalog.log_exec_stats = MagicMock(return_value=True)
 
@@ -721,7 +717,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         runner = self.getRunner()
         runner._send_exec_stats_to_catalog = MagicMock(return_value=True)
         runner.catalog.log_exec_stats = MagicMock(return_value=True)
-        runner._is_admin = MagicMock(return_value=False)
         runner._test_job_permissions = MagicMock(return_value=True)
 
         with self.assertRaises(InvalidStatusTransitionException):
@@ -772,7 +767,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.estimating)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
 
             # test missing job_id input
@@ -822,7 +816,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.estimating)
 
             runner = self.getRunner()
-            runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
 
             # test missing job_id input
