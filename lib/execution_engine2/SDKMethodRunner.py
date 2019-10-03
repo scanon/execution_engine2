@@ -33,7 +33,7 @@ from execution_engine2.exceptions import AuthError
 from execution_engine2.authorization.authstrategy import (
     can_read_job,
     can_read_jobs,
-    can_write_jobs
+    can_write_job
 )
 from execution_engine2.authorization.workspaceauth import WorkspaceAuth
 
