@@ -5,6 +5,8 @@ import pathlib
 from shutil import copyfile
 from execution_engine2.db.models.models import Job, JobInput, Meta
 from dateutil import parser as dateparser
+import requests
+import json
 
 
 def get_example_job(user: str = "boris", wsid: int = 123, authstrat: str = "kbaseworkspace") -> Job:
@@ -159,6 +161,7 @@ def validate_job_state(state):
 
     return True
 
+
 def is_timestamp(ts: str):
     """
     Simple enough - if dateutil.parser likes the string, it's a time string and we return True.
@@ -169,3 +172,27 @@ def is_timestamp(ts: str):
         return True
     except ValueError:
         return False
+
+
+def custom_ws_perm_maker(user_id: str, ws_perms: dict):
+    """
+    Returns an Adapter for requests_mock that deals with mocking workspace permissions.
+    :param user_id: str - the user id
+    :param ws_perms: dict of permissions, keys are ws ids, values are permission. Example:
+        {123: "a", 456: "w"} means workspace id 123 has admin permissions, and 456 has
+        write permission
+    :return: an adapter function to be passed to request_mock
+    """
+    def perm_adapter(request):
+        perms_req = request.json().get("params")[0].get("workspaces")
+        ret_perms = []
+        for ws in perms_req:
+            ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
+        response = requests.Response()
+        response.status_code = 200
+        response._content = bytes(json.dumps({
+            "result": [{"perms": ret_perms}],
+            "version": "1.1"
+        }), "UTF-8")
+        return response
+    return perm_adapter
