@@ -1,7 +1,5 @@
 import unittest
 import os
-import json
-import requests
 import requests_mock
 from configparser import ConfigParser
 from execution_engine2.authorization.authstrategy import (

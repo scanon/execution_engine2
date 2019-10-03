@@ -29,8 +29,7 @@ from test.mongo_test_helper import MongoTestHelper
 from test.test_utils import (
     bootstrap,
     get_example_job,
-    validate_job_state,
-    custom_ws_perm_maker
+    validate_job_state
 )
 import requests
 import requests_mock
@@ -39,68 +38,68 @@ logging.basicConfig(level=logging.INFO)
 bootstrap()
 
 
-class ee2_SDKMethodRunner_test(unittest.TestCase):
-    def _run_job_adapter(self,
-                         ws_perms_info: Dict = None,
-                         client_groups_info: Dict = None,
-                         module_versions: Dict = None,
-                         user_roles: List = None):
-        """
-        Mocks POST calls to:
-            Workspace.get_permissions_mass,
-            Catalog.list_client_group_configs,
-            Catalog.get_module_version
-        Mocks GET calls to:
-            Auth (/api/V2/me)
-            Auth (/api/V2/token)
+def _run_job_adapter(ws_perms_info: Dict = None,
+                     client_groups_info: Dict = None,
+                     module_versions: Dict = None,
+                     user_roles: List = None):
+    """
+    Mocks POST calls to:
+        Workspace.get_permissions_mass,
+        Catalog.list_client_group_configs,
+        Catalog.get_module_version
+    Mocks GET calls to:
+        Auth (/api/V2/me)
+        Auth (/api/V2/token)
 
-        Returns an Adapter for requests_mock that deals with mocking workspace permissions.
-        :param ws_perms_info: dict - keys user_id, and ws_perms
-                user_id: str - the user id
-                ws_perms: dict of permissions, keys are ws ids, values are permission. Example:
-                    {123: "a", 456: "w"} means workspace id 123 has admin permissions, and 456 has
-                    write permission
-        :param client_groups_info: dict - keys client_groups (list), function_name, module_name
-        :param module_versions: dict - key git_commit_hash (str), others aren't used
-        :return: an adapter function to be passed to request_mock
-        """
-        def perm_adapter(request):
-            response = requests.Response()
-            response.status_code = 200
-            rq_method = request.method.upper()
-            if rq_method == "POST":
-                params = request.json().get("params")
-                method = request.json().get("method")
+    Returns an Adapter for requests_mock that deals with mocking workspace permissions.
+    :param ws_perms_info: dict - keys user_id, and ws_perms
+            user_id: str - the user id
+            ws_perms: dict of permissions, keys are ws ids, values are permission. Example:
+                {123: "a", 456: "w"} means workspace id 123 has admin permissions, and 456 has
+                write permission
+    :param client_groups_info: dict - keys client_groups (list), function_name, module_name
+    :param module_versions: dict - key git_commit_hash (str), others aren't used
+    :return: an adapter function to be passed to request_mock
+    """
+    def perm_adapter(request):
+        response = requests.Response()
+        response.status_code = 200
+        rq_method = request.method.upper()
+        if rq_method == "POST":
+            params = request.json().get("params")
+            method = request.json().get("method")
 
+            result = []
+            if method == "Workspace.get_permissions_mass":
+                perms_req = params[0].get("workspaces")
+                ret_perms = []
+                user_id = ws_perms_info.get("user_id")
+                ws_perms = ws_perms_info.get("ws_perms", {})
+                for ws in perms_req:
+                    ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
+                result = [{"perms": ret_perms}]
+            elif method == "Catalog.list_client_group_configs":
                 result = []
-                if method == "Workspace.get_permissions_mass":
-                    perms_req = params[0].get("workspaces")
-                    ret_perms = []
-                    user_id = ws_perms_info.get("user_id")
-                    ws_perms = ws_perms_info.get("ws_perms", {})
-                    for ws in perms_req:
-                        ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
-                    result = [{"perms": ret_perms}]
-                elif method == "Catalog.list_client_group_configs":
-                    result = []
-                    if client_groups_info is not None:
-                        result = [client_groups_info]
-                elif method == "Catalog.get_module_version":
-                    result = [{"git_commit_hash": "some_commit_hash"}]
-                    if module_versions is not None:
-                        result = [module_versions]
+                if client_groups_info is not None:
+                    result = [client_groups_info]
+            elif method == "Catalog.get_module_version":
+                result = [{"git_commit_hash": "some_commit_hash"}]
+                if module_versions is not None:
+                    result = [module_versions]
+            response._content = bytes(json.dumps({
+                "result": result,
+                "version": "1.1"
+            }), "UTF-8")
+        elif rq_method == "GET":
+            if request.url.endswith("/api/V2/me"):
                 response._content = bytes(json.dumps({
-                    "result": result,
-                    "version": "1.1"
+                    "customroles": user_roles
                 }), "UTF-8")
-            elif rq_method == "GET":
-                if request.url.endswith("/api/V2/me"):
-                    response._content = bytes(json.dumps({
-                        "customroles": user_roles
-                    }), "UTF-8")
-            return response
-        return perm_adapter
+        return response
+    return perm_adapter
 
+
+class ee2_SDKMethodRunner_test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         config_file = os.environ.get("KB_DEPLOYMENT_CONFIG", "test/deploy.cfg")
@@ -363,7 +362,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
     @requests_mock.Mocker()
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
     def test_run_job(self, rq_mock, condor_mock):
-        rq_mock.add_matcher(self._run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
+        rq_mock.add_matcher(_run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
         runner = self.getRunner()
         runner.get_condor = MagicMock(return_value=condor_mock)
         job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
@@ -386,7 +385,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         :return:
         """
         runner = self.getRunner()
-        rq_mock.add_matcher(self._run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
+        rq_mock.add_matcher(_run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
         runner.get_condor = MagicMock(return_value=condor_mock)
         job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
         job["method"] = job["job_input"]["app_id"]
@@ -479,7 +478,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_add_job_logs_ok(self, rq_mock):
-        rq_mock.add_matcher(self._run_job_adapter(
+        rq_mock.add_matcher(_run_job_adapter(
             ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
             user_roles=[]
         ))
@@ -801,7 +800,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_check_job_ok(self, rq_mock):
-        rq_mock.add_matcher(self._run_job_adapter(
+        rq_mock.add_matcher(_run_job_adapter(
             ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
             user_roles=[]
         ))
