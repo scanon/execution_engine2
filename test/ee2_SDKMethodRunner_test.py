@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from typing import Dict, List
 import copy
 import datetime
 import json
@@ -40,14 +41,18 @@ bootstrap()
 
 class ee2_SDKMethodRunner_test(unittest.TestCase):
     def _run_job_adapter(self,
-                         ws_perms_info: dict = None,
-                         client_groups_info: dict = None,
-                         module_versions: dict = None):
+                         ws_perms_info: Dict = None,
+                         client_groups_info: Dict = None,
+                         module_versions: Dict = None,
+                         user_roles: List = None):
         """
-        Mocks calls to:
+        Mocks POST calls to:
             Workspace.get_permissions_mass,
             Catalog.list_client_group_configs,
             Catalog.get_module_version
+        Mocks GET calls to:
+            Auth (/api/V2/me)
+            Auth (/api/V2/token)
 
         Returns an Adapter for requests_mock that deals with mocking workspace permissions.
         :param ws_perms_info: dict - keys user_id, and ws_perms
@@ -60,32 +65,39 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         :return: an adapter function to be passed to request_mock
         """
         def perm_adapter(request):
-            params = request.json().get("params")
-            method = request.json().get("method")
             response = requests.Response()
             response.status_code = 200
+            rq_method = request.method.upper()
+            if rq_method == "POST":
+                params = request.json().get("params")
+                method = request.json().get("method")
 
-            result = []
-            if method == "Workspace.get_permissions_mass":
-                perms_req = params[0].get("workspaces")
-                ret_perms = []
-                user_id = ws_perms_info.get("user_id")
-                ws_perms = ws_perms_info.get("ws_perms", {})
-                for ws in perms_req:
-                    ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
-                result = [{"perms": ret_perms}]
-            elif method == "Catalog.list_client_group_configs":
                 result = []
-                if client_groups_info is not None:
-                    result = [client_groups_info]
-            elif method == "Catalog.get_module_version":
-                result = [{"git_commit_hash": "some_commit_hash"}]
-                if module_versions is not None:
-                    result = [module_versions]
-            response._content = bytes(json.dumps({
-                "result": result,
-                "version": "1.1"
-            }), "UTF-8")
+                if method == "Workspace.get_permissions_mass":
+                    perms_req = params[0].get("workspaces")
+                    ret_perms = []
+                    user_id = ws_perms_info.get("user_id")
+                    ws_perms = ws_perms_info.get("ws_perms", {})
+                    for ws in perms_req:
+                        ret_perms.append({user_id: ws_perms.get(ws["id"], "n")})
+                    result = [{"perms": ret_perms}]
+                elif method == "Catalog.list_client_group_configs":
+                    result = []
+                    if client_groups_info is not None:
+                        result = [client_groups_info]
+                elif method == "Catalog.get_module_version":
+                    result = [{"git_commit_hash": "some_commit_hash"}]
+                    if module_versions is not None:
+                        result = [module_versions]
+                response._content = bytes(json.dumps({
+                    "result": result,
+                    "version": "1.1"
+                }), "UTF-8")
+            elif rq_method == "GET":
+                if request.url.endswith("/api/V2/me"):
+                    response._content = bytes(json.dumps({
+                        "customroles": user_roles
+                    }), "UTF-8")
             return response
         return perm_adapter
 
@@ -123,9 +135,9 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
         inputs = JobInput()
 
-        job.user = "tgu2"
+        job.user = self.user_id
         job.authstrat = "kbaseworkspace"
-        job.wsid = 9999
+        job.wsid = self.ws_id
         job.status = "created"
 
         job_params = {
@@ -263,8 +275,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             f"Created job {job_id} in {job.wsid} status {job.status}. About to cancel"
         )
 
-        sdk.check_permission_for_job = MagicMock(return_value=[])
-        sdk.cancel_job(job_id=job_id, ctx={"user_id": self.user_id})
+        sdk.cancel_job(job_id=job_id)
 
         self.assertEqual(
             Status(sdk.get_mongo_util().get_job(job_id=job_id).status),
@@ -285,10 +296,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             f"Created job {job_id} in {job.wsid} status {job.status}. About to cancel"
         )
 
-        sdk.check_permission_for_job = MagicMock(return_value=[])
         sdk.cancel_job(
             job_id=job_id,
-            ctx={"user_id": self.user_id},
             terminated_code=TerminatedCode.terminated_by_automation.value,
         )
 
@@ -300,31 +309,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             TerminatedCode(sdk.get_mongo_util().get_job(job_id=job_id).terminated_code),
             TerminatedCode.terminated_by_automation,
         )
-
-    def test_check_ws_permissions(self):
-        logging.info("\n\nTESTING PERMISSIONS\n\n")
-        sdk = self.getRunner()
-
-        # Check for read access
-        for item in [
-            sdk.WorkspacePermissions.READ_WRITE,
-            sdk.WorkspacePermissions.READ,
-            sdk.WorkspacePermissions.ADMINISTRATOR,
-        ]:
-            self.assertTrue(sdk._can_read_ws(item))
-
-        for item in [sdk.WorkspacePermissions.NONE]:
-            self.assertFalse(sdk._can_read_ws(item))
-
-        # Check for write access
-        for item in [
-            sdk.WorkspacePermissions.READ_WRITE,
-            sdk.WorkspacePermissions.ADMINISTRATOR,
-        ]:
-            self.assertTrue(sdk._can_write_ws(item))
-
-        for item in [sdk.WorkspacePermissions.NONE, sdk.WorkspacePermissions.READ]:
-            self.assertFalse(sdk._can_write_ws(item))
 
     @patch("execution_engine2.db.MongoUtil.MongoUtil", autospec=True)
     def test_check_job_canceled(self, mongo_util):
@@ -338,52 +322,43 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         mongo_util.get_job = MagicMock(side_effect=generateJob)
 
         call_count = 0
-        rv = runner.check_job_canceled("created", {})
+        rv = runner.check_job_canceled("created")
         self.assertFalse(rv["canceled"])
         self.assertFalse(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("estimating", {})
+        rv = runner.check_job_canceled("estimating")
         self.assertFalse(rv["canceled"])
         self.assertFalse(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("queued", {})
+        rv = runner.check_job_canceled("queued")
         self.assertFalse(rv["canceled"])
         self.assertFalse(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("running", {})
+        rv = runner.check_job_canceled("running")
         self.assertFalse(rv["canceled"])
         self.assertFalse(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("finished", {})
+        rv = runner.check_job_canceled("finished")
         self.assertFalse(rv["canceled"])
         self.assertTrue(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("error", {})
+        rv = runner.check_job_canceled("error")
         self.assertFalse(rv["canceled"])
         self.assertTrue(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("terminated", {})
+        rv = runner.check_job_canceled("terminated")
         self.assertTrue(rv["canceled"])
         self.assertTrue(rv["finished"])
         call_count += 1
 
         self.assertEqual(call_count, mongo_util.get_job.call_count)
         self.assertEqual(call_count, runner.get_mongo_util.call_count)
-
-    @patch("lib.installed_clients.WorkspaceClient.Workspace", autospec=True)
-    def todo_test_permissions(self, ws):
-        runner = self.getRunner()
-        runner.get_workspace = MagicMock()
-        runner.get_workspace = MagicMock(return_value=ws)
-        ws.get_permissions_mass = MagicMock(
-            return_value={"perms": [runner.WorkspacePermissions.ADMINISTRATOR]}
-        )
 
     @requests_mock.Mocker()
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
@@ -413,7 +388,6 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         runner = self.getRunner()
         rq_mock.add_matcher(self._run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
         runner.get_condor = MagicMock(return_value=condor_mock)
-        ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
         job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
         job["method"] = job["job_input"]["app_id"]
         job["app_id"] = job["job_input"]["app_id"]
@@ -429,9 +403,9 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             line = {"error": False, "line": item}
             lines.append(line)
 
-        log_pos_1 = runner.add_job_logs(ctx=ctx, job_id=job_id, log_lines=lines)
+        log_pos_1 = runner.add_job_logs(job_id=job_id, log_lines=lines)
         logging.info(f"After insert log position is now {log_pos_1}")
-        log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
+        log = runner.view_job_logs(job_id=job_id, skip_lines=None)
 
         log_lines = log["lines"]
         for i, inserted_line in enumerate(log_lines):
@@ -462,12 +436,12 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         for line in input_lines2:
             print(line)
 
-        log_pos2 = runner.add_job_logs(ctx=ctx, job_id=job_id, log_lines=input_lines2)
+        log_pos2 = runner.add_job_logs(job_id=job_id, log_lines=input_lines2)
         logging.info(
             f"After inserting timestamped logs,  log position is now {log_pos2}"
         )
 
-        log = runner.view_job_logs(job_id=job_id, skip_lines=None, ctx=ctx)
+        log = runner.view_job_logs(job_id=job_id, skip_lines=None)
         log_lines = log["lines"]
 
         print("About to dump log")
@@ -497,13 +471,18 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
         # TODO IMPLEMENT SKIPLINES AND TEST
 
-        log = runner.view_job_logs(job_id=job_id, skip_lines=1, ctx=ctx)
+        log = runner.view_job_logs(job_id=job_id, skip_lines=1)
         self.assertEqual(log["lines"][0]["linepos"], 2)
 
-        log = runner.view_job_logs(job_id=job_id, skip_lines=8, ctx=ctx)
+        log = runner.view_job_logs(job_id=job_id, skip_lines=8)
         self.assertEqual(log, {"lines": [], "last_line_number": 8})
 
-    def test_add_job_logs_ok(self):
+    @requests_mock.Mocker()
+    def test_add_job_logs_ok(self, rq_mock):
+        rq_mock.add_matcher(self._run_job_adapter(
+            ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
+            user_roles=[]
+        ))
         with self.mongo_util.mongo_engine_connection():
             ori_job_log_count = JobLog.objects.count()
             ori_job_count = Job.objects.count()
@@ -511,12 +490,10 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner.check_permission_for_job = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
 
             # create new log
             lines = [{"line": "Hello world"}]
-            runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
+            runner.add_job_logs(job_id=job_id, log_lines=lines)
 
             updated_job_log_count = JobLog.objects.count()
             self.assertEqual(ori_job_log_count, updated_job_log_count - 1)
@@ -541,7 +518,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
                 {"line": "Hello Wrold Kbase"},
             ]
 
-            runner.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
+            runner.add_job_logs(job_id=job_id, log_lines=lines)
 
             log = self.mongo_util.get_job_log(job_id=job_id)
             self.assertTrue(log.updated)
@@ -587,9 +564,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             runner = self.getRunner()
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            runner.check_permission_for_job = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
-            params = runner.get_job_params(job_id, ctx)
+            params = runner.get_job_params(job_id)
 
             expected_params_keys = [
                 "wsid",
@@ -619,28 +594,26 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner.check_permission_for_job = MagicMock(return_value=True)
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
 
             # test missing status
             with self.assertRaises(ValueError) as context:
-                runner.update_job_status(None, "invalid_status", ctx)
+                runner.update_job_status(None, "invalid_status")
             self.assertEqual(
                 "Please provide both job_id and status", str(context.exception)
             )
 
             # test invalid status
             with self.assertRaises(ValidationError) as context:
-                runner.update_job_status(job_id, "invalid_status", ctx)
+                runner.update_job_status(job_id, "invalid_status")
             self.assertIn("is not a valid status", str(context.exception))
 
             ori_job = Job.objects(id=job_id)[0]
             ori_updated_time = ori_job.updated
 
             # test update job status
-            job_id = runner.update_job_status(job_id, "estimating", ctx)
+            job_id = runner.update_job_status(job_id, "estimating")
             updated_job = Job.objects(id=job_id)[0]
             self.assertEqual(updated_job.status, "estimating")
             updated_time = updated_job.updated
@@ -658,17 +631,15 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
             runner = self.getRunner()
-            runner.check_permission_for_job = MagicMock(return_value=True)
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
-                runner.get_job_status(None, ctx)
+                runner.get_job_status(None)
             self.assertEqual("Please provide valid job_id", str(context.exception))
 
-            returnVal = runner.get_job_status(job_id, ctx)
+            returnVal = runner.get_job_status(job_id)
 
             self.assertTrue("status" in returnVal)
             self.assertEqual(returnVal["status"], "created")
@@ -690,25 +661,23 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             runner = self.getRunner()
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            runner.check_permission_for_job = MagicMock(return_value=True)
             runner.catalog.log_exec_stats = MagicMock(return_value=True)
-            ctx = {"token": "foo", "user_id": "bar"}
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
                 logging.info("Finish Job Case 0 Raises Error")
-                runner.finish_job(None, ctx)
+                runner.finish_job(None)
             self.assertEqual("Please provide valid job_id", str(context.exception))
 
             # test finish job with invalid status
             with self.assertRaises(ValueError) as context:
                 logging.info("Finish Job Case 1 Raises Error")
-                runner.finish_job(job_id, ctx)
+                runner.finish_job(job_id)
             self.assertIn("Unexpected job status", str(context.exception))
 
             # update job status to running
 
-            runner.start_job(job_id=job_id, ctx=ctx, skip_estimation=True)
+            runner.start_job(job_id=job_id, skip_estimation=True)
 
             # self.mongo_util.update_job_status(job_id=job_id, status=Status.running.value)
             # job.running = datetime.datetime.utcnow()
@@ -722,10 +691,10 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             logging.info("Case2 : Finish a running job")
 
             print(f"About to finish job {job_id}. The job status is currently")
-            print(runner.get_job_status(job_id, ctx))
-            runner.finish_job(job_id, ctx, job_output=job_output)
+            print(runner.get_job_status(job_id))
+            runner.finish_job(job_id, job_output=job_output)
             print("Job is now finished, status is")
-            print(runner.get_job_status(job_id, ctx))
+            print(runner.get_job_status(job_id))
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "finished")
@@ -751,19 +720,16 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(ori_job_count, Job.objects.count() - 1)
 
         runner = self.getRunner()
-        runner.check_permission_for_job = MagicMock(return_value=True)
         runner._send_exec_stats_to_catalog = MagicMock(return_value=True)
         runner.catalog.log_exec_stats = MagicMock(return_value=True)
         runner._is_admin = MagicMock(return_value=False)
         runner._test_job_permissions = MagicMock(return_value=True)
 
-        ctx = {"foo": "bar"}
-
         with self.assertRaises(InvalidStatusTransitionException):
-            runner.finish_job(job_id, ctx, error_message="error message")
+            runner.finish_job(job_id, error_message="error message")
 
-        runner.start_job(job_id=job_id, ctx=ctx, skip_estimation=True)
-        runner.finish_job(job_id, ctx, error_message="error message")
+        runner.start_job(job_id=job_id, skip_estimation=True)
+        runner.finish_job(job_id, error_message="error message")
 
         job = self.mongo_util.get_job(job_id=job_id)
 
@@ -774,14 +740,14 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         self.assertTrue(job.finished)
 
         with self.mongo_util.mongo_engine_connection():
-            job_id = runner.update_job_status(job_id, "running", ctx)  # put job back to running status
+            job_id = runner.update_job_status(job_id, "running")  # put job back to running status
 
         error = {"message": "error message",
                  "code'": -32000,
                  "name": "Server error",
                  "error": """Traceback (most recent call last):\n  File "/kb/module/bin/../lib/simpleapp/simpleappServer.py"""}
 
-        runner.finish_job(job_id, ctx, error_message="error message", error=error, error_code=0)
+        runner.finish_job(job_id, error_message="error message", error=error, error_code=0)
 
         job = self.mongo_util.get_job(job_id=job_id)
 
@@ -807,18 +773,16 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertFalse(job.estimating)
 
             runner = self.getRunner()
-            runner.check_permission_for_job = MagicMock(return_value=True)
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            ctx = {"foo": "bar"}
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
-                runner.start_job(None, ctx)
+                runner.start_job(None)
                 self.assertEqual("Please provide valid job_id", str(context.exception))
 
             # start a created job, set job to estimation status
-            runner.start_job(job_id, ctx, skip_estimation=False)
+            runner.start_job(job_id, skip_estimation=False)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "estimating")
@@ -826,7 +790,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertTrue(job.estimating)
 
             # start a estimating job, set job to running status
-            runner.start_job(job_id, ctx)
+            runner.start_job(job_id)
 
             job = self.mongo_util.get_job(job_id=job_id)
             self.assertEqual(job.status, "running")
@@ -835,14 +799,18 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             # test start a job with invalid status
             with self.assertRaises(ValueError) as context:
-                runner.start_job(job_id, ctx)
+                runner.start_job(job_id)
             self.assertIn("Unexpected job status", str(context.exception))
 
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())
 
-    def test_check_job_ok(self):
-
+    @requests_mock.Mocker()
+    def test_check_job_ok(self, rq_mock):
+        rq_mock.add_matcher(self._run_job_adapter(
+            ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
+            user_roles=[]
+        ))
         with self.mongo_util.mongo_engine_connection():
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
@@ -857,61 +825,57 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             runner = self.getRunner()
             runner._is_admin = MagicMock(return_value=False)
             runner._test_job_permissions = MagicMock(return_value=True)
-            runner.check_permission_for_job = MagicMock(return_value=True)
-            runner.get_permissions_for_workspace = MagicMock(
-                return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR
-            )
-            ctx = {"foo": "bar"}
 
             # test missing job_id input
             with self.assertRaises(ValueError) as context:
-                runner.check_job(None, ctx)
+                runner.check_job(None)
                 self.assertEqual("Please provide valid job_id", str(context.exception))
 
             # test check_job
-            job_state = runner.check_job(job_id, ctx)
+            job_state = runner.check_job(job_id)
             json.dumps(job_state)  # make sure it's JSON serializable
             self.assertTrue(validate_job_state(job_state))
             self.assertEqual(job_state["status"], "created")
-            self.assertEqual(job_state["wsid"], 9999)
-
+            self.assertEqual(job_state["wsid"], self.ws_id)
 
             # test check_job with projection
-            job_state = runner.check_job(job_id, ctx, projection=["status"])
+            job_state = runner.check_job(job_id, projection=["status"])
             self.assertFalse("status" in job_state.keys())
-            self.assertEqual(job_state["wsid"], 9999)
+            self.assertEqual(job_state["wsid"], self.ws_id)
 
             # test check_jobs
-            job_states = runner.check_jobs([job_id], ctx)
+            job_states = runner.check_jobs([job_id])
             json.dumps(job_states)  # make sure it's JSON serializable
             self.assertTrue(validate_job_state(job_states[job_id]))
             self.assertTrue(job_id in job_states)
             self.assertEqual(job_states[job_id]["status"], "created")
-            self.assertEqual(job_states[job_id]["wsid"], 9999)
+            self.assertEqual(job_states[job_id]["wsid"], self.ws_id)
 
             # test check_jobs with projection
-            job_states = runner.check_jobs([job_id], ctx, projection=["wsid"])
+            job_states = runner.check_jobs([job_id], projection=["wsid"])
             self.assertTrue(job_id in job_states)
             self.assertFalse("wsid" in job_states[job_id].keys())
             self.assertEqual(job_states[job_id]["status"], "created")
 
             # test check_workspace_jobs
-            job_states = runner.check_workspace_jobs(9999, ctx)
+            job_states = runner.check_workspace_jobs(self.ws_id)
             for job_id in job_states:
                 self.assertTrue(job_states[job_id])
             json.dumps(job_states)  # make sure it's JSON serializable
             self.assertTrue(job_id in job_states)
             self.assertEqual(job_states[job_id]["status"], "created")
-            self.assertEqual(job_states[job_id]["wsid"], 9999)
+            self.assertEqual(job_states[job_id]["wsid"], self.ws_id)
 
             # test check_workspace_jobs with projection
-            job_states = runner.check_workspace_jobs(9999, ctx, projection=["wsid"])
+            job_states = runner.check_workspace_jobs(self.ws_id, projection=["wsid"])
             self.assertTrue(job_id in job_states)
             self.assertFalse("wsid" in job_states[job_id].keys())
             self.assertEqual(job_states[job_id]["status"], "created")
 
-            job_states = runner.check_workspace_jobs(1234, ctx)
-            self.assertFalse(job_states)
+            with self.assertRaises(PermissionError) as e:
+                job_states = runner.check_workspace_jobs(1234)
+            self.assertIn(f"User {self.user_id} does not have permission to read jobs in workspace {1234}",
+                          str(e.exception))
 
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())

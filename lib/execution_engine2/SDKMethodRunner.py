@@ -52,6 +52,7 @@ class JobPermissions(Enum):
     WRITE = "w"
     NONE = "n"
 
+
 class SDKMethodRunner:
     def _get_client_groups(self, method):
         """
@@ -60,8 +61,7 @@ class SDKMethodRunner:
         if method is None:
             raise ValueError("Please input module_name.function_name")
 
-        pattern = re.compile(r".*\..*")
-        if method is not None and not pattern.match(method):
+        if method is not None and "." not in method:
             raise ValueError(
                 "unrecognized method: {}. Please input module_name.function_name".format(
                     method
@@ -81,14 +81,14 @@ class SDKMethodRunner:
 
         return client_groups
 
-    def _check_ws_objects(self, source_objects, ctx):
+    def _check_ws_objects(self, source_objects):
         """
         perform sanity checks on input WS objects
         """
 
         if source_objects:
             objects = [{"ref": ref} for ref in source_objects]
-            info = self.get_workspace(ctx=ctx).get_object_info3(
+            info = self.get_workspace().get_object_info3(
                 {"objects": objects, "ignoreErrors": 1}
             )
             paths = info.get("paths")
@@ -154,20 +154,10 @@ class SDKMethodRunner:
             self.condor = Condor(self.deployment_config_fp)
         return self.condor
 
-    def get_workspace(self, ctx=None):
-        if ctx is None:
-            ctx = self.ctx
-        if ctx is None:
-            raise Exception("Need to provide credentials for the workspace")
+    def get_workspace(self):
         if self.workspace is None:
-            self.workspace = Workspace(token=ctx["token"], url=self.workspace_url)
+            self.workspace = Workspace(token=self.token, url=self.workspace_url)
         return self.workspace
-
-    class WorkspacePermissions(Enum):
-        ADMINISTRATOR = "a"
-        READ_WRITE = "w"
-        READ = "r"
-        NONE = "n"
 
     def _get_job_log(self, job_id, skip_lines):
         """
@@ -211,16 +201,16 @@ class SDKMethodRunner:
         log_obj = {"lines": lines, "last_line_number": log.stored_line_count}
         return log_obj
 
-    def view_job_logs(self, job_id, skip_lines, ctx):
+    def view_job_logs(self, job_id, skip_lines):
         """
         Authorization Required: Ability to read from the workspace
         :param job_id:
         :param skip_lines:
-        :param ctx:
         :return:
         """
         logging.debug(f"About to view logs for {job_id}")
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
+        job = self.get_mongo_util().get_job(job_id)
+        self._test_job_permissions(job, job_id, level=JobPermissions.READ)
         logging.debug("Success, you have permission to view logs for " + job_id)
         return self._get_job_log(job_id, skip_lines)
 
@@ -255,7 +245,7 @@ class SDKMethodRunner:
         jl.lines = []
         return jl
 
-    def add_job_logs(self, job_id, log_lines, ctx):
+    def add_job_logs(self, job_id, log_lines):
         """
         #TODO Prevent too many logs in memory
         #TODO Max size of log lines = 1000
@@ -270,12 +260,12 @@ class SDKMethodRunner:
         #Authorization Required : Ability to read and write to the workspace
         :param job_id:
         :param log_lines:
-        :param ctx:
         :return:
         """
         logging.debug(f"About to add logs for {job_id}")
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-        logging.debug("Success, you have permission to view logs for " + job_id)
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.WRITE)
+        logging.debug("Success, you have permission to add logs for " + job_id)
 
         try:
             log = self.get_mongo_util().get_job_log(job_id=job_id)
@@ -329,21 +319,23 @@ class SDKMethodRunner:
             format="%(created)s %(levelname)s: %(message)s", level=logging.debug
         )
 
-    def cancel_job(self, job_id, ctx, terminated_code=None):
+    def cancel_job(self, job_id, terminated_code=None):
         """
         Authorization Required: Ability to Read and Write to the Workspace
         :param job_id:
-        :param ctx:
         :param terminated_code:
         :return:
         """
         # Is it inefficient to get the job twice? Is it cached?
         # Maybe if the call fails, we don't actually cancel the job?
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
+        logging.debug(f"Attempting to cancel job {job_id}")
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.WRITE)
+        logging.debug(f"User has permission to cancel job {job_id}")
         self.get_mongo_util().cancel_job(job_id=job_id, terminated_code=terminated_code)
         self.get_condor().cancel_job(job_id=job_id)
 
-    def check_job_canceled(self, job_id, ctx):
+    def check_job_canceled(self, job_id):
         """
         Authorization Required: None
         Check to see if job is terminated by the user
@@ -366,26 +358,19 @@ class SDKMethodRunner:
         :param params: RunJobParams object (See spec file)
         :return: The condor job id
         """
-        # if 'wsid' not in params:
-        #     raise Exception("Please provide wsid")
-
         print(params)
 
         ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
         if not ws_auth.can_write(params["wsid"]):
             logging.debug(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
             raise PermissionError(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
-        # if not self._can_write_ws(
-        #     self.get_permissions_for_workspace(wsid=params["wsid"], ctx=ctx)
-        # ):
-        #     logging.debug("You don't have permission to run jobs in this workspace")
 
         method = params.get("method")
 
         client_groups = self._get_client_groups(method)
 
         # perform sanity checks before creating job
-        self._check_ws_objects(source_objects=params.get("source_ws_objects"), ctx={"user_id": self.user_id, "token": self.token})
+        self._check_ws_objects(source_objects=params.get("source_ws_objects"))
 
         # update service_ver
         git_commit_hash = self._get_module_git_commit(method, params.get("service_ver"))
@@ -428,38 +413,6 @@ class SDKMethodRunner:
         logging.debug(type(condor_job_id))
         return job_id
 
-    def get_permissions_for_workspace(self, wsid, ctx):
-
-        username = ctx["user_id"]
-        logging.debug(f"Checking permissions for workspace {wsid} for {username}")
-        ws = self.get_workspace(ctx)
-        logging.debug(ws)
-
-        perms = ws.get_permissions_mass({"workspaces": [{"id": wsid}]})["perms"]
-
-        ws_permission = self.WorkspacePermissions.NONE
-        for p in perms:
-            if username in p:
-                ws_permission = self.WorkspacePermissions(p[username])
-        return ws_permission
-
-    @staticmethod
-    def _can_read_ws(p):
-        read_permissions = [
-            SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR,
-            SDKMethodRunner.WorkspacePermissions.READ_WRITE,
-            SDKMethodRunner.WorkspacePermissions.READ,
-        ]
-        return p in read_permissions
-
-    @staticmethod
-    def _can_write_ws(p):
-        write_permissions = [
-            SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR,
-            SDKMethodRunner.WorkspacePermissions.READ_WRITE,
-        ]
-        return p in write_permissions
-
     def _run_admin_command(self, command, params):
         available_commands = ["cancel_job", "view_job_logs"]
         if command not in available_commands:
@@ -488,34 +441,6 @@ class SDKMethodRunner:
                 f"You are not authorized for this command."
             )
         self._run_admin_command(command, params)
-
-    def check_permission_for_job(self, job_id, ctx, write=False):
-        """
-        #TODO Check if administrator flag is passed
-        #TODO Make it a decorator that just checks params
-        #If administrator flag is passed, try to check custom role for NJS_ADMIN
-
-        Check for permissions to modify or read this record, based on WSID associated with the record
-        :param job_id: The job id to look up to get it's WSID
-        :param ctx: The REQUEST
-        :param write: Whether or not to check for Read Permissions or Write Permissions
-        :return:
-        """
-        with self.get_mongo_util().mongo_engine_connection():
-            logging.debug(f"Getting job {job_id}")
-            job = Job.objects(id=job_id)[0]
-            logging.debug(f"Got {job}")
-            permission = self.get_permissions_for_workspace(wsid=job.wsid, ctx=ctx)
-            if write is True:
-                permitted = self._can_write_ws(permission)
-            else:
-                permitted = self._can_read_ws(permission)
-
-            if not permitted:
-                raise PermissionError(
-                    f"User {ctx['user_id']} does not have permissions to get status for wsid:{job.wsid}, job_id:{job_id} permission{permission}"
-                )
-            return job
 
     def _is_admin(self, token: str) -> bool:
         try:
@@ -549,19 +474,19 @@ class SDKMethodRunner:
         """
         try:
             perm = False
-            if perm == JobPermissions.READ:
-                perm = can_read_job(job, self.user_id, self.token, self.cfg)
-            elif perm == JobPermissions.WRITE:
-                perm = can_write_job(job, self.user_id, self.token, self.cfg)
+            if level == JobPermissions.READ:
+                perm = can_read_job(job, self.user_id, self.token, self.config)
+            elif level == JobPermissions.WRITE:
+                perm = can_write_job(job, self.user_id, self.token, self.config)
             if not perm and not self._is_admin(self.token):
                 raise PermissionError(
-                    f"User {self.user_id} does not have permission to read job {job_id}"
+                    f"User {self.user_id} does not have permission to {level} job {job_id}"
                 )
         except RuntimeError as e:
             logging.error(f"An error occurred while checking permissions for job {job_id}")
             raise e
 
-    def get_job_params(self, job_id, ctx):
+    def get_job_params(self, job_id):
         """
         get_job_params: fetch SDK method params passed to job runner
 
@@ -588,7 +513,7 @@ class SDKMethodRunner:
 
         return job_params
 
-    def update_job_status(self, job_id, status, ctx):
+    def update_job_status(self, job_id, status):
         """
         #TODO Deprecate this in favor of specific methods with specific checks?
         update_job_status: update status of a job runner record.
@@ -613,7 +538,7 @@ class SDKMethodRunner:
 
         return str(job.id)
 
-    def get_job_status(self, job_id, ctx):
+    def get_job_status(self, job_id):
         """
         get_job_status: fetch status of a job runner record.
                         raise error if job is not found
@@ -680,7 +605,7 @@ class SDKMethodRunner:
         )
 
     def finish_job(
-        self, job_id, ctx, error_message=None, error_code=None, error=None, job_output=None
+        self, job_id, error_message=None, error_code=None, error=None, job_output=None
     ):
 
         """
@@ -698,7 +623,8 @@ class SDKMethodRunner:
         if not job_id:
             raise ValueError("Please provide valid job_id")
 
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
+        job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.WRITE)
         self._check_job_is_running(job_id=job_id)
 
         if error_message:
@@ -718,7 +644,7 @@ class SDKMethodRunner:
         else:
             self._finish_job_with_success(job_id=job_id, job_output=job_output)
 
-    def start_job(self, job_id, ctx, skip_estimation=True):
+    def start_job(self, job_id, skip_estimation=True):
         """
         start_job: set job record to start status ("estimating" or "running") and update timestamp
                    (set job status to "estimating" by default, if job status currently is "created" or "queued".
@@ -734,9 +660,8 @@ class SDKMethodRunner:
         if not job_id:
             raise ValueError("Please provide valid job_id")
 
-        self.check_permission_for_job(job_id=job_id, ctx=ctx, write=True)
-
         job = self.get_mongo_util().get_job(job_id=job_id)
+        self._test_job_permissions(job, job_id, JobPermissions.WRITE)
         job_status = job.status
 
         allowed_states = [
@@ -765,7 +690,7 @@ class SDKMethodRunner:
         with self.get_mongo_util().mongo_engine_connection():
             job.save()
 
-    def check_job(self, job_id, ctx, check_permission=True, projection=None):
+    def check_job(self, job_id, check_permission=True, projection=None):
         """
         check_job: check and return job status for a given job_id
 
@@ -782,12 +707,12 @@ class SDKMethodRunner:
             raise ValueError("Please provide valid job_id")
 
         job_state = self.check_jobs(
-            [job_id], ctx, check_permission=check_permission, projection=projection
+            [job_id], check_permission=check_permission, projection=projection
         ).get(job_id)
 
         return job_state
 
-    def check_jobs(self, job_ids, ctx, check_permission=True, projection=None):
+    def check_jobs(self, job_ids, check_permission=True, projection=None):
         """
         check_jobs: check and return job status for a given of list job_ids
 
@@ -798,14 +723,20 @@ class SDKMethodRunner:
         if projection is None:
             projection = []
 
-        if check_permission:
-            for job_id in job_ids:
-                self.check_permission_for_job(job_id=job_id, ctx=ctx, write=False)
-
         jobs = self.get_mongo_util().get_jobs(job_ids=job_ids, projection=projection)
+        if check_permission:
+            try:
+                perms = can_read_jobs(jobs, self.user_id, self.token, self.config)
+            except RuntimeError as e:
+                logging.error(f"An error occurred while checking read permissions for jobs")
+                raise e
+        else:
+            perms = [True] * len(jobs)
 
         job_states = dict()
-        for job in jobs:
+        for idx, job in enumerate(jobs):
+            if not perms[idx]:
+                job_states[str(job.id)] = {"error": "Cannot read this job"}
             mongo_rec = job.to_mongo().to_dict()
             del mongo_rec['_id']
             mongo_rec['job_id'] = str(job.id)
@@ -822,7 +753,7 @@ class SDKMethodRunner:
 
         return job_states
 
-    def check_workspace_jobs(self, workspace_id, ctx, projection=None):
+    def check_workspace_jobs(self, workspace_id, projection=None):
         """
         check_workspace_jobs: check job status for all jobs in a given workspace
         """
@@ -833,13 +764,11 @@ class SDKMethodRunner:
         if projection is None:
             projection = []
 
-        if not self._can_read_ws(
-            self.get_permissions_for_workspace(wsid=workspace_id, ctx=ctx)
-        ):
+        ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
+        if not ws_auth.can_read(workspace_id):
+            logging.debug(f"User {self.user_id} doesn't have permission to read jobs in workspace {workspace_id}.")
             raise PermissionError(
-                "User {} does not have permissions to get status for wsid: {}".format(
-                    ctx["user_id"], workspace_id
-                )
+                f"User {self.user_id} does not have permission to read jobs in workspace {workspace_id}"
             )
 
         with self.get_mongo_util().mongo_engine_connection():
@@ -849,7 +778,7 @@ class SDKMethodRunner:
             return {}
 
         job_states = self.check_jobs(
-            job_ids, ctx, check_permission=False, projection=projection
+            job_ids, check_permission=False, projection=projection
         )
 
         return job_states

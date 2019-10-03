@@ -264,8 +264,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: params
         #BEGIN get_job_params
-        mr = SDKMethodRunner(self.config)
-        params = mr.get_job_params(job_id, ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        params = mr.get_job_params(job_id)
         #END get_job_params
 
         # At some point might do deeper type checking...
@@ -286,8 +286,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_id
         #BEGIN update_job_status
-        mr = SDKMethodRunner(self.config)
-        job_id = mr.update_job_status(params.get("job_id"), params.get("status"), ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        job_id = mr.update_job_status(params.get("job_id"), params.get("status"))
         #END update_job_status
 
         # At some point might do deeper type checking...
@@ -311,8 +311,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: line_number
         #BEGIN add_job_logs
-        mr = SDKMethodRunner(self.config)
-        line_number = mr.add_job_logs(job_id=job_id, log_lines=lines, ctx=ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        line_number = mr.add_job_logs(job_id=job_id, log_lines=lines)
         #END add_job_logs
 
         # At some point might do deeper type checking...
@@ -342,9 +342,9 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN get_job_logs
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
         returnVal = mr.view_job_logs(
-            job_id=params["job_id"], skip_lines=params.get("skip_lines", None), ctx=ctx
+            job_id=params["job_id"], skip_lines=params.get("skip_lines", None)
         )
         #END get_job_logs
 
@@ -372,9 +372,8 @@ class execution_engine2:
         """
         # ctx is the context object
         #BEGIN finish_job
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
         mr.finish_job(params.get('job_id'),
-                      ctx,
                       error_message=params.get('error_message'),
                       error_code=params.get('error_code'),
                       error=params.get('error'),
@@ -393,10 +392,9 @@ class execution_engine2:
         """
         # ctx is the context object
         #BEGIN start_job
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
         mr.start_job(
             params.get("job_id"),
-            ctx,
             skip_estimation=params.get("skip_estimation", True),
         )
         #END start_job
@@ -520,10 +518,9 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: job_state
         #BEGIN check_job
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
         job_state = mr.check_job(
             params.get("job_id"),
-            ctx,
             projection=params.get("projection", ["job_output"]),
         )
         #END check_job
@@ -656,10 +653,9 @@ class execution_engine2:
         # return variables are: returnVal
         #BEGIN check_jobs
 
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
         returnVal = mr.check_jobs(
             params.get("job_ids"),
-            ctx,
             projection=params.get("projection", ["job_output"]),
         )
         #END check_jobs
@@ -791,11 +787,10 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: returnVal
         #BEGIN check_workspace_jobs
-        mr = SDKMethodRunner(self.config)
+        mr = SDKMethodRunner(self.config, user_id=ctx["user_id"], token=ctx["token"])
         returnVal = mr.check_workspace_jobs(
             params.get("workspace_id"),
-            ctx,
-            projection=params.get("projection", ["job_output"]),
+            projection=params.get("projection", ["job_output"])
         )
         #END check_workspace_jobs
 
@@ -814,8 +809,8 @@ class execution_engine2:
         """
         # ctx is the context object
         #BEGIN cancel_job
-        mr = SDKMethodRunner(self.config)
-        mr.cancel_job(job_id=params["job_id"], ctx=ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        mr.cancel_job(job_id=params["job_id"])
         #END cancel_job
         pass
 
@@ -836,8 +831,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: result
         #BEGIN check_job_canceled
-        mr = SDKMethodRunner(self.config)
-        result = mr.check_job_canceled(job_id=params["job_id"], ctx=ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        result = mr.check_job_canceled(job_id=params["job_id"])
         #END check_job_canceled
 
         # At some point might do deeper type checking...
@@ -857,8 +852,8 @@ class execution_engine2:
         # ctx is the context object
         # return variables are: result
         #BEGIN get_job_status
-        mr = SDKMethodRunner(self.config)
-        result = mr.get_job_status(job_id, ctx)
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        result = mr.get_job_status(job_id)
         #END get_job_status
 
         # At some point might do deeper type checking...
