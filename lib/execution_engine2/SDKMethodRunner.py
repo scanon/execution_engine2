@@ -192,7 +192,7 @@ class SDKMethodRunner:
                     "line": log_line.line,
                     "linepos": log_line.linepos,
                     "error": log_line.error,
-                    "ts": str(log_line.ts),
+                    "ts": log_line.ts,
                 }
             )
 
@@ -280,8 +280,14 @@ class SDKMethodRunner:
             ts = input_line.get("ts")
             # TODO Maybe use strpos for efficiency?
             if ts is not None:
-                if type(ts) == str:
-                    ts = dateutil.parser.parse(ts)
+                try:     # input ts as float/int/str epoch timestamp
+                    ts = float(ts)
+                except Exception:
+                    try:  # input ts as datetime string
+                        ts = dateutil.parser.parse(ts).timestamp()
+                    except Exception:
+                        ts = datetime.utcnow().timestamp()
+
             ll.ts = ts
 
             ll.line = input_line.get("line")
@@ -685,13 +691,13 @@ class SDKMethodRunner:
 
         if job_status == Status.estimating.value or skip_estimation:
             # set job to running status
-            job.running = datetime.utcnow()
+            job.running = datetime.utcnow().timestamp()
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.running.value
             )
         else:
             # set job to estimating status
-            job.estimating = datetime.utcnow()
+            job.estimating = datetime.utcnow().timestamp()
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.estimating.value
             )
@@ -748,14 +754,14 @@ class SDKMethodRunner:
             mongo_rec = job.to_mongo().to_dict()
             del mongo_rec['_id']
             mongo_rec['job_id'] = str(job.id)
-            mongo_rec['created'] = job.id.generation_time.utcnow().replace(tzinfo=timezone.utc).isoformat()
-            mongo_rec['updated'] = job.updated.utcnow().replace(tzinfo=timezone.utc).isoformat()
+            mongo_rec['created'] = job.id.generation_time.utcnow().timestamp()
+            mongo_rec['updated'] = job.updated
             if job.estimating:
-                mongo_rec['estimating'] = job.estimating.utcnow().replace(tzinfo=timezone.utc).isoformat()
+                mongo_rec['estimating'] = job.estimating
             if job.running:
-                mongo_rec['running'] = job.running.utcnow().replace(tzinfo=timezone.utc).isoformat()
+                mongo_rec['running'] = job.running
             if job.finished:
-                mongo_rec['finished'] = job.finished.utcnow().replace(tzinfo=timezone.utc).isoformat()
+                mongo_rec['finished'] = job.finished
 
             job_states[str(job.id)] = mongo_rec
 
