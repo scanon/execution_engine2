@@ -1,18 +1,22 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
 import time
-from enum import Enum
+from collections import namedtuple
 
 import dateutil
-import requests
 from bson import ObjectId
+from datetime import datetime
+from enum import Enum
 
-from execution_engine2.exceptions import (
-    RecordNotFoundException,
-    InvalidStatusTransitionException,
+from execution_engine2.authorization.authstrategy import (
+    can_read_job,
+    can_read_jobs,
+    can_write_job,
 )
+from execution_engine2.authorization.roles import AdminAuthUtil
+from execution_engine2.authorization.workspaceauth import WorkspaceAuth
+from execution_engine2.db.MongoUtil import MongoUtil
 from execution_engine2.db.models.models import (
     Job,
     JobInput,
@@ -23,20 +27,15 @@ from execution_engine2.db.models.models import (
     LogLines,
     ErrorCode,
 )
+from execution_engine2.exceptions import AuthError
+from execution_engine2.exceptions import (
+    RecordNotFoundException,
+    InvalidStatusTransitionException,
+)
+from execution_engine2.utils.Condor import Condor
 from installed_clients.CatalogClient import Catalog
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.authclient import KBaseAuth
-from execution_engine2.utils.Condor import Condor
-from execution_engine2.db.MongoUtil import MongoUtil
-from execution_engine2.authorization.roles import AdminAuthUtil
-from execution_engine2.exceptions import AuthError
-from execution_engine2.authorization.authstrategy import (
-    can_read_job,
-    can_read_jobs,
-    can_write_job
-)
-from execution_engine2.authorization.workspaceauth import WorkspaceAuth
-
 
 debug = json.loads(os.environ.get("debug", "False").lower())
 
@@ -128,13 +127,13 @@ class SDKMethodRunner:
         inputs.parent_job_id = str(params.get("parent_job_id"))
 
         inputs.narrative_cell_info = Meta()
-        meta = params.get('meta')
+        meta = params.get("meta")
         if meta:
-            inputs.narrative_cell_info.run_id = meta.get('run_id')
-            inputs.narrative_cell_info.token_id = meta.get('token_id')
-            inputs.narrative_cell_info.tag = meta.get('tag')
-            inputs.narrative_cell_info.cell_id = meta.get('cell_id')
-            inputs.narrative_cell_info.status = meta.get('status')
+            inputs.narrative_cell_info.run_id = meta.get("run_id")
+            inputs.narrative_cell_info.token_id = meta.get("token_id")
+            inputs.narrative_cell_info.tag = meta.get("tag")
+            inputs.narrative_cell_info.cell_id = meta.get("cell_id")
+            inputs.narrative_cell_info.status = meta.get("status")
 
         job.job_input = inputs
         logging.info(job.job_input.to_mongo().to_dict())
@@ -142,6 +141,13 @@ class SDKMethodRunner:
             job.save()
 
         return str(job.id)
+
+    def get_workspace_auth(self):
+        if self.workspace_auth is None:
+            self.workspace_auth = WorkspaceAuth(
+                self.token, self.user_id, self.workspace_url
+            )
+        return self.workspace_auth
 
     def get_mongo_util(self):
         if self.mongo_util is None:
@@ -284,9 +290,11 @@ class SDKMethodRunner:
 
                 try:
                     if isinstance(ts, str):  # input ts as string
-                        if ts.replace('.', '', 1).isdigit():  # input ts as numeric string
-                            ts = int(float(ts) * 1000) if '.' in ts else int(ts)
-                        else:   # input ts as datetime string
+                        if ts.replace(
+                            ".", "", 1
+                        ).isdigit():  # input ts as numeric string
+                            ts = int(float(ts) * 1000) if "." in ts else int(ts)
+                        else:  # input ts as datetime string
                             ts = int(dateutil.parser.parse(ts).timestamp() * 1000)
                     elif isinstance(ts, float):  # input ts as float epoch
                         ts = int(ts * 1000)
@@ -316,14 +324,19 @@ class SDKMethodRunner:
         self.mongo_util = None
         self.condor = None
         self.workspace = None
-        self.auth = None
+        self.workspace_auth = None
+
         self.admin_roles = config.get("admin_roles", ["EE2_ADMIN"])
 
         catalog_url = config.get("catalog-url")
         self.catalog = Catalog(catalog_url)
 
         self.workspace_url = config.get("workspace-url")
+
         self.auth_url = config.get("auth-url")
+        self.legacy_auth_url = config.get("auth-service-url")
+        self.auth = KBaseAuth(auth_url=self.legacy_auth_url)
+
         self.user_id = user_id
         self.token = token
         self.is_admin = False
@@ -370,10 +383,14 @@ class SDKMethodRunner:
         :param params: RunJobParams object (See spec file)
         :return: The condor job id
         """
-        ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
+        ws_auth = self.get_workspace_auth()
         if not ws_auth.can_write(params["wsid"]):
-            logging.debug(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
-            raise PermissionError(f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}.")
+            logging.debug(
+                f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}."
+            )
+            raise PermissionError(
+                f"User {self.user_id} doesn't have permission to run jobs in workspace {params['wsid']}."
+            )
 
         method = params.get("method")
         logging.info(f"User {self.user_id} attempting to run job {method}")
@@ -405,9 +422,6 @@ class SDKMethodRunner:
             ## delete job from database? Or mark it to a state it will never run?
             logging.error(e)
             raise e
-        print("error is")
-        print(type(submission_info))
-        print(submission_info.error, type(submission_info.error))
 
         if submission_info.error is not None:
             raise submission_info.error
@@ -430,7 +444,10 @@ class SDKMethodRunner:
             )
         commands = {"cancel_job": self.cancel_job, "view_job_logs": self.view_job_logs}
         p = {
-            "cancel_job": {"job_id": params.get("job_id"), "terminated_code": params.get("terminated_code")},
+            "cancel_job": {
+                "job_id": params.get("job_id"),
+                "terminated_code": params.get("terminated_code"),
+            },
             "view_job_logs": {"job_id": params.get("job_id")},
         }
         return commands[command](**p[command])
@@ -451,7 +468,9 @@ class SDKMethodRunner:
         :param token: The auth token (Will be checked for the correct auth role)
         :return:
         """
-        logging.info(f'Attempting to run administrative command "{command}" as user {self.user_id}')
+        logging.info(
+            f'Attempting to run administrative command "{command}" as user {self.user_id}'
+        )
         # set admin privs, one way or the other
         self.is_admin = self._is_admin(token)
         if not self.is_admin:
@@ -463,15 +482,22 @@ class SDKMethodRunner:
 
     def _is_admin(self, token: str) -> bool:
         try:
-            self.is_admin = AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(self.token)
+            self.is_admin = AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(
+                token
+            )
+            return self.is_admin
         except AuthError as e:
             logging.error(f"An auth error occurred: {str(e)}")
             raise e
         except RuntimeError as e:
-            logging.error(f"A runtime error occurred while looking up user roles: {str(e)}")
+            logging.error(
+                f"A runtime error occurred while looking up user roles: {str(e)}"
+            )
             raise e
 
-    def _test_job_permissions(self, job: Job, job_id: str, level: JobPermissions) -> bool:
+    def _test_job_permissions(
+        self, job: Job, job_id: str, level: JobPermissions
+    ) -> bool:
         """
         Tests if the currently loaded token has the requested permissions for the given job.
         Returns True if so. Raises a PermissionError if not.
@@ -504,7 +530,9 @@ class SDKMethodRunner:
                     f"User {self.user_id} does not have permission to {level} job {job_id}"
                 )
         except RuntimeError as e:
-            logging.error(f"An error occurred while checking permissions for job {job_id}")
+            logging.error(
+                f"An error occurred while checking permissions for job {job_id}"
+            )
             raise e
 
     def get_job_params(self, job_id):
@@ -602,7 +630,10 @@ class SDKMethodRunner:
             error_code = ErrorCode.unknown_error.value
 
         self.get_mongo_util().finish_job_with_error(
-            job_id=job_id, error_message=error_message, error_code=error_code, error=error
+            job_id=job_id,
+            error_message=error_message,
+            error_code=error_code,
+            error=error,
         )
 
     def _finish_job_with_success(self, job_id, job_output):
@@ -654,7 +685,10 @@ class SDKMethodRunner:
             if error_code is None:
                 error_code = ErrorCode.job_crashed.value
             self._finish_job_with_error(
-                job_id=job_id, error_message=error_message, error_code=error_code, error=error
+                job_id=job_id,
+                error_message=error_message,
+                error_code=error_code,
+                error=error,
             )
         elif job_output is None:
             if error_code is None:
@@ -750,7 +784,9 @@ class SDKMethodRunner:
             try:
                 perms = can_read_jobs(jobs, self.user_id, self.token, self.config)
             except RuntimeError as e:
-                logging.error(f"An error occurred while checking read permissions for jobs")
+                logging.error(
+                    f"An error occurred while checking read permissions for jobs"
+                )
                 raise e
         else:
             perms = [True] * len(jobs)
@@ -760,16 +796,18 @@ class SDKMethodRunner:
             if not perms[idx]:
                 job_states[str(job.id)] = {"error": "Cannot read this job"}
             mongo_rec = job.to_mongo().to_dict()
-            del mongo_rec['_id']
-            mongo_rec['job_id'] = str(job.id)
-            mongo_rec['created'] = int(job.id.generation_time.utcnow().timestamp() * 1000)
-            mongo_rec['updated'] = job.updated
+            del mongo_rec["_id"]
+            mongo_rec["job_id"] = str(job.id)
+            mongo_rec["created"] = int(
+                job.id.generation_time.utcnow().timestamp() * 1000
+            )
+            mongo_rec["updated"] = job.updated
             if job.estimating:
-                mongo_rec['estimating'] = job.estimating
+                mongo_rec["estimating"] = job.estimating
             if job.running:
-                mongo_rec['running'] = job.running
+                mongo_rec["running"] = job.running
             if job.finished:
-                mongo_rec['finished'] = job.finished
+                mongo_rec["finished"] = job.finished
 
             job_states[str(job.id)] = mongo_rec
 
@@ -786,9 +824,11 @@ class SDKMethodRunner:
         if projection is None:
             projection = []
 
-        ws_auth = WorkspaceAuth(self.token, self.user_id, self.workspace_url)
+        ws_auth = self.get_workspace_auth()
         if not ws_auth.can_read(workspace_id):
-            logging.debug(f"User {self.user_id} doesn't have permission to read jobs in workspace {workspace_id}.")
+            logging.debug(
+                f"User {self.user_id} doesn't have permission to read jobs in workspace {workspace_id}."
+            )
             raise PermissionError(
                 f"User {self.user_id} does not have permission to read jobs in workspace {workspace_id}"
             )
@@ -804,3 +844,176 @@ class SDKMethodRunner:
         )
 
         return job_states
+
+    @staticmethod
+    def _job_state_from_jobs(jobs):
+        job_states = []
+        for job in jobs:
+            mongo_rec = job.to_mongo().to_dict()
+            mongo_rec["_id"] = str(job.id)
+            mongo_rec["job_id"] = str(job.id)
+            mongo_rec["created"] = str(job.id.generation_time)
+            mongo_rec["updated"] = str(job.updated)
+            if job.estimating:
+                mongo_rec["estimating"] = str(job.estimating)
+            if job.running:
+                mongo_rec["running"] = str(job.running)
+            if job.finished:
+                mongo_rec["finished"] = str(job.finished)
+            job_states.append(mongo_rec)
+        return job_states
+
+    @staticmethod
+    def parse_bool_from_string(str_or_bool):
+        if isinstance(str_or_bool, bool):
+            return str_or_bool
+
+        if isinstance(json.loads(str_or_bool.lower()), bool):
+            return json.loads(str_or_bool.lower())
+
+        raise Exception("Not a boolean value")
+
+    @staticmethod
+    def get_sort_order(ascending):
+        if ascending is None:
+            return "+"
+        else:
+            if SDKMethodRunner.parse_bool_from_string(ascending):
+                return "+"
+            else:
+                return "-"
+
+    def check_jobs_date_range_for_user(
+        self,
+        creation_start_date,
+        creation_end_date,
+        job_projection=None,
+        job_filter=None,
+        limit=None,
+        user=None,
+        offset=None,
+        ascending=None,
+    ):
+
+        """
+        :param creation_start_date: Start Date for Creation
+        :param creation_end_date: Stop Date for Creation
+        :param job_projection:  List of fields to project alongside [_id, authstrat, updated, created, job_id]
+        :param job_filter:  List of simple job fields of format key=value
+        :param limit: Limit of records to return, default 2000
+        :param user: Optional Username or "ALL" for all users
+        :param offset: Optional offset for skipping records
+        :param ascending: Sort by id ascending or descending
+        :return:
+        """
+        sort_order = self.get_sort_order(ascending)
+
+        if offset is None:
+            offset = 0
+
+        if self.token is None:
+            raise AuthError("Please provide a token to check jobs date range")
+
+        token_user = self.auth.get_user(self.token)
+        if user is None:
+            user = token_user
+
+        # Admins can view "ALL" or check_jobs for other users
+        if user != token_user:
+            if not self._is_admin(self.token):
+                raise AuthError(
+                    f"You are not authorized to view all records or records for others. user={user} token={token_user}"
+                )
+
+        dummy_ids = self._get_dummy_dates(creation_start_date, creation_end_date)
+
+        if job_projection is None:
+            # Maybe set a default here?
+            job_projection = []
+
+        if not isinstance(job_projection, list):
+            raise Exception("Invalid job projection type. Must be list")
+
+        if limit is None:
+            # Maybe put this in config
+            limit = 2000
+
+        job_filter_temp = {}
+        if isinstance(job_filter, list):
+            for item in job_filter:
+                (k, v) = item.split("=")
+                job_filter_temp[k] = v
+        elif isinstance(job_filter, dict):
+            job_filter_temp = job_filter
+        elif job_filter is None:
+            pass
+        else:
+            raise Exception(
+                "Job filter must be a dictionary or a list of key=value pairs"
+            )
+
+        job_filter_temp["id__gt"] = dummy_ids.start
+        job_filter_temp["id__lt"] = dummy_ids.stop
+
+        if user != "ALL":
+            job_filter_temp["user"] = user
+
+        with self.get_mongo_util().mongo_engine_connection():
+            count = Job.objects.filter(**job_filter_temp).count()
+            jobs = (
+                Job.objects[:limit]
+                .filter(**job_filter_temp)
+                .order_by(f"{sort_order}_id")
+                .skip(offset)
+                .only(*job_projection)
+            )
+
+        logging.info(
+            f"Searching for jobs with id_gt {dummy_ids.start} id_lt {dummy_ids.stop}"
+        )
+
+        job_states = self._job_state_from_jobs(jobs)
+
+        # Remove ObjectIds
+        for item in job_filter_temp:
+            job_filter_temp[item] = str(job_filter_temp[item])
+
+        return {
+            "jobs": job_states,
+            "count": len(job_states),
+            "query_count": count,
+            "filter": job_filter_temp,
+            "skip": offset,
+            "projection": job_projection,
+            "limit": limit,
+            "sort_order": sort_order,
+        }
+
+        # TODO Move to MongoUtils?
+        # TODO Add support for projection (validate the allowed fields to project?) (Need better api design)
+        # TODO Add support for filter (validate the allowed fields to project?) (Need better api design)
+        # TODO USE AS_PYMONGO() FOR SPEED
+        # TODO Better define default fields
+        # TODO Instead of SKIP use ID GT LT https://www.codementor.io/arpitbhayani/fast-and-efficient-pagination-in-mongodb-9095flbqr
+
+    @staticmethod
+    def _get_dummy_dates(creation_start_date, creation_end_date):
+        creation_start_date = dateutil.parser.parse(creation_start_date)
+
+        if creation_start_date is None:
+            raise Exception(
+                "Please provide a valid start date for when job was created"
+            )
+        dummy_start_id = ObjectId.from_datetime(creation_start_date)
+
+        creation_end_date = dateutil.parser.parse(creation_end_date)
+        if creation_end_date is None:
+            raise Exception("Please provide a valid end date for when job was created")
+        dummy_end_id = ObjectId.from_datetime(creation_end_date)
+
+        if creation_start_date.timestamp() > creation_end_date.timestamp():
+            raise Exception("The start date cannot be greater than the end date.")
+
+        dummy_ids = namedtuple("dummy_ids", "start stop")
+
+        return dummy_ids(start=dummy_start_id, stop=dummy_end_id)

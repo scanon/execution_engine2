@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, List
 import copy
 import json
 import logging
 import os
+import time
 import unittest
+
+import dateutil
+import requests
+import requests_mock
+from bson import ObjectId
 from configparser import ConfigParser
 from datetime import datetime, timedelta
-from unittest.mock import patch
-import dateutil
-
 from mock import MagicMock
 from mongoengine import ValidationError
+from typing import Dict, List
+from unittest.mock import patch
 
-from execution_engine2.exceptions import InvalidStatusTransitionException
+from execution_engine2.SDKMethodRunner import SDKMethodRunner
+from execution_engine2.db.MongoUtil import MongoUtil
 from execution_engine2.db.models.models import (
     Job,
     JobInput,
@@ -22,27 +27,23 @@ from execution_engine2.db.models.models import (
     JobLog,
     TerminatedCode,
 )
+from execution_engine2.exceptions import AuthError
+from execution_engine2.exceptions import InvalidStatusTransitionException
 from execution_engine2.utils.Condor import submission_info
-from execution_engine2.db.MongoUtil import MongoUtil
-from execution_engine2.SDKMethodRunner import SDKMethodRunner
 from test.mongo_test_helper import MongoTestHelper
-from test.test_utils import (
-    bootstrap,
-    get_example_job,
-    validate_job_state
-)
-import requests
-import requests_mock
+from test.test_utils import bootstrap, get_example_job, validate_job_state
 
 logging.basicConfig(level=logging.INFO)
 bootstrap()
 
 
-def _run_job_adapter(ws_perms_info: Dict = None,
-                     ws_perms_global: List = [],
-                     client_groups_info: Dict = None,
-                     module_versions: Dict = None,
-                     user_roles: List = None):
+def _run_job_adapter(
+    ws_perms_info: Dict = None,
+    ws_perms_global: List = [],
+    client_groups_info: Dict = None,
+    module_versions: Dict = None,
+    user_roles: List = None,
+):
     """
     Mocks POST calls to:
         Workspace.get_permissions_mass,
@@ -63,6 +64,7 @@ def _run_job_adapter(ws_perms_info: Dict = None,
     :param module_versions: dict - key git_commit_hash (str), others aren't used
     :return: an adapter function to be passed to request_mock
     """
+
     def perm_adapter(request):
         response = requests.Response()
         response.status_code = 200
@@ -92,16 +94,16 @@ def _run_job_adapter(ws_perms_info: Dict = None,
                 result = [{"git_commit_hash": "some_commit_hash"}]
                 if module_versions is not None:
                     result = [module_versions]
-            response._content = bytes(json.dumps({
-                "result": result,
-                "version": "1.1"
-            }), "UTF-8")
+            response._content = bytes(
+                json.dumps({"result": result, "version": "1.1"}), "UTF-8"
+            )
         elif rq_method == "GET":
             if request.url.endswith("/api/V2/me"):
-                response._content = bytes(json.dumps({
-                    "customroles": user_roles
-                }), "UTF-8")
+                response._content = bytes(
+                    json.dumps({"customroles": user_roles}), "UTF-8"
+                )
         return response
+
     return perm_adapter
 
 
@@ -120,11 +122,13 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         if mongo_in_docker is not None:
             cls.cfg["mongo-host"] = cls.cfg["mongo-in-docker-compose"]
 
-        cls.user_id = "fake_test_user"
+        cls.user_id = "wsadmin"
         cls.ws_id = 9999
         cls.token = "token"
 
-        cls.method_runner = SDKMethodRunner(cls.cfg, user_id=cls.user_id, token=cls.token)
+        cls.method_runner = SDKMethodRunner(
+            cls.cfg, user_id=cls.user_id, token=cls.token
+        )
         cls.mongo_util = MongoUtil(cls.cfg)
         cls.mongo_helper = MongoTestHelper(cls.cfg)
 
@@ -184,7 +188,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         runner = self.getRunner()
         self.assertTrue(set(class_attri) <= set(runner.__dict__.keys()))
 
-    #TODO Think about what we want to do here, as this is an integration test and not a unit test
+    # TODO Think about what we want to do here, as this is an integration test and not a unit test
     # def test_get_client_groups(self):
     #     runner = self.getRunner()
     #
@@ -226,16 +230,21 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
                 "method": "MEGAHIT.run_megahit",
                 "app_id": "MEGAHIT/run_megahit",
                 "service_ver": "2.2.1",
-                "params": [{"workspace_name": "wjriehl:1475006266615",
-                            "read_library_refs": ["18836/5/1"],
-                            "output_contigset_name": "rhodo_contigs",
-                            "recipe": "auto",
-                            "assembler": None,
-                            "pipeline": None,
-                            "min_contig_len": None}],
+                "params": [
+                    {
+                        "workspace_name": "wjriehl:1475006266615",
+                        "read_library_refs": ["18836/5/1"],
+                        "output_contigset_name": "rhodo_contigs",
+                        "recipe": "auto",
+                        "assembler": None,
+                        "pipeline": None,
+                        "min_contig_len": None,
+                    }
+                ],
                 "source_ws_objects": ["a/b/c", "e/d"],
                 "parent_job_id": "9998",
-                'meta': {'tag': 'dev', 'token_id': '12345'}}
+                "meta": {"tag": "dev", "token_id": "12345"},
+            }
 
             job_id = runner._init_job_rec(self.user_id, job_params)
 
@@ -257,8 +266,8 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(job_input.parent_job_id, "9998")
 
             narrative_cell_info = job_input.narrative_cell_info
-            self.assertEqual(narrative_cell_info.tag, 'dev')
-            self.assertEqual(narrative_cell_info.token_id, '12345')
+            self.assertEqual(narrative_cell_info.tag, "dev")
+            self.assertEqual(narrative_cell_info.token_id, "12345")
             self.assertFalse(narrative_cell_info.status)
 
             self.assertFalse(job.job_output)
@@ -303,8 +312,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         )
 
         sdk.cancel_job(
-            job_id=job_id,
-            terminated_code=TerminatedCode.terminated_by_automation.value,
+            job_id=job_id, terminated_code=TerminatedCode.terminated_by_automation.value
         )
 
         self.assertEqual(
@@ -369,7 +377,11 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
     @requests_mock.Mocker()
     @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
     def test_run_job(self, rq_mock, condor_mock):
-        rq_mock.add_matcher(_run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
+        rq_mock.add_matcher(
+            _run_job_adapter(
+                ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}
+            )
+        )
         runner = self.getRunner()
         runner.get_condor = MagicMock(return_value=condor_mock)
         job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
@@ -392,7 +404,11 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         :return:
         """
         runner = self.getRunner()
-        rq_mock.add_matcher(_run_job_adapter(ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}))
+        rq_mock.add_matcher(
+            _run_job_adapter(
+                ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}}
+            )
+        )
         runner.get_condor = MagicMock(return_value=condor_mock)
         job = get_example_job(user=self.user_id, wsid=self.ws_id).to_mongo().to_dict()
         job["method"] = job["job_input"]["app_id"]
@@ -460,14 +476,20 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             time_input = input_lines2[i - log_pos_1]["ts"]
             if isinstance(time_input, str):
-                if time_input.replace('.', '', 1).isdigit():
-                    time_input = int(float(time_input) * 1000) if '.' in time_input else int(time_input)
+                if time_input.replace(".", "", 1).isdigit():
+                    time_input = (
+                        int(float(time_input) * 1000)
+                        if "." in time_input
+                        else int(time_input)
+                    )
                 else:
-                    time_input = int(dateutil.parser.parse(time_input).timestamp() * 1000)
+                    time_input = int(
+                        dateutil.parser.parse(time_input).timestamp() * 1000
+                    )
             elif isinstance(time_input, float):
                 time_input = int(time_input * 1000)
 
-            self.assertEqual(inserted_line['ts'], time_input)
+            self.assertEqual(inserted_line["ts"], time_input)
 
             error1 = line["error"]
             error2 = input_lines2[i - log_pos_1]["error"]
@@ -483,10 +505,12 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_add_job_logs_ok(self, rq_mock):
-        rq_mock.add_matcher(_run_job_adapter(
-            ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
-            user_roles=[]
-        ))
+        rq_mock.add_matcher(
+            _run_job_adapter(
+                ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
+                user_roles=[],
+            )
+        )
         with self.mongo_util.mongo_engine_connection():
             ori_job_log_count = JobLog.objects.count()
             ori_job_count = Job.objects.count()
@@ -739,14 +763,20 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         self.assertTrue(job.finished)
 
         with self.mongo_util.mongo_engine_connection():
-            job_id = runner.update_job_status(job_id, "running")  # put job back to running status
+            job_id = runner.update_job_status(
+                job_id, "running"
+            )  # put job back to running status
 
-        error = {"message": "error message",
-                 "code'": -32000,
-                 "name": "Server error",
-                 "error": """Traceback (most recent call last):\n  File "/kb/module/bin/../lib/simpleapp/simpleappServer.py"""}
+        error = {
+            "message": "error message",
+            "code'": -32000,
+            "name": "Server error",
+            "error": """Traceback (most recent call last):\n  File "/kb/module/bin/../lib/simpleapp/simpleappServer.py""",
+        }
 
-        runner.finish_job(job_id, error_message="error message", error=error, error_code=0)
+        runner.finish_job(
+            job_id, error_message="error message", error=error, error_code=0
+        )
 
         job = self.mongo_util.get_job(job_id=job_id)
 
@@ -805,11 +835,13 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
     @requests_mock.Mocker()
     def test_check_job_global_perm(self, rq_mock):
-        rq_mock.add_matcher(_run_job_adapter(
-            ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "n"}},
-            ws_perms_global=[self.ws_id],
-            user_roles=[]
-        ))
+        rq_mock.add_matcher(
+            _run_job_adapter(
+                ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "n"}},
+                ws_perms_global=[self.ws_id],
+                user_roles=[],
+            )
+        )
         with self.mongo_util.mongo_engine_connection():
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
@@ -835,17 +867,21 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             self.assertEqual(job_states[job_id]["status"], "created")
 
             # now test with a different user
-            other_method_runner = SDKMethodRunner(self.cfg, user_id="some_other_user", token="other_token")
+            other_method_runner = SDKMethodRunner(
+                self.cfg, user_id="some_other_user", token="other_token"
+            )
             job_states = other_method_runner.check_workspace_jobs(self.ws_id)
             self.assertTrue(job_id in job_states)
             self.assertEqual(job_states[job_id]["status"], "created")
 
     @requests_mock.Mocker()
     def test_check_job_ok(self, rq_mock):
-        rq_mock.add_matcher(_run_job_adapter(
-            ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
-            user_roles=[]
-        ))
+        rq_mock.add_matcher(
+            _run_job_adapter(
+                ws_perms_info={"user_id": self.user_id, "ws_perms": {self.ws_id: "a"}},
+                user_roles=[],
+            )
+        )
         with self.mongo_util.mongo_engine_connection():
             ori_job_count = Job.objects.count()
             job_id = self.create_job_rec()
@@ -908,8 +944,408 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
 
             with self.assertRaises(PermissionError) as e:
                 job_states = runner.check_workspace_jobs(1234)
-            self.assertIn(f"User {self.user_id} does not have permission to read jobs in workspace {1234}",
-                          str(e.exception))
+            self.assertIn(
+                f"User {self.user_id} does not have permission to read jobs in workspace {1234}",
+                str(e.exception),
+            )
 
             self.mongo_util.get_job(job_id=job_id).delete()
             self.assertEqual(ori_job_count, Job.objects.count())
+
+    @staticmethod
+    def create_job_from_job(job, new_job_id):
+        j = Job()
+        j.id = new_job_id
+        j.wsid = job.wsid
+        j.user = job.user
+        j.authstrat = job.authstrat
+        j.status = job.status
+        j.finished = new_job_id.generation_time.timestamp()
+        j.job_input = job.job_input
+        return j
+
+    def replace_job_id(self, job1, new_id):
+        with self.mongo_util.mongo_engine_connection():
+            job2 = self.create_job_from_job(job1, new_id)
+            job2.save()
+            print("Saved job with id", job2.id, job2.id.generation_time)
+            job1.delete()
+
+    # flake8: noqa: C901
+    @patch("lib.execution_engine2.utils.Condor.Condor", autospec=True)
+    def test_check_jobs_date_range(self, condor_mock):
+        user_name = "wsadmin"
+
+        runner = self.getRunner()
+        runner.workspace_auth = MagicMock()
+        runner.auth.get_user = MagicMock(return_value=user_name)
+        runner.is_admin = True
+        runner._is_admin = MagicMock(return_value=True)
+
+        runner.workspace_auth.can_read = MagicMock(return_value=True)
+        runner.get_permissions_for_workspace = MagicMock(return_value=True)
+        runner._get_module_git_commit = MagicMock(return_value="git_commit_goes_here")
+        runner.get_condor = MagicMock(return_value=condor_mock)
+        # ctx = {"user_id": self.user_id, "wsid": self.ws_id, "token": self.token}
+        job = get_example_job().to_mongo().to_dict()
+        job["method"] = job["job_input"]["app_id"]
+        job["app_id"] = job["job_input"]["app_id"]
+
+        si = submission_info(clusterid="test", submit=job, error=None)
+        condor_mock.run_job = MagicMock(return_value=si)
+
+        job_id1 = runner.run_job(params=job)
+        job_id2 = runner.run_job(params=job)
+        job_id3 = runner.run_job(params=job)
+        job_id4 = runner.run_job(params=job)
+        job_id5 = runner.run_job(params=job)
+        job_id6 = runner.run_job(params=job)
+        time.sleep(1)
+
+        new_job_ids = []
+
+        now = datetime.utcnow()
+        last_month = now - timedelta(days=30)
+        last_month_and_1_hour = now - timedelta(days=30) - timedelta(hours=1)
+
+        last_week = now - timedelta(days=7)
+        yesterday = now - timedelta(days=1)
+        tomorrow = now + timedelta(days=1)
+        day_after = now + timedelta(days=2)
+
+        with self.mongo_util.mongo_engine_connection():
+            # Last Month
+            job = Job.objects.with_id(job_id1)  # type : Job
+            new_id_last_month = ObjectId.from_datetime(last_month)
+            print(last_month, new_id_last_month, new_id_last_month.generation_time)
+
+            print("About to replace job id")
+            print(job)
+            print(new_id_last_month)
+            self.replace_job_id(job, new_id_last_month)
+            new_job_ids.append(str(new_id_last_month))
+
+            # Last week
+            job = Job.objects.with_id(job_id2)  # type : Job
+            new_id_last_week = ObjectId.from_datetime(last_week)
+            self.replace_job_id(job, new_id_last_week)
+            new_job_ids.append(str(new_id_last_week))
+
+            # Yesterday
+            job = Job.objects.with_id(job_id3)  # type : Job
+            new_id_yesterday = ObjectId.from_datetime(yesterday)
+            self.replace_job_id(job, new_id_yesterday)
+            new_job_ids.append(str(new_id_yesterday))
+
+            # Now
+            job = Job.objects.with_id(job_id4)  # type : Job
+            new_id_now = ObjectId.from_datetime(now)
+            self.replace_job_id(job, new_id_now)
+            new_job_ids.append(str(new_id_now))
+
+            # Tomorrow
+            job = Job.objects.with_id(job_id5)  # type : Job
+            new_id_tomorrow = ObjectId.from_datetime(tomorrow)
+            self.replace_job_id(job, new_id_tomorrow)
+            new_job_ids.append(str(new_id_tomorrow))
+
+            # Day After
+            job = Job.objects.with_id(job_id6)  # type : Job
+            new_id_day_after = ObjectId.from_datetime(day_after)
+            self.replace_job_id(job, new_id_day_after)
+            new_job_ids.append(str(new_id_day_after))
+
+        # JOB ID GETS GENERATED HERE
+        with self.mongo_util.mongo_engine_connection():
+            ori_job_count = Job.objects.count()
+            job_id = self.create_job_rec()
+            self.assertEqual(ori_job_count, Job.objects.count() - 1)
+
+            job = self.mongo_util.get_job(job_id=job_id)
+            self.assertEqual(job.status, "created")
+            self.assertFalse(job.finished)
+            self.false = self.assertFalse(job.running)
+            self.assertFalse(job.estimating)
+
+            runner.check_permission_for_job = MagicMock(return_value=True)
+            # runner.get_permissions_for_workspace = MagicMock(
+            #     return_value=SDKMethodRunner.WorkspacePermissions.ADMINISTRATOR
+            # )
+            runner.is_admin = MagicMock(return_value=True)
+
+            print(
+                "Test case 1. Retrieving Jobs from last_week and tomorrow_max (yesterday and now jobs) "
+            )
+            job_state = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_week),
+                user="ALL",
+            )
+            count = 0
+            for js in job_state["jobs"]:
+                job_id = js["job_id"]
+                print("Job is id", job_id)
+                if job_id in new_job_ids:
+                    count += 1
+                    self.assertEqual(js["status"], "created")
+                    date = dateutil.parser.parse(js["created"])
+                    ts = date.timestamp()
+                    print(
+                        f"Creation date {date}, LastWeek:{last_week}, Tomorrow{tomorrow})"
+                    )
+                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    self.assertTrue(ts >= last_week.timestamp())
+                    self.assertTrue(ts <= tomorrow.timestamp())
+            self.assertEqual(2, count)
+
+            print(
+                "Test case 2A. Retrieving Jobs from last_month and tomorrow_max (last_month, last_week, yesterday and now jobs) "
+            )
+
+            job_state = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+            )
+
+            count = 0
+            for js in job_state["jobs"]:
+                job_id = js["job_id"]
+                print("Job is id", job_id)
+                if job_id in new_job_ids:
+                    count += 1
+                    self.assertEqual(js["status"], "created")
+                    date = dateutil.parser.parse(js["created"])
+                    ts = date.timestamp()
+                    print(date, last_week, tomorrow)
+                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    self.assertTrue(ts > last_month_and_1_hour.timestamp())
+                    self.assertTrue(ts < tomorrow.timestamp())
+            self.assertEqual(4, count)
+
+            print("Found all of the jobs", len(new_job_ids))
+
+            with self.assertRaises(Exception) as context:
+                job_state = runner.check_jobs_date_range_for_user(
+                    creation_end_date=str(yesterday),
+                    creation_start_date=str(tomorrow),
+                    user="ALL",
+                )
+                self.assertEqual(
+                    "The start date cannot be greater than the end date.",
+                    str(context.exception),
+                )
+
+            print("Test case 2B. Same as above but with FAKE user (NO ADMIN) ")
+            runner.is_admin = False
+            runner._is_admin = MagicMock(return_value=False)
+            with self.assertRaisesRegex(
+                AuthError,
+                "You are not authorized to view all records or records for others.",
+            ) as error:
+                job_state = runner.check_jobs_date_range_for_user(
+                    creation_end_date=str(tomorrow),
+                    creation_start_date=str(last_month_and_1_hour),
+                    user="FAKE",
+                )
+                print("Exception raised is", error)
+
+            print("Test case 2C. Same as above but with FAKE_TEST_USER + ADMIN) ")
+            runner.is_admin = True
+            runner._is_admin = MagicMock(return_value=True)
+            job_state = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user=user_name,
+            )
+
+            count = 0
+            for js in job_state["jobs"]:
+                job_id = js["job_id"]
+                print("Job is id", job_id)
+                if job_id in new_job_ids:
+                    count += 1
+                    self.assertEqual(js["status"], "created")
+                    date = dateutil.parser.parse(js["created"])
+                    ts = date.timestamp()
+                    print(date, last_week, tomorrow)
+                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    self.assertTrue(ts > last_month_and_1_hour.timestamp())
+                    self.assertTrue(ts < tomorrow.timestamp())
+
+            # May need to change this if other db entries get added
+            self.assertEqual(4, count)
+
+            print("Found all of the jobs", len(new_job_ids))
+
+            print("Test case 3. Assert Raises error")
+
+            with self.assertRaises(Exception) as context:
+                job_state = runner.check_jobs_date_range_for_user(
+                    creation_end_date=str(yesterday),
+                    creation_start_date=str(tomorrow),
+                    user="ALL",
+                )
+                self.assertEqual(
+                    "The start date cannot be greater than the end date.",
+                    str(context.exception),
+                )
+
+            print("Test case 4, find the original job")
+            job_state = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user=user_name,
+            )
+            self.assertTrue(len(job_state["jobs"][0].keys()) > 0)
+            print(f"Checking {job_id}")
+
+            found = False
+            for job in job_state["jobs"]:
+                if job_id == job["job_id"]:
+                    found = True
+
+            if found is False:
+                raise Exception("Didn't find the original job")
+
+            print(job_state)
+
+            print("Test 5, find the original job, but with projections")
+            job_states = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user=user_name,
+                job_projection=["wsid"],
+            )
+            job_state_with_proj = None
+            for job in job_states["jobs"]:
+                if job_id == job["job_id"]:
+                    job_state_with_proj = job
+
+            example_job_stat = {
+                "_id": "5d892ede9ea3d7d3b824dbff",
+                "authstrat": "kbaseworkspace",
+                "wsid": 9999,
+                "updated": "2019-09-23 20:45:19.468032",
+                "job_id": "5d892ede9ea3d7d3b824dbff",
+                "created": "2019-09-23 20:45:18+00:00",
+            }
+
+            required_headers = list(example_job_stat.keys())
+            required_headers.append("wsid")
+
+            for member in required_headers:
+                self.assertIn(member, job_state_with_proj)
+            self.assertNotIn("status", job_state_with_proj)
+
+            print("Test 6a, find the original job, but with projections and filters")
+            job_state = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+                job_projection=["wsid", "status"],
+                job_filter={"wsid": 9999},
+            )
+
+            for record in job_state["jobs"]:
+
+                print(record)
+                if record["wsid"] != 9999:
+                    raise Exception("Only records with wsid 9999 should be allowed")
+                self.assertIn("wsid", record)
+                self.assertIn("status", record)
+                self.assertNotIn("service_ver", record)
+            print("job state is", "len is", len(job_state["jobs"]))
+
+            self.assertTrue(len(job_state["jobs"]) >= 1)
+
+            print("Test 6b, find the original job, but with projections and filters")
+            job_state2 = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+                job_projection=["wsid", "status"],
+                job_filter=["wsid=123"],
+            )
+
+            for record in job_state2["jobs"]:
+
+                if record["wsid"] != 123:
+                    print(record)
+                    print("ID IS", record["wsid"])
+                    raise Exception("Only records with wsid 123 should be allowed")
+                self.assertIn("wsid", record)
+                self.assertIn("status", record)
+                self.assertNotIn("service_ver", record)
+
+            print(len(job_state2["jobs"]))
+            self.assertTrue(4 >= len(job_state2["jobs"]) > 0)
+
+            print(
+                "Test 7, find same jobs as test 2 or 3, but also filter, project, and limit"
+            )
+            job_state_limit = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+                job_projection=["wsid", "status"],
+                job_filter=["wsid=123"],
+                limit=2,
+            )
+
+            self.assertTrue(2 >= len(job_state_limit["jobs"]) > 0)
+
+            print(
+                "Test 8, ascending and descending (maybe should verify jobs count > 2)"
+            )
+            job_state_limit_asc = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+                job_projection=["wsid", "status"],
+                ascending="True",
+            )
+
+            epoch = datetime.utcfromtimestamp(0)
+
+            job_id_temp = str(ObjectId.from_datetime(epoch))
+            for item in job_state_limit_asc["jobs"]:
+                job_id = item["job_id"]
+                if ObjectId(job_id) > ObjectId(job_id_temp):
+                    job_id_temp = job_id
+                else:
+                    raise Exception(
+                        "Not ascending"
+                        + "JobIdPrev"
+                        + str(job_id_temp)
+                        + "JobIdNext"
+                        + str(job_id)
+                    )
+
+            job_state_limit_desc = runner.check_jobs_date_range_for_user(
+                creation_end_date=str(tomorrow),
+                creation_start_date=str(last_month_and_1_hour),
+                user="ALL",
+                job_projection=["wsid", "status"],
+                ascending="False",
+            )
+
+            # TimeDelta Over 9999 days
+            job_id_temp = str(ObjectId.from_datetime(now + timedelta(days=9999)))
+
+            for item in job_state_limit_desc["jobs"]:
+                job_id = item["job_id"]
+                if ObjectId(job_id) < ObjectId(job_id_temp):
+                    job_id_temp = job_id
+                else:
+                    raise Exception(
+                        "Not Descending"
+                        + "JobIdPrev:"
+                        + str(job_id_temp)
+                        + "JobIdNext:"
+                        + str(job_id)
+                    )
+
+            for key in job_state_limit_desc.keys():
+                print(key)
+                print(job_state_limit_desc[key])
