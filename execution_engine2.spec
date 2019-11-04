@@ -21,7 +21,7 @@ module execution_engine2 {
         git_commit - the Git hash of the version of the module.
         version - the semantic version for the module.
         service - the name of the service.
-        server_time - the current server timestamp (as a timestamp, above)
+        server_time - the current server timestamp (in milliseconds)
 
         # TODO - add some or all of the following
         reboot_mode - if 1, then in the process of rebooting
@@ -34,7 +34,7 @@ module execution_engine2 {
         string git_commit;
         string version;
         string service;
-        timestamp server_time;
+        int server_time;
     } Status;
 
     /*
@@ -163,14 +163,14 @@ module execution_engine2 {
     /*
         line - string - a string to set for the log line.
         is_error - int - if 1, then this line should be treated as an error, default 0
-        ts - string - a timestamp for the log line (optional)
+        ts - int - a timestamp (in milliseconds) for the log line (optional)
 
         @optional ts
     */
     typedef structure {
         string line;
         boolean is_error;
-        string ts;
+        int ts;
     } LogLine;
     funcdef add_job_logs(job_id job_id, list<LogLine> lines)
         returns (int line_number) authentication required;
@@ -249,10 +249,10 @@ module execution_engine2 {
         wsid - int - id of the workspace where the job is bound
         authstrat - string - what strategy used to authenticate the job
         job_input - object - inputs to the job (from the run_job call)  ## TODO - verify
-        updated - string - timestamp of the last time the status was updated
-        running - string - timestamp of when it entered the running state
-        created - string - timestamp when the job was created
-        finished - string - timestamp when the job was finished
+        updated - int - timestamp (in milliseconds) of the last time the status was updated
+        running - int - timestamp (in milliseconds) of when it entered the running state
+        created - int - timestamp (in milliseconds) when the job was created
+        finished - int - timestamp (in milliseconds) when the job was finished
         status - string - status of the job. one of the following:
             created - job has been created in the service
             estimating - an estimation job is running to estimate resources required for the main
@@ -295,12 +295,12 @@ module execution_engine2 {
         int wsid;
         string status;
         RunJobParams job_input;
-        timestamp created;
-        timestamp updated;
+        int created;
+        int updated;
 
-        timestamp estimating;
-        timestamp running;
-        timestamp finished;
+        int estimating;
+        int running;
+        int finished;
 
         JsonRpcError error;
         int error_code;
