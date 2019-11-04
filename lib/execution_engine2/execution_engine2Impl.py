@@ -21,8 +21,8 @@ class execution_engine2:
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.0.1"
-    GIT_URL = "https://bio-boris@github.com/kbase/execution_engine2"
-    GIT_COMMIT_HASH = "b0c1ac8e49b7e10a9d45df932c3ee2f1c07be496"
+    GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
+    GIT_COMMIT_HASH = "b91125a4470869451515709714d7cc3b5c18a1ee"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -108,20 +108,15 @@ class execution_engine2:
            Execution Engine status git_commit - the Git hash of the version
            of the module. version - the semantic version for the module.
            service - the name of the service. server_time - the current
-           server timestamp (as a timestamp, above) # TODO - add some or all
-           of the following reboot_mode - if 1, then in the process of
-           rebooting stopping_mode - if 1, then in the process of stopping
+           server timestamp (in milliseconds) # TODO - add some or all of the
+           following reboot_mode - if 1, then in the process of rebooting
+           stopping_mode - if 1, then in the process of stopping
            running_tasks_total - number of total running jobs
            running_tasks_per_user - mapping from user id to number of running
            jobs for that user tasks_in_queue - number of jobs in the queue
            that are not running) -> structure: parameter "git_commit" of
            String, parameter "version" of String, parameter "service" of
-           String, parameter "server_time" of type "timestamp" (A time in the
-           format YYYY-MM-DDThh:mm:ssZ, where Z is either the character Z
-           (representing the UTC timezone) or the difference in time to UTC
-           in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500 (EST time)
-           2013-04-03T08:56:32+0000 (UTC time) 2013-04-03T08:56:32Z (UTC
-           time))
+           String, parameter "server_time" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -300,10 +295,10 @@ class execution_engine2:
         :param job_id: instance of type "job_id" (A job id.)
         :param lines: instance of list of type "LogLine" (line - string - a
            string to set for the log line. is_error - int - if 1, then this
-           line should be treated as an error, default 0 ts - string - a
-           timestamp for the log line (optional) @optional ts) -> structure:
-           parameter "line" of String, parameter "is_error" of type "boolean"
-           (@range [0,1]), parameter "ts" of String
+           line should be treated as an error, default 0 ts - int - a
+           timestamp (in milliseconds) for the log line (optional) @optional
+           ts) -> structure: parameter "line" of String, parameter "is_error"
+           of type "boolean" (@range [0,1]), parameter "ts" of Long
         :returns: instance of Long
         """
         # ctx is the context object
@@ -332,10 +327,11 @@ class execution_engine2:
            loaded lines next time.) -> structure: parameter "lines" of list
            of type "LogLine" (line - string - a string to set for the log
            line. is_error - int - if 1, then this line should be treated as
-           an error, default 0 ts - string - a timestamp for the log line
-           (optional) @optional ts) -> structure: parameter "line" of String,
-           parameter "is_error" of type "boolean" (@range [0,1]), parameter
-           "ts" of String, parameter "last_line_number" of Long
+           an error, default 0 ts - int - a timestamp (in milliseconds) for
+           the log line (optional) @optional ts) -> structure: parameter
+           "line" of String, parameter "is_error" of type "boolean" (@range
+           [0,1]), parameter "ts" of Long, parameter "last_line_number" of
+           Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -409,19 +405,20 @@ class execution_engine2:
            job user - string - user who started the job wsid - int - id of
            the workspace where the job is bound authstrat - string - what
            strategy used to authenticate the job job_input - object - inputs
-           to the job (from the run_job call)  ## TODO - verify updated -
-           string - timestamp of the last time the status was updated running
-           - string - timestamp of when it entered the running state created
-           - string - timestamp when the job was created finished - string -
-           timestamp when the job was finished status - string - status of
-           the job. one of the following: created - job has been created in
-           the service estimating - an estimation job is running to estimate
-           resources required for the main job, and which queue should be
-           used queued - job is queued to be run running - job is running on
-           a worker node finished - job was completed successfully error -
-           job is no longer running, but failed with an error terminated -
-           job is no longer running, terminated either due to user
-           cancellation, admin cancellation, or some automated task
+           to the job (from the run_job call)  ## TODO - verify updated - int
+           - timestamp (in milliseconds) of the last time the status was
+           updated running - int - timestamp (in milliseconds) of when it
+           entered the running state created - int - timestamp (in
+           milliseconds) when the job was created finished - int - timestamp
+           (in milliseconds) when the job was finished status - string -
+           status of the job. one of the following: created - job has been
+           created in the service estimating - an estimation job is running
+           to estimate resources required for the main job, and which queue
+           should be used queued - job is queued to be run running - job is
+           running on a worker node finished - job was completed successfully
+           error - job is no longer running, but failed with an error
+           terminated - job is no longer running, terminated either due to
+           user cancellation, admin cancellation, or some automated task
            error_code - int - internal reason why the job is an error. one of
            the following: 0 - unknown 1 - job crashed 2 - job terminated by
            automation 3 - job ran over time limit 4 - job was missing its
@@ -481,37 +478,14 @@ class execution_engine2:
            or id, Y is the object name or id, Z is the version, which is
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, parameter "created" of type "timestamp"
-           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
-           character Z (representing the UTC timezone) or the difference in
-           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
-           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
-           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
-           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
-           either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
-           "JsonRpcError" (Error block of JSON RPC response) -> structure:
-           parameter "name" of String, parameter "code" of Long, parameter
-           "message" of String, parameter "error" of String, parameter
-           "error_code" of Long, parameter "errormsg" of String, parameter
-           "terminated_code" of Long
+           "parent_job_id" of String, parameter "created" of Long, parameter
+           "updated" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter "error"
+           of type "JsonRpcError" (Error block of JSON RPC response) ->
+           structure: parameter "name" of String, parameter "code" of Long,
+           parameter "message" of String, parameter "error" of String,
+           parameter "error_code" of Long, parameter "errormsg" of String,
+           parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: job_state
@@ -543,19 +517,20 @@ class execution_engine2:
            the job user - string - user who started the job wsid - int - id
            of the workspace where the job is bound authstrat - string - what
            strategy used to authenticate the job job_input - object - inputs
-           to the job (from the run_job call)  ## TODO - verify updated -
-           string - timestamp of the last time the status was updated running
-           - string - timestamp of when it entered the running state created
-           - string - timestamp when the job was created finished - string -
-           timestamp when the job was finished status - string - status of
-           the job. one of the following: created - job has been created in
-           the service estimating - an estimation job is running to estimate
-           resources required for the main job, and which queue should be
-           used queued - job is queued to be run running - job is running on
-           a worker node finished - job was completed successfully error -
-           job is no longer running, but failed with an error terminated -
-           job is no longer running, terminated either due to user
-           cancellation, admin cancellation, or some automated task
+           to the job (from the run_job call)  ## TODO - verify updated - int
+           - timestamp (in milliseconds) of the last time the status was
+           updated running - int - timestamp (in milliseconds) of when it
+           entered the running state created - int - timestamp (in
+           milliseconds) when the job was created finished - int - timestamp
+           (in milliseconds) when the job was finished status - string -
+           status of the job. one of the following: created - job has been
+           created in the service estimating - an estimation job is running
+           to estimate resources required for the main job, and which queue
+           should be used queued - job is queued to be run running - job is
+           running on a worker node finished - job was completed successfully
+           error - job is no longer running, but failed with an error
+           terminated - job is no longer running, terminated either due to
+           user cancellation, admin cancellation, or some automated task
            error_code - int - internal reason why the job is an error. one of
            the following: 0 - unknown 1 - job crashed 2 - job terminated by
            automation 3 - job ran over time limit 4 - job was missing its
@@ -615,37 +590,14 @@ class execution_engine2:
            or id, Y is the object name or id, Z is the version, which is
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, parameter "created" of type "timestamp"
-           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
-           character Z (representing the UTC timezone) or the difference in
-           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
-           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
-           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
-           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
-           either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
-           "JsonRpcError" (Error block of JSON RPC response) -> structure:
-           parameter "name" of String, parameter "code" of Long, parameter
-           "message" of String, parameter "error" of String, parameter
-           "error_code" of Long, parameter "errormsg" of String, parameter
-           "terminated_code" of Long
+           "parent_job_id" of String, parameter "created" of Long, parameter
+           "updated" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter "error"
+           of type "JsonRpcError" (Error block of JSON RPC response) ->
+           structure: parameter "name" of String, parameter "code" of Long,
+           parameter "message" of String, parameter "error" of String,
+           parameter "error_code" of Long, parameter "errormsg" of String,
+           parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -678,19 +630,20 @@ class execution_engine2:
            the job user - string - user who started the job wsid - int - id
            of the workspace where the job is bound authstrat - string - what
            strategy used to authenticate the job job_input - object - inputs
-           to the job (from the run_job call)  ## TODO - verify updated -
-           string - timestamp of the last time the status was updated running
-           - string - timestamp of when it entered the running state created
-           - string - timestamp when the job was created finished - string -
-           timestamp when the job was finished status - string - status of
-           the job. one of the following: created - job has been created in
-           the service estimating - an estimation job is running to estimate
-           resources required for the main job, and which queue should be
-           used queued - job is queued to be run running - job is running on
-           a worker node finished - job was completed successfully error -
-           job is no longer running, but failed with an error terminated -
-           job is no longer running, terminated either due to user
-           cancellation, admin cancellation, or some automated task
+           to the job (from the run_job call)  ## TODO - verify updated - int
+           - timestamp (in milliseconds) of the last time the status was
+           updated running - int - timestamp (in milliseconds) of when it
+           entered the running state created - int - timestamp (in
+           milliseconds) when the job was created finished - int - timestamp
+           (in milliseconds) when the job was finished status - string -
+           status of the job. one of the following: created - job has been
+           created in the service estimating - an estimation job is running
+           to estimate resources required for the main job, and which queue
+           should be used queued - job is queued to be run running - job is
+           running on a worker node finished - job was completed successfully
+           error - job is no longer running, but failed with an error
+           terminated - job is no longer running, terminated either due to
+           user cancellation, admin cancellation, or some automated task
            error_code - int - internal reason why the job is an error. one of
            the following: 0 - unknown 1 - job crashed 2 - job terminated by
            automation 3 - job ran over time limit 4 - job was missing its
@@ -750,37 +703,14 @@ class execution_engine2:
            or id, Y is the object name or id, Z is the version, which is
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, parameter "created" of type "timestamp"
-           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
-           character Z (representing the UTC timezone) or the difference in
-           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
-           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
-           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
-           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
-           either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
-           "JsonRpcError" (Error block of JSON RPC response) -> structure:
-           parameter "name" of String, parameter "code" of Long, parameter
-           "message" of String, parameter "error" of String, parameter
-           "error_code" of Long, parameter "errormsg" of String, parameter
-           "terminated_code" of Long
+           "parent_job_id" of String, parameter "created" of Long, parameter
+           "updated" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter "error"
+           of type "JsonRpcError" (Error block of JSON RPC response) ->
+           structure: parameter "name" of String, parameter "code" of Long,
+           parameter "message" of String, parameter "error" of String,
+           parameter "error_code" of Long, parameter "errormsg" of String,
+           parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -885,19 +815,20 @@ class execution_engine2:
            the job user - string - user who started the job wsid - int - id
            of the workspace where the job is bound authstrat - string - what
            strategy used to authenticate the job job_input - object - inputs
-           to the job (from the run_job call)  ## TODO - verify updated -
-           string - timestamp of the last time the status was updated running
-           - string - timestamp of when it entered the running state created
-           - string - timestamp when the job was created finished - string -
-           timestamp when the job was finished status - string - status of
-           the job. one of the following: created - job has been created in
-           the service estimating - an estimation job is running to estimate
-           resources required for the main job, and which queue should be
-           used queued - job is queued to be run running - job is running on
-           a worker node finished - job was completed successfully error -
-           job is no longer running, but failed with an error terminated -
-           job is no longer running, terminated either due to user
-           cancellation, admin cancellation, or some automated task
+           to the job (from the run_job call)  ## TODO - verify updated - int
+           - timestamp (in milliseconds) of the last time the status was
+           updated running - int - timestamp (in milliseconds) of when it
+           entered the running state created - int - timestamp (in
+           milliseconds) when the job was created finished - int - timestamp
+           (in milliseconds) when the job was finished status - string -
+           status of the job. one of the following: created - job has been
+           created in the service estimating - an estimation job is running
+           to estimate resources required for the main job, and which queue
+           should be used queued - job is queued to be run running - job is
+           running on a worker node finished - job was completed successfully
+           error - job is no longer running, but failed with an error
+           terminated - job is no longer running, terminated either due to
+           user cancellation, admin cancellation, or some automated task
            error_code - int - internal reason why the job is an error. one of
            the following: 0 - unknown 1 - job crashed 2 - job terminated by
            automation 3 - job ran over time limit 4 - job was missing its
@@ -957,37 +888,14 @@ class execution_engine2:
            or id, Y is the object name or id, Z is the version, which is
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, parameter "created" of type "timestamp"
-           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
-           character Z (representing the UTC timezone) or the difference in
-           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
-           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
-           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
-           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
-           either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
-           "JsonRpcError" (Error block of JSON RPC response) -> structure:
-           parameter "name" of String, parameter "code" of Long, parameter
-           "message" of String, parameter "error" of String, parameter
-           "error_code" of Long, parameter "errormsg" of String, parameter
-           "terminated_code" of Long
+           "parent_job_id" of String, parameter "created" of Long, parameter
+           "updated" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter "error"
+           of type "JsonRpcError" (Error block of JSON RPC response) ->
+           structure: parameter "name" of String, parameter "code" of Long,
+           parameter "message" of String, parameter "error" of String,
+           parameter "error_code" of Long, parameter "errormsg" of String,
+           parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -1036,19 +944,20 @@ class execution_engine2:
            the job user - string - user who started the job wsid - int - id
            of the workspace where the job is bound authstrat - string - what
            strategy used to authenticate the job job_input - object - inputs
-           to the job (from the run_job call)  ## TODO - verify updated -
-           string - timestamp of the last time the status was updated running
-           - string - timestamp of when it entered the running state created
-           - string - timestamp when the job was created finished - string -
-           timestamp when the job was finished status - string - status of
-           the job. one of the following: created - job has been created in
-           the service estimating - an estimation job is running to estimate
-           resources required for the main job, and which queue should be
-           used queued - job is queued to be run running - job is running on
-           a worker node finished - job was completed successfully error -
-           job is no longer running, but failed with an error terminated -
-           job is no longer running, terminated either due to user
-           cancellation, admin cancellation, or some automated task
+           to the job (from the run_job call)  ## TODO - verify updated - int
+           - timestamp (in milliseconds) of the last time the status was
+           updated running - int - timestamp (in milliseconds) of when it
+           entered the running state created - int - timestamp (in
+           milliseconds) when the job was created finished - int - timestamp
+           (in milliseconds) when the job was finished status - string -
+           status of the job. one of the following: created - job has been
+           created in the service estimating - an estimation job is running
+           to estimate resources required for the main job, and which queue
+           should be used queued - job is queued to be run running - job is
+           running on a worker node finished - job was completed successfully
+           error - job is no longer running, but failed with an error
+           terminated - job is no longer running, terminated either due to
+           user cancellation, admin cancellation, or some automated task
            error_code - int - internal reason why the job is an error. one of
            the following: 0 - unknown 1 - job crashed 2 - job terminated by
            automation 3 - job ran over time limit 4 - job was missing its
@@ -1108,37 +1017,14 @@ class execution_engine2:
            or id, Y is the object name or id, Z is the version, which is
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
-           "parent_job_id" of String, parameter "created" of type "timestamp"
-           (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is either the
-           character Z (representing the UTC timezone) or the difference in
-           time to UTC in the format +/-HHMM, eg: 2012-12-17T23:24:06-0500
-           (EST time) 2013-04-03T08:56:32+0000 (UTC time)
-           2013-04-03T08:56:32Z (UTC time)), parameter "updated" of type
-           "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where Z is
-           either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "estimating" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "running" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "finished" of
-           type "timestamp" (A time in the format YYYY-MM-DDThh:mm:ssZ, where
-           Z is either the character Z (representing the UTC timezone) or the
-           difference in time to UTC in the format +/-HHMM, eg:
-           2012-12-17T23:24:06-0500 (EST time) 2013-04-03T08:56:32+0000 (UTC
-           time) 2013-04-03T08:56:32Z (UTC time)), parameter "error" of type
-           "JsonRpcError" (Error block of JSON RPC response) -> structure:
-           parameter "name" of String, parameter "code" of Long, parameter
-           "message" of String, parameter "error" of String, parameter
-           "error_code" of Long, parameter "errormsg" of String, parameter
-           "terminated_code" of Long
+           "parent_job_id" of String, parameter "created" of Long, parameter
+           "updated" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter "error"
+           of type "JsonRpcError" (Error block of JSON RPC response) ->
+           structure: parameter "name" of String, parameter "code" of Long,
+           parameter "message" of String, parameter "error" of String,
+           parameter "error_code" of Long, parameter "errormsg" of String,
+           parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
