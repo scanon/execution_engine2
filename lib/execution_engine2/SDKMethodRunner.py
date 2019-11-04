@@ -852,7 +852,7 @@ class SDKMethodRunner:
             mongo_rec = job.to_mongo().to_dict()
             mongo_rec["_id"] = str(job.id)
             mongo_rec["job_id"] = str(job.id)
-            mongo_rec["created"] = str(job.id.generation_time)
+            mongo_rec["created"] = str(job.id.generation_time.timestamp())
             mongo_rec["updated"] = str(job.updated)
             if job.estimating:
                 mongo_rec["estimating"] = str(job.estimating)
