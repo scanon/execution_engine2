@@ -874,14 +874,12 @@ class SDKMethodRunner:
         """
         Returns as per the spec file
 
-        :param jobs:
+        :param jobs: MongoEngine Job Objects Query
         :return: list of job states of format
         Special Cases:
         str(_id)
         str(job_id)
-        float(created/queued/estimating/running/finished/updated/)
-
-
+        float(created/queued/estimating/running/finished/updated/) (Time in MS)
         """
         job_states = []
         for job in jobs:
