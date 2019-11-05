@@ -205,10 +205,10 @@ module execution_engine2 {
     } JsonRpcError;
 
     /*
-        job_id - string - the id of the job to mark finished
-        error_message - string - optional if job is finished with and error
-        error_code - int - optional if job finished with an error
-        error - JsonRpcError - optional
+        job_id - string - the id of the job to mark completed or finished with an error
+        error_message - string - optional unless job is finished with an error
+        error_code - int - optional unless job finished with an error
+        error - JsonRpcError - optional output from SDK Job Containers
         job_output - job output if job completed successfully
     */
     typedef structure {
@@ -259,7 +259,7 @@ module execution_engine2 {
                          job, and which queue should be used
             queued - job is queued to be run
             running - job is running on a worker node
-            finished - job was completed successfully
+            completed - job was completed successfully
             error - job is no longer running, but failed with an error
             terminated - job is no longer running, terminated either due to user cancellation,
                          admin cancellation, or some automated task
