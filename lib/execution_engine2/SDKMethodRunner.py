@@ -876,6 +876,7 @@ class SDKMethodRunner:
 
         :param jobs:
         :return: list of job states of format
+        Special Cases:
         str(_id)
         str(job_id)
         float(created/queued/estimating/running/finished/updated/)
