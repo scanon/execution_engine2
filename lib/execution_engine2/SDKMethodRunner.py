@@ -886,16 +886,16 @@ class SDKMethodRunner:
             mongo_rec = job.to_mongo().to_dict()
             mongo_rec["_id"] = str(job.id)
             mongo_rec["job_id"] = str(job.id)
-            mongo_rec["created"] = int(job.id.generation_time.timestamp()) * 1000
-            mongo_rec["updated"] = int(job.updated) * 1000
+            mongo_rec["created"] = int(job.id.generation_time.timestamp() * 1000)
+            mongo_rec["updated"] = int(job.updated * 1000)
             if job.estimating:
-                mongo_rec["estimating"] = int(job.estimating) * 1000
+                mongo_rec["estimating"] = int(job.estimating * 1000)
             if job.queued:
-                mongo_rec["queued"] = int(job.queued) * 1000
+                mongo_rec["queued"] = int(job.queued * 1000)
             if job.running:
-                mongo_rec["running"] = int(job.running) * 1000
+                mongo_rec["running"] = int(job.running * 1000)
             if job.finished:
-                mongo_rec["finished"] = int(job.finished) * 1000
+                mongo_rec["finished"] = int(job.finished * 1000)
             job_states.append(mongo_rec)
         return job_states
 
