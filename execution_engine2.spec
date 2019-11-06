@@ -296,7 +296,7 @@
             string status;
             RunJobParams job_input;
             int created;
-            int queued
+            int queued;
             int estimating;
             int running;
             int finished;
@@ -444,5 +444,18 @@
         } CheckJobsDateRangeParams;
         funcdef check_jobs_date_range_for_user(CheckJobsDateRangeParams params) returns (CheckJobsResults) authentication required;
         funcdef check_jobs_date_range_for_all(CheckJobsDateRangeParams params) returns (CheckJobsResults) authentication required;
+
+        /*
+            Check if given user (user_token) has admin rights.
+
+            if user_token is given, current user must have admin rights.
+            otherwise, return whether current user is an admin nor not.
+
+            @optional user_token
+        */
+        typedef structure {
+            string user_token;
+        } IsAdminParams;
+        funcdef is_admin(IsAdminParams params) returns (boolean) authentication required;
 
     };

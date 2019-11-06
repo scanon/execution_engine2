@@ -11,7 +11,7 @@ class execution_engine2:
     execution_engine2
 
     Module Description:
-    
+
     '''
 
     ######## WARNING FOR GEVENT USERS ####### noqa
@@ -22,7 +22,7 @@ class execution_engine2:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/Tianhao-Gu/execution_engine2.git"
-    GIT_COMMIT_HASH = "9a6b84e7731827ef679563aed4015ec90ea4e18f"
+    GIT_COMMIT_HASH = "44e4a427c358070dc8dcfecb7ec8852fa0533b26"
 
     #BEGIN_CLASS_HEADER
     MONGO_COLLECTION = "jobs"
@@ -478,13 +478,13 @@ class execution_engine2:
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String, parameter "created" of Long, parameter
-           "updated" of Long, parameter "estimating" of Long, parameter
-           "running" of Long, parameter "finished" of Long, parameter "error"
-           of type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "error_code" of Long, parameter "errormsg" of String,
-           parameter "terminated_code" of Long
+           "queued" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter
+           "updated" of Long, parameter "error" of type "JsonRpcError" (Error
+           block of JSON RPC response) -> structure: parameter "name" of
+           String, parameter "code" of Long, parameter "message" of String,
+           parameter "error" of String, parameter "error_code" of Long,
+           parameter "errormsg" of String, parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: job_state
@@ -590,13 +590,13 @@ class execution_engine2:
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String, parameter "created" of Long, parameter
-           "updated" of Long, parameter "estimating" of Long, parameter
-           "running" of Long, parameter "finished" of Long, parameter "error"
-           of type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "error_code" of Long, parameter "errormsg" of String,
-           parameter "terminated_code" of Long
+           "queued" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter
+           "updated" of Long, parameter "error" of type "JsonRpcError" (Error
+           block of JSON RPC response) -> structure: parameter "name" of
+           String, parameter "code" of Long, parameter "message" of String,
+           parameter "error" of String, parameter "error_code" of Long,
+           parameter "errormsg" of String, parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -703,13 +703,13 @@ class execution_engine2:
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String, parameter "created" of Long, parameter
-           "updated" of Long, parameter "estimating" of Long, parameter
-           "running" of Long, parameter "finished" of Long, parameter "error"
-           of type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "error_code" of Long, parameter "errormsg" of String,
-           parameter "terminated_code" of Long
+           "queued" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter
+           "updated" of Long, parameter "error" of type "JsonRpcError" (Error
+           block of JSON RPC response) -> structure: parameter "name" of
+           String, parameter "code" of Long, parameter "message" of String,
+           parameter "error" of String, parameter "error_code" of Long,
+           parameter "errormsg" of String, parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -888,13 +888,13 @@ class execution_engine2:
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String, parameter "created" of Long, parameter
-           "updated" of Long, parameter "estimating" of Long, parameter
-           "running" of Long, parameter "finished" of Long, parameter "error"
-           of type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "error_code" of Long, parameter "errormsg" of String,
-           parameter "terminated_code" of Long
+           "queued" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter
+           "updated" of Long, parameter "error" of type "JsonRpcError" (Error
+           block of JSON RPC response) -> structure: parameter "name" of
+           String, parameter "code" of Long, parameter "message" of String,
+           parameter "error" of String, parameter "error_code" of Long,
+           parameter "errormsg" of String, parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -1017,13 +1017,13 @@ class execution_engine2:
            optional.), parameter "app_id" of String, parameter "meta" of
            mapping from String to String, parameter "wsid" of Long, parameter
            "parent_job_id" of String, parameter "created" of Long, parameter
-           "updated" of Long, parameter "estimating" of Long, parameter
-           "running" of Long, parameter "finished" of Long, parameter "error"
-           of type "JsonRpcError" (Error block of JSON RPC response) ->
-           structure: parameter "name" of String, parameter "code" of Long,
-           parameter "message" of String, parameter "error" of String,
-           parameter "error_code" of Long, parameter "errormsg" of String,
-           parameter "terminated_code" of Long
+           "queued" of Long, parameter "estimating" of Long, parameter
+           "running" of Long, parameter "finished" of Long, parameter
+           "updated" of Long, parameter "error" of type "JsonRpcError" (Error
+           block of JSON RPC response) -> structure: parameter "name" of
+           String, parameter "code" of Long, parameter "message" of String,
+           parameter "error" of String, parameter "error_code" of Long,
+           parameter "errormsg" of String, parameter "terminated_code" of Long
         """
         # ctx is the context object
         # return variables are: returnVal
@@ -1045,5 +1045,28 @@ class execution_engine2:
         if not isinstance(returnVal, dict):
             raise ValueError('Method check_jobs_date_range_for_all return value ' +
                              'returnVal is not type dict as required.')
+        # return the results
+        return [returnVal]
+
+    def is_admin(self, ctx, params):
+        """
+        :param params: instance of type "IsAdminParams" (Check if given user
+           (user_token) has admin rights. if user_token is given, current
+           user must have admin rights. otherwise, return whether current
+           user is an admin nor not. @optional user_token) -> structure:
+           parameter "user_token" of String
+        :returns: instance of type "boolean" (@range [0,1])
+        """
+        # ctx is the context object
+        # return variables are: returnVal
+        #BEGIN is_admin
+        mr = SDKMethodRunner(self.config, user_id=ctx.get("user_id"), token=ctx.get("token"))
+        returnVal = mr.check_is_admin(user_token=params.get("user_token"))
+        #END is_admin
+
+        # At some point might do deeper type checking...
+        if not isinstance(returnVal, int):
+            raise ValueError('Method is_admin return value ' +
+                             'returnVal is not type int as required.')
         # return the results
         return [returnVal]
