@@ -383,7 +383,7 @@ class SDKMethodRunner:
         self._test_job_permissions(job, job_id, JobPermissions.WRITE)
         logging.debug(f"User has permission to cancel job {job_id}")
         self.get_mongo_util().cancel_job(job_id=job_id, terminated_code=terminated_code)
-        self.get_condor().cancel_job(job_id=job_id)
+        self.get_condor().cancel_job(job_id=job.scheduler_id)
 
     def check_job_canceled(self, job_id):
         """
@@ -926,9 +926,13 @@ class SDKMethodRunner:
         if user_token:
             if not self.is_admin:
                 raise AuthError(
-                    "You are not authorized to check admin rights for user: {}.".format(user_token)
+                    "You are not authorized to check admin rights for user: {}.".format(
+                        user_token
+                    )
                 )
-            return int(AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(user_token))
+            return int(
+                AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(user_token)
+            )
         else:
             return int(self.is_admin)
 
