@@ -2,13 +2,21 @@
 import datetime
 import os
 from configparser import ConfigParser
+
 from pymongo import MongoClient
+from mongoengine import  connect
 
 jobs_database_name = "ee2_jobs"
 
+epoch = datetime.datetime.utcfromtimestamp(0)
+
+def unix_time_millis(dt):
+        if dt is None:
+            return 0
+        return (dt - epoch).total_seconds() * 1000.0
 
 try:
-    from lib.execution_engine2.db.models.models import (
+    from .execution_engine2.db.models.models import (
         Job,
         Status,
         ErrorCode,
@@ -18,7 +26,7 @@ try:
     )
 
 except Exception:
-    from models import Job, Status, ErrorCode, JobInput, Meta, TerminatedCode
+    from execution_engine2.db.models.models import Job, Status, ErrorCode, JobInput, Meta, TerminatedCode
 
 
 UNKNOWN = "UNKNOWN"
@@ -69,7 +77,25 @@ class MigrateDatabases:
             retryWrites=False,
         )
 
+    def _get_ee2_connection(self) -> MongoClient:
+        parser = ConfigParser()
+        parser.read(os.environ.get("KB_DEPLOYMENT_CONFIG"))
+        self.ee2_host = parser.get("execution_engine2", "mongo-host")
+        self.ee2_db = parser.get("execution_engine2", "mongo-database")
+        self.ee2_user = parser.get("execution_engine2", "mongo-user")
+        self.ee2_pwd = parser.get("execution_engine2", "mongo-password")
+
+        return MongoClient(
+            self.ee2_host,
+            27017,
+            username=self.ee2_user,
+            password=self.ee2_pwd,
+            authSource=self.ee2_db,
+            retryWrites=False,
+        )
+
     def __init__(self):
+        self.ee2 = self._get_ee2_connection()
         self.njs = self._get_njs_connection()
         self.ujs = self._get_ujs_connection()
         self.jobs = []
@@ -86,7 +112,7 @@ class MigrateDatabases:
             .get_collection(self.njs_jobs_collection_name)
         )
 
-        self.ee2_jobs = self._get_njs_connection().get_database(self.njs_db).get_collection(jobs_database_name)
+        self.ee2_jobs = self._get_ee2_connection().get_database(self.ee2_db).get_collection(jobs_database_name)
 
         config = {'mongo-host' : self.njs_host,
                   'mongo-port' : 27017,
@@ -94,7 +120,9 @@ class MigrateDatabases:
                   'mongo-user' : self.njs_user,
                   'mongo-password' : self.njs_pwd,
                   'mongo-authmechanism' : "DEFAULT"}
-        # self.mongo_util = MongoUtil(config=config)
+       # self.mongo_util = MongoUtil(config=config)
+
+
 
     def get_njs_job_input(self, njs_job):
         job_input = njs_job.get("job_input")
@@ -128,6 +156,7 @@ class MigrateDatabases:
     def save_remnants(self):
         self.ee2_jobs.insert_many(self.jobs)
         self.jobs = []
+
 
     def begin_job_transfer(self):  # flake8: noqa
         ujs_jobs = self.ujs_jobs
@@ -171,46 +200,58 @@ class MigrateDatabases:
                 job.status = Status.finished.value
                 job.errormsg = None
 
-            job.updated = ujs_job.get("updated")
-            job.running = ujs_job.get("started")
+            job.updated = unix_time_millis(ujs_job.get("updated"))
+            job.running = unix_time_millis(ujs_job.get("started"))
             job.estimating = None
             job.finished = None
 
             status = ujs_job.get("status")
 
-            exec_start_time = 0.0
-            finish_time = 0.0
+            exec_start_time = datetime.datetime.utcfromtimestamp(0)
+            finish_time = datetime.datetime.utcfromtimestamp(0)
 
             if njs_job is not None:
-                finish_time = njs_job.get("finish_time", 0.0) / 1000.0
-                exec_start_time = njs_job.get("exec_start_time", 0.0) / 1000.0
+                if "finish_time" in njs_job:
+                    ft = njs_job.get("finish_time", 0)
+                    if ft is None:
+                        ft = 0
+                    finish_time = datetime.datetime.utcfromtimestamp(int(ft / 1000.0))
+
+                if "exec_start_time" in njs_job:
+                    est = njs_job.get("exec_start_time", 0)
+                    if est is None:
+                        est = 0
+                    exec_start_time = datetime.datetime.utcfromtimestamp(
+                        int(est / 1000.0)
+                    )
+                print(finish_time)
 
             if status == "canceled by user":
                 job.status = Status.terminated.value
                 job.terminated_code = TerminatedCode.terminated_by_user.value
                 if njs_job is not None:
-                    job.finished = finish_time
-                    job.running = exec_start_time
+                    job.finished = unix_time_millis(finish_time)
+                    job.running = unix_time_millis(exec_start_time)
             elif status == "done":
                 job.status = Status.finished.value
                 if njs_job is not None:
-                    job.finished = finish_time
-                    job.running = exec_start_time
+                    job.finished = unix_time_millis(finish_time)
+                    job.running = unix_time_millis(exec_start_time)
             # Jobs shouldn't be queued from long ago.. And we shouldn't migrate running/queued jobs probably
             elif status == "error" or status == "queued" or status == "in-progress":
                 job.status = Status.error.value
                 job.error_code = ErrorCode.unknown_error.value
                 if njs_job is not None:
-                    job.finished = finish_time
-                    job.running = exec_start_time
+                    job.finished = unix_time_millis(finish_time)
+                    job.running = unix_time_millis(exec_start_time)
 
             elif status is None:
                 print(f"{job.id} has a broken status")
                 job.status = Status.error.value
                 job.error_code = ErrorCode.unknown_error.value
                 if njs_job is not None:
-                    job.finished = finish_time
-                    job.running = exec_start_time
+                    job.finished = unix_time_millis(finish_time)
+                    job.running = unix_time_millis(exec_start_time)
 
             msg = [ujs_job.get("status", ""), ujs_job.get("desc", "")]
             job.msg = " ".join(msg)
