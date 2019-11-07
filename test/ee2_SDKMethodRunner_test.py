@@ -356,7 +356,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
         self.assertFalse(rv["finished"])
         call_count += 1
 
-        rv = runner.check_job_canceled("finished")
+        rv = runner.check_job_canceled("completed")
         self.assertFalse(rv["canceled"])
         self.assertTrue(rv["finished"])
         call_count += 1
@@ -719,7 +719,7 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
             print(runner.get_job_status(job_id))
 
             job = self.mongo_util.get_job(job_id=job_id)
-            self.assertEqual(job.status, "finished")
+            self.assertEqual(job.status, Status.completed.value)
             self.assertFalse(job.errormsg)
             self.assertTrue(job.finished)
             # if job_output not a dict#

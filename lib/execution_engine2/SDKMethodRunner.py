@@ -398,7 +398,7 @@ class SDKMethodRunner:
             rv["canceled"] = True
             rv["finished"] = True
 
-        if Status(job_status) in [Status.finished, Status.error, Status.terminated]:
+        if Status(job_status) in [Status.completed, Status.error, Status.terminated]:
             rv["finished"] = True
         return rv
 
@@ -926,9 +926,13 @@ class SDKMethodRunner:
         if user_token:
             if not self.is_admin:
                 raise AuthError(
-                    "You are not authorized to check admin rights for user: {}.".format(user_token)
+                    "You are not authorized to check admin rights for user: {}.".format(
+                        user_token
+                    )
                 )
-            return int(AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(user_token))
+            return int(
+                AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(user_token)
+            )
         else:
             return int(self.is_admin)
 
