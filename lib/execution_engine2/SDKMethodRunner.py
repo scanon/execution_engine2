@@ -757,13 +757,13 @@ class SDKMethodRunner:
 
         if job_status == Status.estimating.value or skip_estimation:
             # set job to running status
-            job.running = int(time.time() * 1000)
+            job.running = time.time()
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.running.value
             )
         else:
             # set job to estimating status
-            job.estimating = int(time.time() * 1000)
+            job.estimating = time.time()
             self.get_mongo_util().update_job_status(
                 job_id=job_id, status=Status.estimating.value
             )
@@ -871,19 +871,31 @@ class SDKMethodRunner:
 
     @staticmethod
     def _job_state_from_jobs(jobs):
+        """
+        Returns as per the spec file
+
+        :param jobs: MongoEngine Job Objects Query
+        :return: list of job states of format
+        Special Cases:
+        str(_id)
+        str(job_id)
+        float(created/queued/estimating/running/finished/updated/) (Time in MS)
+        """
         job_states = []
         for job in jobs:
             mongo_rec = job.to_mongo().to_dict()
             mongo_rec["_id"] = str(job.id)
             mongo_rec["job_id"] = str(job.id)
-            mongo_rec["created"] = str(job.id.generation_time.timestamp())
-            mongo_rec["updated"] = str(job.updated)
+            mongo_rec["created"] = int(job.id.generation_time.timestamp() * 1000)
+            mongo_rec["updated"] = int(job.updated * 1000)
             if job.estimating:
-                mongo_rec["estimating"] = str(job.estimating)
+                mongo_rec["estimating"] = int(job.estimating * 1000)
+            if job.queued:
+                mongo_rec["queued"] = int(job.queued * 1000)
             if job.running:
-                mongo_rec["running"] = str(job.running)
+                mongo_rec["running"] = int(job.running * 1000)
             if job.finished:
-                mongo_rec["finished"] = str(job.finished)
+                mongo_rec["finished"] = int(job.finished * 1000)
             job_states.append(mongo_rec)
         return job_states
 
@@ -906,6 +918,23 @@ class SDKMethodRunner:
                 return "+"
             else:
                 return "-"
+
+    def check_is_admin(self, user_token):
+
+        self.is_admin = self._is_admin(self.token)
+
+        if user_token:
+            if not self.is_admin:
+                raise AuthError(
+                    "You are not authorized to check admin rights for user: {}.".format(
+                        user_token
+                    )
+                )
+            return int(
+                AdminAuthUtil(self.auth_url, self.admin_roles).is_admin(user_token)
+            )
+        else:
+            return int(self.is_admin)
 
     def check_jobs_date_range_for_user(
         self,

@@ -1086,13 +1086,16 @@ class ee2_SDKMethodRunner_test(unittest.TestCase):
                 if job_id in new_job_ids:
                     count += 1
                     self.assertEqual(js["status"], "created")
+                    print(js["created"])
+                    print(type(js["created"]))
                     date = SDKMethodRunner._check_and_convert_time(js["created"])
                     ts = date
                     print(
                         f"Creation date {date}, LastWeek:{last_week}, Tomorrow{tomorrow})"
                     )
-                    print(ts, last_week.timestamp(), tomorrow.timestamp())
+                    print(ts, last_week.timestamp())
                     self.assertTrue(float(ts) >= last_week.timestamp())
+                    print(ts, tomorrow.timestamp())
                     self.assertTrue(float(ts) <= tomorrow.timestamp())
             self.assertEqual(2, count)
 
